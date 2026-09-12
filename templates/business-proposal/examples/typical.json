@@ -1,0 +1,37 @@
+{
+  "synthetic": true,
+  "pricing": {
+    "currency": {
+      "code": "USD",
+      "decimals": 2
+    },
+    "items": [
+      {
+        "id": "planning",
+        "description": "Content planning workshop",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "writing",
+        "description": "Website copy package: supplied scope and agreed deliverables",
+        "quantity": "1",
+        "unit": "package",
+        "unitPrice": "600.00"
+      },
+      {
+        "id": "review",
+        "description": "Review and revision sessions",
+        "quantity": "3",
+        "unit": "hours",
+        "unitPrice": "75.00"
+      }
+    ],
+    "discount": "25.00",
+    "tax": {
+      "label": "Illustrative tax",
+      "ratePercent": "10"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+# Scientific paper
+
+Treat this template as a soft foundation for a manuscript, with room for variation and creativity. Its starting character is compact, legible, and focused on the research: a modest title and author block, a distinct abstract, and continuous single-column reading. The dimensions are defaults, not fixed rules. Reduce a long title through `titleStyle`, adapt the abstract or heading treatment, and adjust spacing or exhibit proportions to serve the material. Follow an actual journal's supplied instructions when relevant; this template does not itself claim journal compliance.
+
+Let the writer and research determine the section order. An abstract, keywords, affiliations, and correspondence line are optional. Omit unused elements rather than filling them with invented information. Use `PaperHeading` for compact heading defaults, or ordinary Heading with native styles. Give a short heading and lead a native unbreakable View only when they need to stay together; leave longer passages breakable. Do not impose a mandatory methods/results/discussion outline on every type of paper.
+
+Figures, tables, labels, units, uncertainty, captions, and reference text should remain readable. Adapt a dense exhibit rather than simply shrinking everything. Use the existing Figure, DataTable, Cite, and CrossReference blocks so numbering and references stay consistent. Numeric and author-date citations are existing workspace formats, not promises of a particular publisher's bibliography style. Only cite real supplied or verified sources in authored manuscripts; specimens must clearly identify illustrative records and data.
+
+Keep layout native to Forme: Page, Fixed, View, Text, Image, and Table through the existing OpenDoc blocks. No Prose indentation shim, custom text fitting, manual line splitting, simulated two-column pagination, or renderer patches. For charts, use the established local Media workflow and native image placement. Preserve stable IDs and source provenance. Keep document-specific variations local or expose small options that preserve shared defaults.
+
+Use Neutral for the catalog preview. Review each adapted PDF; shared changes also need sparse and long specimens, a second theme, a long abstract, reference extraction, and a working starter. Preserve unrelated templates and documents.

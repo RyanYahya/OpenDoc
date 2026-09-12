@@ -1,0 +1,26 @@
+{
+  "family": "Geist",
+  "purpose": "Bundled browser interface; independent of document font assets",
+  "package": "@fontsource-variable/geist",
+  "version": "5.3.0",
+  "source": "https://www.npmjs.com/package/@fontsource-variable/geist/v/5.3.0",
+  "license": "OFL.txt",
+  "files": [
+    {
+      "file": "geist-latin-ext-wght-normal.woff2",
+      "sha256": "824f485b5d26e2f2da3c2b236132ece1bc8e4e43373452950bb0e40548b4313f"
+    },
+    {
+      "file": "geist-latin-ext-wght-italic.woff2",
+      "sha256": "56dc9ac98e3fc45e7ee487d03ee205b35858c672f2e15053eabbb119c0bc1e74"
+    },
+    {
+      "file": "geist-latin-wght-normal.woff2",
+      "sha256": "19f9c92546aa300c312235e3125af1b81394d8db9a4bc4a425cd5b641d2d54e1"
+    },
+    {
+      "file": "geist-latin-wght-italic.woff2",
+      "sha256": "9b10496762af92659f3b05d2b084b0c8f962c3ecdf637aa764e3b7fd17f5acaf"
+    }
+  ]
+}

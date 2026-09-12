@@ -1,0 +1,272 @@
+{
+  "schemaVersion": 1,
+  "title": "Website content package",
+  "number": "SAMPLE-Q-001",
+  "issuedOn": "2026-09-08",
+  "validUntil": "2026-09-22",
+  "seller": {
+    "name": "Example Studio",
+    "details": "Studio address placeholder\nContact details placeholder"
+  },
+  "client": {
+    "name": "Example Client",
+    "details": "Client address placeholder\nAttention: project contact"
+  },
+  "synthetic": true,
+  "introduction": "A sample scope and pricing schedule. Replace the illustrative details with the work and commercial terms actually agreed with the client.",
+  "pricing": {
+    "currency": {
+      "code": "USD",
+      "decimals": 2
+    },
+    "items": [
+      {
+        "id": "service-1",
+        "description": "Illustrative service 1: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-2",
+        "description": "Illustrative service 2: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-3",
+        "description": "Illustrative service 3: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-4",
+        "description": "Illustrative service 4: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-5",
+        "description": "Illustrative service 5: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-6",
+        "description": "Illustrative service 6: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-7",
+        "description": "Illustrative service 7: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-8",
+        "description": "Illustrative service 8: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-9",
+        "description": "Illustrative service 9: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-10",
+        "description": "Illustrative service 10: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-11",
+        "description": "Illustrative service 11: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-12",
+        "description": "Illustrative service 12: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-13",
+        "description": "Illustrative service 13: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-14",
+        "description": "Illustrative service 14: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-15",
+        "description": "Illustrative service 15: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-16",
+        "description": "Illustrative service 16: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-17",
+        "description": "Illustrative service 17: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-18",
+        "description": "Illustrative service 18: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-19",
+        "description": "Illustrative service 19: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-20",
+        "description": "Illustrative service 20: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-21",
+        "description": "Illustrative service 21: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-22",
+        "description": "Illustrative service 22: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-23",
+        "description": "Illustrative service 23: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-24",
+        "description": "Illustrative service 24: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-25",
+        "description": "Illustrative service 25: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-26",
+        "description": "Illustrative service 26: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-27",
+        "description": "Illustrative service 27: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-28",
+        "description": "Illustrative service 28: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-29",
+        "description": "Illustrative service 29: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-30",
+        "description": "Illustrative service 30: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-31",
+        "description": "Illustrative service 31: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-32",
+        "description": "Illustrative service 32: preparation, review, and a clearly described deliverable for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      }
+    ],
+    "discount": "25.00",
+    "tax": {
+      "label": "Illustrative tax",
+      "ratePercent": "10"
+    }
+  },
+  "terms": [
+    {
+      "id": "delivery",
+      "title": "Delivery",
+      "text": "Illustrative schedule placeholder. Supply the milestones, dependencies, and delivery dates that apply to the actual work."
+    },
+    {
+      "id": "payment",
+      "title": "Payment",
+      "text": "Illustrative payment placeholder. Supply the agreed payment schedule and any relevant reference details."
+    },
+    {
+      "id": "scope",
+      "title": "Scope notes",
+      "text": "This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. This is an illustrative description of scope boundaries and dependencies. No commercial condition is being asserted. "
+    }
+  ],
+  "acceptance": "Optional acceptance wording placeholder. Replace with the agreed process, or omit this area when acceptance is recorded elsewhere."
+}

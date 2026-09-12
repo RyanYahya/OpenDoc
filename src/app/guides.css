@@ -1,0 +1,40 @@
+.template-guide-trigger { margin-top: 12px; }
+.help-dialog.template-guide-dialog { width: min(760px, calc(100vw - 32px)); max-width: 760px; padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+.template-guide-heading { position: relative; padding: 24px 64px 20px 32px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+.template-guide-dialog .template-guide-heading h2 { font-size: var(--title-size); line-height: var(--title-leading); font-weight: 500; margin: 0; }
+.template-guide-dialog .template-guide-heading p { margin: 5px 0 0; font-size: 13px; }
+.template-guide-body { padding: 28px 32px 36px; overflow-y: auto; overscroll-behavior: contain; min-height: 0; overflow-wrap: anywhere; }
+.template-guide-body:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -4px; }
+.template-guide-body > p:first-child, .template-guide-body > div > p:first-child { margin-top: 0; }
+.markdown-body { font-size: 15px; line-height: 1.75; color: var(--ink); }
+.template-guide-dialog .markdown-body :is(h1, h2, h3, h4, h5, h6) { font-family: inherit; color: var(--ink); line-height: 1.3; letter-spacing: -0.02em; margin: 1.6em 0 0.65em; font-weight: 600; }
+.markdown-body h1 { font-size: 26px; }
+.template-guide-dialog .markdown-body h2 { font-size: 21px; }
+.markdown-body h3 { font-size: 18px; }
+.markdown-body :is(h4, h5, h6) { font-size: 16px; }
+.markdown-body > :first-child { margin-top: 0; }
+.markdown-body > :last-child { margin-bottom: 0; }
+.template-guide-dialog .markdown-body p { color: inherit; font-size: inherit; line-height: inherit; margin: 0 0 1em; }
+.markdown-body :is(ul, ol) { padding-left: 24px; margin: 0 0 1em; }
+.markdown-body li + li { margin-top: 0.4em; }
+.markdown-body li > :is(ul, ol) { margin: 0.4em 0; }
+.markdown-body li > p { margin-bottom: 0.5em; }
+.markdown-body a { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 3px; }
+.markdown-body code { font-family: ui-monospace, monospace; font-size: 0.88em; background: var(--surface-alt); padding: 2px 5px; border-radius: 4px; }
+.markdown-body pre { overflow-x: auto; padding: 16px; margin: 0 0 1em; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; line-height: 1.6; }
+.markdown-body pre code { padding: 0; background: none; border-radius: 0; overflow-wrap: normal; }
+.markdown-body blockquote { margin: 0 0 1em; padding: 2px 0 2px 18px; border-left: 3px solid var(--line-strong); color: var(--muted); }
+.markdown-body blockquote > :last-child { margin-bottom: 0; }
+.markdown-body hr { border: 0; border-top: 1px solid var(--line); margin: 28px 0; }
+.markdown-body img { max-width: 100%; height: auto; }
+.markdown-table { overflow-x: auto; margin-bottom: 1em; }
+.markdown-body table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.markdown-body :is(th, td) { padding: 9px 12px; border: 1px solid var(--line); text-align: left; }
+.markdown-body th { background: var(--surface); font-weight: 600; }
+.markdown-body .contains-task-list { list-style: none; padding-left: 0; }
+.markdown-body .task-list-item input { margin-right: 8px; }
+.guide-back { margin-top: 8px; }
+@media (max-width: 620px) {
+  .template-guide-heading { padding: 20px 56px 16px 20px; }
+  .template-guide-body { padding: 24px 20px 28px; }
+}

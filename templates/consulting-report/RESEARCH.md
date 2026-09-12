@@ -1,0 +1,10 @@
+# Formatting references
+
+Reviewed on 8 September 2026 to inform this layout. These are examples of published consulting reports, not a universal consulting formatting standard. The choices below are design judgments; their measurements and branding are not copied into this template.
+
+- [BCG, Global Payments Report 2025](https://web-assets.bcg.com/25/91/2269153c468ca43684442f055cb0/2025-global-payments-report-sep-2025.pdf): visually inspected PDF pages 1, 4, and 7. The cover separates publication identity, headline, and date. The highlights page uses distinct levels for figures and explanation. The narrative/exhibit page aligns content consistently and gives the exhibit its own headline, units, source notes, and page furniture. Its two-column narrative is not reproduced here; this template uses a single native flowing column.
+- [McKinsey, Superagency in the workplace, January 2025](https://www.mckinsey.com/~/media/mckinsey/business%20functions/quantumblack/our%20insights/superagency%20in%20the%20workplace%20empowering%20people%20to%20unlock%20ais%20full%20potential%20at%20work/superagency-in-the-workplace-empowering-people-to-unlock-ais-full-potential-v3.pdf): reviewed the PDF's extracted structure and exhibit text, particularly PDF pages 8 and 13–15. Numbered exhibits use informative headlines and specify units, sample sizes, sources, and qualifications. This was a structural/text review, not a visual typography assessment.
+
+Applied here: a clear title/body/note hierarchy; optional cover; consistent alignment and navigation; ample exhibit width; nearby captions and source notes; and native table header repetition. Authors should keep evidence labels readable and use emphasis selectively. A summary or contents page may help a long report, but neither is required by the layout.
+
+The catalog specimen contains none of these reports' prose, data, charts, logos, or photography. Its content is expressly illustrative. Typography, color, and exact spacing remain adaptable to the document and its theme.

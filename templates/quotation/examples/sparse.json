@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "title": "Sample quotation",
+  "number": "SAMPLE-Q-001",
+  "issuedOn": "2026-09-08",
+  "validUntil": null,
+  "seller": {
+    "name": "Example Studio"
+  },
+  "client": {
+    "name": "Example Client"
+  },
+  "synthetic": true,
+  "introduction": null,
+  "pricing": {
+    "currency": {
+      "code": "USD",
+      "decimals": 2
+    },
+    "items": [
+      {
+        "id": "service",
+        "description": "Illustrative service",
+        "quantity": "1",
+        "unitPrice": "100.00"
+      }
+    ]
+  },
+  "terms": [],
+  "acceptance": null
+}

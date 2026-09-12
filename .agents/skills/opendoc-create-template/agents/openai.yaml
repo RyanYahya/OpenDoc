@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenDoc: Create template"
+  short_description: "Build reusable page layouts, deck skeletons, and reports."
+  default_prompt: "Use $opendoc-create-template in this OpenDoc workspace."

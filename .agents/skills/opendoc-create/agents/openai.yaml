@@ -1,0 +1,6 @@
+interface:
+  display_name: "OpenDoc: Create"
+  short_description: "Create documents and decks; deliver PDF and PowerPoint."
+  default_prompt: "Use $opendoc-create in this OpenDoc workspace."
+policy:
+  allow_implicit_invocation: true

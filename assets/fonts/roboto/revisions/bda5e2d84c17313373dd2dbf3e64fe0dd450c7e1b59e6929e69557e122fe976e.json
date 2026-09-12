@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "kind": "font",
+  "id": "roboto",
+  "name": "Roboto",
+  "description": "",
+  "createdAt": "2026-09-10T11:28:43.180Z",
+  "faces": [
+    {
+      "id": "400-italic",
+      "family": "Roboto",
+      "postscriptName": "Roboto-Italic",
+      "weight": 400,
+      "style": "italic",
+      "file": {
+        "file": "files/4d3035883c531846bd1ce2dc89f36d932e72dc114f56062c7e3a9cdd74f3d3ea.ttf",
+        "hash": "4d3035883c531846bd1ce2dc89f36d932e72dc114f56062c7e3a9cdd74f3d3ea",
+        "mime": "font/ttf",
+        "bytes": 127988
+      }
+    },
+    {
+      "id": "600-italic",
+      "family": "Roboto",
+      "postscriptName": "Roboto-SemiBoldItalic",
+      "weight": 600,
+      "style": "italic",
+      "file": {
+        "file": "files/d2920cbb1b60a3fd11fbf22049286e43a6baf522d37fdf1e7c89562319bcfea5.ttf",
+        "hash": "d2920cbb1b60a3fd11fbf22049286e43a6baf522d37fdf1e7c89562319bcfea5",
+        "mime": "font/ttf",
+        "bytes": 128740
+      }
+    },
+    {
+      "id": "700-italic",
+      "family": "Roboto",
+      "postscriptName": "Roboto-BoldItalic",
+      "weight": 700,
+      "style": "italic",
+      "file": {
+        "file": "files/be7639306a4fc4a02ce2ae2ff59eb1335e4db4a7379dd0a384ed7cc053817789.ttf",
+        "hash": "be7639306a4fc4a02ce2ae2ff59eb1335e4db4a7379dd0a384ed7cc053817789",
+        "mime": "font/ttf",
+        "bytes": 128772
+      }
+    },
+    {
+      "id": "400-normal",
+      "family": "Roboto",
+      "postscriptName": "Roboto-Regular",
+      "weight": 400,
+      "style": "normal",
+      "file": {
+        "file": "files/dece7c71bbe61710787f0839c722c65e87355dd2eb4a823e6b5488121ff81e4b.ttf",
+        "hash": "dece7c71bbe61710787f0839c722c65e87355dd2eb4a823e6b5488121ff81e4b",
+        "mime": "font/ttf",
+        "bytes": 123720
+      }
+    },
+    {
+      "id": "600-normal",
+      "family": "Roboto",
+      "postscriptName": "Roboto-SemiBold",
+      "weight": 600,
+      "style": "normal",
+      "file": {
+        "file": "files/f478ba88b0292e685e487901dfbb1401457d32d6ebee4030cdfd5698235bffa8.ttf",
+        "hash": "f478ba88b0292e685e487901dfbb1401457d32d6ebee4030cdfd5698235bffa8",
+        "mime": "font/ttf",
+        "bytes": 124288
+      }
+    },
+    {
+      "id": "700-normal",
+      "family": "Roboto",
+      "postscriptName": "Roboto-Bold",
+      "weight": 700,
+      "style": "normal",
+      "file": {
+        "file": "files/35757eaa996b3359022f47f164a67ee9eac04971af24c5b8fbd4b89e844ff190.ttf",
+        "hash": "35757eaa996b3359022f47f164a67ee9eac04971af24c5b8fbd4b89e844ff190",
+        "mime": "font/ttf",
+        "bytes": 124292
+      }
+    }
+  ],
+  "compatibility": {
+    "status": "ready",
+    "defaultEligible": true
+  },
+  "specimen": {
+    "file": "files/22d45d989248a624252b8382067ac56550212fa675dcdbaf12f03d297dd87a58.pdf",
+    "hash": "22d45d989248a624252b8382067ac56550212fa675dcdbaf12f03d297dd87a58",
+    "mime": "application/pdf",
+    "bytes": 87745
+  },
+  "revision": "bda5e2d84c17313373dd2dbf3e64fe0dd450c7e1b59e6929e69557e122fe976e"
+}

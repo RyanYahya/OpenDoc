@@ -1,0 +1,57 @@
+{
+  "family": "Lato",
+  "repositoryCommit": "5d3b76120a319730fda218cc7410174a462b32cb",
+  "license": "https://raw.githubusercontent.com/google/fonts/5d3b76120a319730fda218cc7410174a462b32cb/ofl/lato/OFL.txt",
+  "files": [
+    {
+      "filename": "Lato-Regular.ttf",
+      "url": "https://raw.githubusercontent.com/google/fonts/5d3b76120a319730fda218cc7410174a462b32cb/ofl/lato/Lato-Regular.ttf",
+      "sha256": "d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251",
+      "weight": 400,
+      "style": "normal",
+      "assetFile": "files/d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251.ttf"
+    },
+    {
+      "filename": "Lato-SemiBold.ttf",
+      "url": "https://raw.githubusercontent.com/google/fonts/5d3b76120a319730fda218cc7410174a462b32cb/ofl/lato/Lato-SemiBold.ttf",
+      "sha256": "71b8b7decbe75a881ed267be539d402bd1e9420b799658aada4e0d1bd5af803c",
+      "weight": 600,
+      "style": "normal",
+      "assetFile": "files/71b8b7decbe75a881ed267be539d402bd1e9420b799658aada4e0d1bd5af803c.ttf"
+    },
+    {
+      "filename": "Lato-Bold.ttf",
+      "url": "https://raw.githubusercontent.com/google/fonts/5d3b76120a319730fda218cc7410174a462b32cb/ofl/lato/Lato-Bold.ttf",
+      "sha256": "8a0aace75d33794eece4b28187bfc1df0bbd2888b5d8a56e01788c8d65d16be1",
+      "weight": 700,
+      "style": "normal",
+      "assetFile": "files/8a0aace75d33794eece4b28187bfc1df0bbd2888b5d8a56e01788c8d65d16be1.ttf"
+    },
+    {
+      "filename": "Lato-Italic.ttf",
+      "url": "https://raw.githubusercontent.com/google/fonts/5d3b76120a319730fda218cc7410174a462b32cb/ofl/lato/Lato-Italic.ttf",
+      "sha256": "e399c44efe1387100531d26c7e4800c5d12251b890d6654a3098c7c679cb1786",
+      "weight": 400,
+      "style": "italic",
+      "assetFile": "files/e399c44efe1387100531d26c7e4800c5d12251b890d6654a3098c7c679cb1786.ttf"
+    },
+    {
+      "filename": "Lato-SemiBoldItalic.ttf",
+      "url": "https://raw.githubusercontent.com/google/fonts/5d3b76120a319730fda218cc7410174a462b32cb/ofl/lato/Lato-SemiBoldItalic.ttf",
+      "sha256": "5adeb6b334d8fb99ef053bc052b952773d544315e0e1d668a12c0ce8bd51375c",
+      "weight": 600,
+      "style": "italic",
+      "assetFile": "files/5adeb6b334d8fb99ef053bc052b952773d544315e0e1d668a12c0ce8bd51375c.ttf"
+    },
+    {
+      "filename": "Lato-BoldItalic.ttf",
+      "url": "https://raw.githubusercontent.com/google/fonts/5d3b76120a319730fda218cc7410174a462b32cb/ofl/lato/Lato-BoldItalic.ttf",
+      "sha256": "62c1b7f0d2e74b45960154c3520efc337b553db0961bfdc950d5618334596cc8",
+      "weight": 700,
+      "style": "italic",
+      "assetFile": "files/62c1b7f0d2e74b45960154c3520efc337b553db0961bfdc950d5618334596cc8.ttf"
+    }
+  ],
+  "downloadedAt": "2026-09-10T09:57:25.569Z",
+  "preparation": "Google-supplied static TTF files, preserved without modification."
+}

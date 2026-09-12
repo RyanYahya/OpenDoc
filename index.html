@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><meta name="theme-color" content="#f8f8f8"/><title>OpenDoc</title>
+<link rel="icon" type="image/png" href="/assets/brand/wordmark.png"/>
+<script>
+  // Apply a saved appearance before the first paint, including on direct document links.
+  (() => {
+    let preference = 'system';
+    try { preference = localStorage.getItem('opendoc-appearance') || 'system'; } catch {}
+    const dark = preference === 'dark' || (preference !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.dataset.appearance = dark ? 'dark' : 'light';
+    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+    document.querySelector('meta[name="theme-color"]').content = dark ? '#181818' : '#f8f8f8';
+  })();
+</script>
+</head><body><div id="root"></div><script type="module" src="/src/app/main.tsx"></script></body></html>

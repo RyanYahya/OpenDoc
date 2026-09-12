@@ -1,0 +1,142 @@
+{
+  "synthetic": true,
+  "pricing": {
+    "currency": {
+      "code": "USD",
+      "decimals": 2
+    },
+    "items": [
+      {
+        "id": "deliverable-1",
+        "description": "Illustrative deliverable 1: a bounded package of work, with its scope and review conditions supplied by the author.",
+        "quantity": "1",
+        "unit": "package",
+        "unitPrice": "400.00"
+      },
+      {
+        "id": "deliverable-2",
+        "description": "Illustrative deliverable 2: a bounded package of work, with its scope and review conditions supplied by the author.",
+        "quantity": "1",
+        "unit": "package",
+        "unitPrice": "400.00"
+      },
+      {
+        "id": "deliverable-3",
+        "description": "Illustrative deliverable 3: a bounded package of work, with its scope and review conditions supplied by the author.",
+        "quantity": "1",
+        "unit": "package",
+        "unitPrice": "400.00"
+      },
+      {
+        "id": "deliverable-4",
+        "description": "Illustrative deliverable 4: a bounded package of work, with its scope and review conditions supplied by the author.",
+        "quantity": "1",
+        "unit": "package",
+        "unitPrice": "400.00"
+      },
+      {
+        "id": "deliverable-5",
+        "description": "Illustrative deliverable 5: a bounded package of work, with its scope and review conditions supplied by the author.",
+        "quantity": "1",
+        "unit": "package",
+        "unitPrice": "400.00"
+      },
+      {
+        "id": "deliverable-6",
+        "description": "Illustrative deliverable 6: a bounded package of work, with its scope and review conditions supplied by the author.",
+        "quantity": "1",
+        "unit": "package",
+        "unitPrice": "400.00"
+      },
+      {
+        "id": "deliverable-7",
+        "description": "Illustrative deliverable 7: a bounded package of work, with its scope and review conditions supplied by the author.",
+        "quantity": "1",
+        "unit": "package",
+        "unitPrice": "400.00"
+      },
+      {
+        "id": "deliverable-8",
+        "description": "Illustrative deliverable 8: a bounded package of work, with its scope and review conditions supplied by the author.",
+        "quantity": "1",
+        "unit": "package",
+        "unitPrice": "400.00"
+      },
+      {
+        "id": "deliverable-9",
+        "description": "Illustrative deliverable 9: a bounded package of work, with its scope and review conditions supplied by the author.",
+        "quantity": "1",
+        "unit": "package",
+        "unitPrice": "400.00"
+      },
+      {
+        "id": "deliverable-10",
+        "description": "Illustrative deliverable 10: a bounded package of work, with its scope and review conditions supplied by the author.",
+        "quantity": "1",
+        "unit": "package",
+        "unitPrice": "400.00"
+      },
+      {
+        "id": "deliverable-11",
+        "description": "Illustrative deliverable 11: a bounded package of work, with its scope and review conditions supplied by the author.",
+        "quantity": "1",
+        "unit": "package",
+        "unitPrice": "400.00"
+      },
+      {
+        "id": "deliverable-12",
+        "description": "Illustrative deliverable 12: a bounded package of work, with its scope and review conditions supplied by the author.",
+        "quantity": "1",
+        "unit": "package",
+        "unitPrice": "400.00"
+      },
+      {
+        "id": "deliverable-13",
+        "description": "Illustrative deliverable 13: a bounded package of work, with its scope and review conditions supplied by the author.",
+        "quantity": "1",
+        "unit": "package",
+        "unitPrice": "400.00"
+      },
+      {
+        "id": "deliverable-14",
+        "description": "Illustrative deliverable 14: a bounded package of work, with its scope and review conditions supplied by the author.",
+        "quantity": "1",
+        "unit": "package",
+        "unitPrice": "400.00"
+      },
+      {
+        "id": "deliverable-15",
+        "description": "Illustrative deliverable 15: a bounded package of work, with its scope and review conditions supplied by the author.",
+        "quantity": "1",
+        "unit": "package",
+        "unitPrice": "400.00"
+      },
+      {
+        "id": "deliverable-16",
+        "description": "Illustrative deliverable 16: a bounded package of work, with its scope and review conditions supplied by the author.",
+        "quantity": "1",
+        "unit": "package",
+        "unitPrice": "400.00"
+      },
+      {
+        "id": "deliverable-17",
+        "description": "Illustrative deliverable 17: a bounded package of work, with its scope and review conditions supplied by the author.",
+        "quantity": "1",
+        "unit": "package",
+        "unitPrice": "400.00"
+      },
+      {
+        "id": "deliverable-18",
+        "description": "Illustrative deliverable 18: a bounded package of work, with its scope and review conditions supplied by the author.",
+        "quantity": "1",
+        "unit": "package",
+        "unitPrice": "400.00"
+      }
+    ],
+    "discount": "25.00",
+    "tax": {
+      "label": "Illustrative tax",
+      "ratePercent": "10"
+    }
+  }
+}

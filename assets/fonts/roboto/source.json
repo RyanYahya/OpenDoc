@@ -1,0 +1,57 @@
+{
+  "family": "Roboto",
+  "stylesheet": "https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap",
+  "license": "https://raw.githubusercontent.com/google/fonts/main/ofl/roboto/OFL.txt",
+  "files": [
+    {
+      "filename": "Roboto-Italic.ttf",
+      "url": "https://fonts.gstatic.com/s/roboto/v51/KFOKCnqEu92Fr1Mu53ZEC9_Vu3r1gIhOszmOClHrs6ljXfMMLoHQiA8.ttf",
+      "sha256": "4d3035883c531846bd1ce2dc89f36d932e72dc114f56062c7e3a9cdd74f3d3ea",
+      "weight": 400,
+      "style": "italic",
+      "assetFile": "files/4d3035883c531846bd1ce2dc89f36d932e72dc114f56062c7e3a9cdd74f3d3ea.ttf"
+    },
+    {
+      "filename": "Roboto-SemiboldItalic.ttf",
+      "url": "https://fonts.gstatic.com/s/roboto/v51/KFOKCnqEu92Fr1Mu53ZEC9_Vu3r1gIhOszmOClHrs6ljXfMMLl_XiA8.ttf",
+      "sha256": "d2920cbb1b60a3fd11fbf22049286e43a6baf522d37fdf1e7c89562319bcfea5",
+      "weight": 600,
+      "style": "italic",
+      "assetFile": "files/d2920cbb1b60a3fd11fbf22049286e43a6baf522d37fdf1e7c89562319bcfea5.ttf"
+    },
+    {
+      "filename": "Roboto-BoldItalic.ttf",
+      "url": "https://fonts.gstatic.com/s/roboto/v51/KFOKCnqEu92Fr1Mu53ZEC9_Vu3r1gIhOszmOClHrs6ljXfMMLmbXiA8.ttf",
+      "sha256": "be7639306a4fc4a02ce2ae2ff59eb1335e4db4a7379dd0a384ed7cc053817789",
+      "weight": 700,
+      "style": "italic",
+      "assetFile": "files/be7639306a4fc4a02ce2ae2ff59eb1335e4db4a7379dd0a384ed7cc053817789.ttf"
+    },
+    {
+      "filename": "Roboto-Regular.ttf",
+      "url": "https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWubEbWmT.ttf",
+      "sha256": "dece7c71bbe61710787f0839c722c65e87355dd2eb4a823e6b5488121ff81e4b",
+      "weight": 400,
+      "style": "normal",
+      "assetFile": "files/dece7c71bbe61710787f0839c722c65e87355dd2eb4a823e6b5488121ff81e4b.ttf"
+    },
+    {
+      "filename": "Roboto-Semibold.ttf",
+      "url": "https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuYaammT.ttf",
+      "sha256": "f478ba88b0292e685e487901dfbb1401457d32d6ebee4030cdfd5698235bffa8",
+      "weight": 600,
+      "style": "normal",
+      "assetFile": "files/f478ba88b0292e685e487901dfbb1401457d32d6ebee4030cdfd5698235bffa8.ttf"
+    },
+    {
+      "filename": "Roboto-Bold.ttf",
+      "url": "https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuYjammT.ttf",
+      "sha256": "35757eaa996b3359022f47f164a67ee9eac04971af24c5b8fbd4b89e844ff190",
+      "weight": 700,
+      "style": "normal",
+      "assetFile": "files/35757eaa996b3359022f47f164a67ee9eac04971af24c5b8fbd4b89e844ff190.ttf"
+    }
+  ],
+  "downloadedAt": "2026-09-10T09:57:23.965Z",
+  "preparation": "Google-supplied static TTF files, preserved without modification."
+}

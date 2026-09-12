@@ -1,0 +1,11 @@
+{
+  "name": "Scientific paper",
+  "description": "A compact manuscript opening, a distinct abstract, and a continuous reading column with clear figures, tables, and references. For research manuscripts, preprints, and scholarly notes.",
+  "format": "A4 · Single-column manuscript",
+  "structure": [
+    "A centered title, author line, and optional affiliations share the first page with the manuscript.",
+    "An optional inset abstract and keywords separate the summary from the main text without a cover page.",
+    "Compact heading levels organize a continuous single column. Figures and tables sit in the author's chosen reading order.",
+    "Cited references follow the body and page numbers sit centrally below. The layout is adaptable and does not prescribe a journal style or section outline."
+  ]
+}

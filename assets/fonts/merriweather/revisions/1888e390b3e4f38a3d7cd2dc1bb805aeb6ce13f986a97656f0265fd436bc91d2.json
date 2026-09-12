@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "kind": "font",
+  "id": "merriweather",
+  "name": "Merriweather",
+  "description": "",
+  "createdAt": "2026-09-10T11:28:45.436Z",
+  "faces": [
+    {
+      "id": "400-italic",
+      "family": "Merriweather",
+      "postscriptName": "Merriweather-Italic",
+      "weight": 400,
+      "style": "italic",
+      "file": {
+        "file": "files/afff81272b7653417bb6f8bef57add055b1f9fda36f27eba5f32b40752bd08da.ttf",
+        "hash": "afff81272b7653417bb6f8bef57add055b1f9fda36f27eba5f32b40752bd08da",
+        "mime": "font/ttf",
+        "bytes": 595652
+      }
+    },
+    {
+      "id": "600-italic",
+      "family": "Merriweather",
+      "postscriptName": "Merriweather-SemiBoldItalic",
+      "weight": 600,
+      "style": "italic",
+      "file": {
+        "file": "files/fa71baebdd20a7d0de2e5e445a5922530fe9e1d740efbe791f113b682d3cb093.ttf",
+        "hash": "fa71baebdd20a7d0de2e5e445a5922530fe9e1d740efbe791f113b682d3cb093",
+        "mime": "font/ttf",
+        "bytes": 595864
+      }
+    },
+    {
+      "id": "700-italic",
+      "family": "Merriweather",
+      "postscriptName": "Merriweather-BoldItalic",
+      "weight": 700,
+      "style": "italic",
+      "file": {
+        "file": "files/e9864a6790bf712a04e20f3662b206a1535186ed3e877fd859dd5fb9682335df.ttf",
+        "hash": "e9864a6790bf712a04e20f3662b206a1535186ed3e877fd859dd5fb9682335df",
+        "mime": "font/ttf",
+        "bytes": 599500
+      }
+    },
+    {
+      "id": "400-normal",
+      "family": "Merriweather",
+      "postscriptName": "Merriweather-Regular",
+      "weight": 400,
+      "style": "normal",
+      "file": {
+        "file": "files/e029d3b71e5bae3877c73f4f2b15af28db16593d49b0aed2a328d37ff7075846.ttf",
+        "hash": "e029d3b71e5bae3877c73f4f2b15af28db16593d49b0aed2a328d37ff7075846",
+        "mime": "font/ttf",
+        "bytes": 585976
+      }
+    },
+    {
+      "id": "600-normal",
+      "family": "Merriweather",
+      "postscriptName": "Merriweather-SemiBold",
+      "weight": 600,
+      "style": "normal",
+      "file": {
+        "file": "files/1c54f91b910454251c4c2b7bd4e472e1abf265fba7ca3c0ef2eee2f41324099e.ttf",
+        "hash": "1c54f91b910454251c4c2b7bd4e472e1abf265fba7ca3c0ef2eee2f41324099e",
+        "mime": "font/ttf",
+        "bytes": 586020
+      }
+    },
+    {
+      "id": "700-normal",
+      "family": "Merriweather",
+      "postscriptName": "Merriweather-Bold",
+      "weight": 700,
+      "style": "normal",
+      "file": {
+        "file": "files/90b7db4460fcd1a5ca49575c2668a793f3cd6447664d312a068d690e1c01e6bc.ttf",
+        "hash": "90b7db4460fcd1a5ca49575c2668a793f3cd6447664d312a068d690e1c01e6bc",
+        "mime": "font/ttf",
+        "bytes": 586052
+      }
+    }
+  ],
+  "compatibility": {
+    "status": "ready",
+    "defaultEligible": true
+  },
+  "specimen": {
+    "file": "files/8bde8da2bb7f0265e27ba0481f70bb48d0f98a976c145f2f239c648ddd6532e0.pdf",
+    "hash": "8bde8da2bb7f0265e27ba0481f70bb48d0f98a976c145f2f239c648ddd6532e0",
+    "mime": "application/pdf",
+    "bytes": 71526
+  },
+  "revision": "1888e390b3e4f38a3d7cd2dc1bb805aeb6ce13f986a97656f0265fd436bc91d2"
+}

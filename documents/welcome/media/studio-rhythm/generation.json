@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "imageHash": "79eea7d1122692fe26197f3b97d9c720e6ce0cc6573e7e39dfea033b21eb8f1d",
+  "inputs": {
+    "media/studio-rhythm/data.json": "f307dc1c2cf822755899b4dc2393e55d66188150dd06d9fedd1f99c8b0a40c97",
+    "media/studio-rhythm/recipe.py": "ee111692f6d0b663e22a3ba995fa3a30f358c9777a9aeb7c8b68008a069f2196"
+  },
+  "recordedAt": "2026-09-11T06:46:40.534Z"
+}

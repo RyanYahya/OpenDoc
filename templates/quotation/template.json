@@ -1,0 +1,11 @@
+{
+  "name": "Quotation",
+  "description": "Business and client details, a clear pricing schedule, calculated totals, and optional terms and acceptance. For service and product quotations.",
+  "format": "A4 \u00b7 Business quotation",
+  "structure": [
+    "A compact quotation heading, reference, issue date, and optional validity date introduce the same page as the pricing. An optional logo slot sits at the upper right.",
+    "Seller and client details sit side by side, followed by an optional scope introduction.",
+    "Line items flow in a table with repeating headers. Calculated totals align to the right beneath it.",
+    "Optional terms and acceptance follow the pricing. Each document owns its data; themes change the appearance and the layout stays adaptable."
+  ]
+}

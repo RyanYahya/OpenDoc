@@ -1,0 +1,13 @@
+# Business proposal
+
+Treat this as a soft foundation with room for variation and creativity. The design begins with a clear proposal title and client/team context, then provides a broad reading column for the argument, scope, delivery, and commercial material. It is a page composition, not a mandatory sales method or a form to fill. Choose section names and order for the actual reader and work.
+
+The default shares the opening with the body. A separate cover is useful for a more substantial proposal, not compulsory. A long title may need smaller type through `titleStyle`; a short proposal may need no subtitle, schedule, running title, or acceptance area. Adjust margins, spacing, and the emphasis of an exhibit when the material benefits. Keep changes for one document local or preserve shared defaults.
+
+Keep narrative content in ordinary OpenDoc blocks. Optional pricing has its own validated local data, rather than imposing a JSON schema on the whole proposal. Parse that input once at the document boundary. Give each ProposalPricing component a unique stable ID; multiple options may have separate pricing sections. Use calculated totals and the shared pricing contract. Do not mix currencies or unsupported tax/discount models in one calculation, or type a competing total into prose. Retain the illustrative notice until the commercial data has been replaced with supplied facts.
+
+Scope, deliverables, timing, terms, acceptance wording, and business claims come from the author. Do not invent outcomes, credentials, quotations, commitments, approval, or legal conditions. An acceptance area contains blank fields only; it does not claim a signature. Preserve accurate references and stable IDs. The caller's theme supplies visual hierarchy, rhythm, and component treatments.
+
+Use native Forme flow and existing blocks. Keep only short headings/leads or signature fields together; allow long prose and tables to paginate. A deliberate break before commercial details may help a particular proposal, but do not force every instance into the specimen's page count. Do not introduce automatic fitting, custom typesetting, manual line splitting, or renderer patches. Review adapted PDFs, including every page after shared changes. Cover and no-cover, sparse/unpriced and long material, a second theme, validated pricing, and a working starter all need representative checks. Preserve unrelated documents and templates.
+
+The opening logo placeholder is an adaptable brand slot. Replace it with supplied, proportionally sized artwork through `logo`, or pass null to omit it. Do not invent a real company logo or alter its colors to match a theme. Keep the stable logo block ID and check the opening and downstream page breaks after replacement.

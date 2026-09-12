@@ -1,0 +1,7 @@
+{
+  "name": "Proposal deck",
+  "description": "A client decision deck with an executive recommendation, measurable outcomes, scope and acceptance, delivery gates, proof and a clear commercial decision.",
+  "format": "16:9 · Client proposal",
+  "documentFormat": "presentation",
+  "structure": ["Executive recommendation and client priorities", "Measurable outcomes and an image-led approach", "Workstreams and deliverable acceptance ledger", "Scope boundary and stage-gate roadmap", "Accountability and editorial evidence story", "Investment options, dependencies and next decision"]
+}

@@ -1,0 +1,228 @@
+diff --git a/engine/src/font/subset.rs b/engine/src/font/subset.rs
+index 918262b..126f31e 100644
+--- a/engine/src/font/subset.rs
++++ b/engine/src/font/subset.rs
+@@ -107,7 +107,8 @@ pub fn subset_ttf(
+     let raw_hhea_data = raw_hhea.to_vec();
+     let new_hhea = rebuild_hhea(&raw_hhea_data, new_num_glyphs);
+ 
+-    let new_maxp = build_maxp(new_num_glyphs);
++    let raw_maxp = find_table(ttf_data, b"maxp").ok_or("Missing maxp table")?;
++    let new_maxp = rebuild_maxp(raw_maxp, new_num_glyphs);
+     let new_post = build_post_format3();
+ 
+     // Copy name table verbatim if present (or build minimal)
+@@ -150,7 +151,7 @@ pub fn subset_ttf(
+     // Sort tables by tag (required by TrueType spec for binary search)
+     tables.sort_by_key(|(tag, _)| *tag);
+ 
+-    let output = write_ttf_file(&mut tables);
++    let output = write_ttf_file(&tables);
+ 
+     Ok(SubsetResult {
+         ttf_data: output,
+@@ -542,26 +543,11 @@ fn rebuild_hhea(hhea: &[u8], new_num_glyphs: u16) -> Vec<u8> {
+     new_hhea
+ }
+ 
+-fn build_maxp(num_glyphs: u16) -> Vec<u8> {
+-    let mut data = vec![0u8; 32];
+-    // Version 1.0
+-    write_u32(&mut data, 0, 0x00010000);
+-    // numGlyphs
++fn rebuild_maxp(maxp: &[u8], num_glyphs: u16) -> Vec<u8> {
++    // Glyph outlines/instructions and global hinting programs are retained.
++    // Their original resource limits remain valid upper bounds for the subset.
++    let mut data = maxp.to_vec();
+     write_u16(&mut data, 4, num_glyphs);
+-    // Fill remaining fields with reasonable defaults
+-    write_u16(&mut data, 6, 256); // maxPoints
+-    write_u16(&mut data, 8, 64); // maxContours
+-    write_u16(&mut data, 10, 256); // maxCompositePoints
+-    write_u16(&mut data, 12, 64); // maxCompositeContours
+-    write_u16(&mut data, 14, 1); // maxZones
+-    write_u16(&mut data, 16, 0); // maxTwilightPoints
+-    write_u16(&mut data, 18, 64); // maxStorage
+-    write_u16(&mut data, 20, 64); // maxFunctionDefs
+-    write_u16(&mut data, 22, 64); // maxInstructionDefs
+-    write_u16(&mut data, 24, 64); // maxStackElements
+-    write_u16(&mut data, 26, 0); // maxSizeOfInstructions
+-    write_u16(&mut data, 28, 64); // maxComponentElements
+-    write_u16(&mut data, 30, 2); // maxComponentDepth
+     data
+ }
+ 
+@@ -610,7 +596,7 @@ fn build_minimal_name(face: &ttf_parser::Face) -> Vec<u8> {
+ 
+ // ─── TrueType File Writer ───────────────────────────────────────
+ 
+-fn write_ttf_file(tables: &mut [(u32, Vec<u8>)]) -> Vec<u8> {
++fn write_ttf_file(tables: &[(u32, Vec<u8>)]) -> Vec<u8> {
+     let num_tables = tables.len() as u16;
+     let entry_selector = if num_tables > 0 {
+         (num_tables as f64).log2().floor() as u16
+@@ -632,13 +618,6 @@ fn write_ttf_file(tables: &mut [(u32, Vec<u8>)]) -> Vec<u8> {
+     let dir_size = 12 + num_tables as usize * 16;
+     let mut table_offset = dir_size;
+ 
+-    // Pad each table to 4-byte boundary
+-    for (_, data) in tables.iter_mut() {
+-        while data.len() % 4 != 0 {
+-            data.push(0);
+-        }
+-    }
+-
+     // Table directory
+     for (tag, data) in tables.iter() {
+         output.extend_from_slice(&tag.to_be_bytes());
+@@ -646,16 +625,21 @@ fn write_ttf_file(tables: &mut [(u32, Vec<u8>)]) -> Vec<u8> {
+         output.extend_from_slice(&checksum.to_be_bytes());
+         output.extend_from_slice(&(table_offset as u32).to_be_bytes());
+         output.extend_from_slice(&(data.len() as u32).to_be_bytes());
+-        table_offset += data.len();
++        // The recorded length excludes alignment padding, but the next table
++        // still starts on a four-byte boundary.
++        table_offset += (data.len() + 3) & !3;
+     }
+ 
+     // Table data
+     for (_, data) in tables.iter() {
+         output.extend_from_slice(data);
++        while output.len() % 4 != 0 {
++            output.push(0);
++        }
+     }
+ 
+     // Fix head checkSumAdjustment
+-    fix_head_checksum(&mut output, tables);
++    fix_head_checksum(&mut output);
+ 
+     output
+ }
+@@ -678,7 +662,7 @@ fn calc_table_checksum(data: &[u8]) -> u32 {
+     sum
+ }
+ 
+-fn fix_head_checksum(output: &mut [u8], tables: &[(u32, Vec<u8>)]) {
++fn fix_head_checksum(output: &mut [u8]) {
+     // Find the head table offset in the directory
+     let num_tables = read_u16(output, 4) as usize;
+     let head_tag = tag_u32(b"head");
+@@ -698,21 +682,12 @@ fn fix_head_checksum(output: &mut [u8], tables: &[(u32, Vec<u8>)]) {
+                 write_u32(output, table_offset + 8, adjustment);
+             }
+ 
+-            // Update the head table checksum in the directory
+-            // First, find the head table data to recalculate
+-            let head_data_len = read_u32(output, dir_offset + 12) as usize;
+-            if table_offset + head_data_len <= output.len() {
+-                let checksum =
+-                    calc_table_checksum(&output[table_offset..table_offset + head_data_len]);
+-                write_u32(output, dir_offset + 4, checksum);
+-            }
+-
++            // The directory's head checksum stays on the zero-adjustment
++            // basis required by OpenType. Rewriting it would count the
++            // adjustment twice and invalidate the whole-font checksum.
+             break;
+         }
+     }
+-
+-    // Suppress unused variable warning
+-    let _ = tables;
+ }
+ 
+ // ─── Byte Helpers ───────────────────────────────────────────────
+@@ -777,6 +752,79 @@ mod tests {
+         assert_eq!(calc_table_checksum(data), 0x41424344);
+     }
+ 
++    #[test]
++    fn test_table_directory_excludes_alignment_padding() {
++        // Two glyphs need three short loca entries: six bytes, not eight.
++        let loca = build_loca(&[0, 2, 4], 0);
++        let name = vec![1, 2, 3];
++        let tables = vec![
++            (tag_u32(b"loca"), loca.clone()),
++            (tag_u32(b"name"), name.clone()),
++        ];
++        let output = write_ttf_file(&tables);
++
++        assert_eq!(find_table(&output, b"loca").unwrap(), loca);
++        assert_eq!(find_table(&output, b"name").unwrap(), name);
++        for index in 0..tables.len() {
++            let directory = 12 + index * 16;
++            let offset = read_u32(&output, directory + 8) as usize;
++            let length = read_u32(&output, directory + 12) as usize;
++            let padded_end = (offset + length + 3) & !3;
++            assert_eq!(offset % 4, 0);
++            assert!(output[offset + length..padded_end]
++                .iter()
++                .all(|byte| *byte == 0));
++        }
++    }
++
++    #[test]
++    fn test_head_directory_and_whole_font_checksums() {
++        let mut head = vec![0; 54];
++        write_u32(&mut head, 0, 0x00010000);
++        let expected_head_checksum = calc_table_checksum(&head);
++        let tables = vec![(tag_u32(b"head"), head), (tag_u32(b"name"), vec![1, 2, 3])];
++        let output = write_ttf_file(&tables);
++
++        assert_eq!(
++            read_u32(&output, 16),
++            expected_head_checksum,
++            "head directory checksum must use a zero checkSumAdjustment"
++        );
++        assert_ne!(read_u32(find_table(&output, b"head").unwrap(), 8), 0);
++        assert_eq!(calc_table_checksum(&output), 0xB1B0AFBA);
++    }
++
++    #[test]
++    fn test_subset_preserves_maxp_limits_and_hinting_programs() {
++        let original = include_bytes!("../../fonts/NotoSans-Regular.ttf");
++        let face = ttf_parser::Face::parse(original, 0).unwrap();
++        let used_gids = ['A', 'é']
++            .iter()
++            .map(|ch| face.glyph_index(*ch).unwrap().0)
++            .collect();
++        let subset = subset_ttf(original, &used_gids).unwrap();
++        let mut expected_maxp = find_table(original, b"maxp").unwrap().to_vec();
++        let num_glyphs = subset.gid_remap.len() as u16;
++        assert!(num_glyphs < face.number_of_glyphs());
++        write_u16(&mut expected_maxp, 4, num_glyphs);
++
++        assert_eq!(
++            find_table(&subset.ttf_data, b"maxp").unwrap(),
++            expected_maxp
++        );
++        for tag in [b"fpgm", b"prep", b"cvt "] {
++            assert_eq!(find_table(&subset.ttf_data, tag), find_table(original, tag));
++        }
++        let head = find_table(&subset.ttf_data, b"head").unwrap();
++        let loca_width = if read_i16(head, 50) == 0 { 2 } else { 4 };
++        assert_eq!(
++            find_table(&subset.ttf_data, b"loca").unwrap().len(),
++            (num_glyphs as usize + 1) * loca_width
++        );
++        assert_eq!(calc_table_checksum(&subset.ttf_data), 0xB1B0AFBA);
++        assert!(ttf_parser::Face::parse(&subset.ttf_data, 0).is_ok());
++    }
++
+     #[test]
+     fn test_build_post_format3() {
+         let data = build_post_format3();
+@@ -785,8 +833,10 @@ mod tests {
+     }
+ 
+     #[test]
+-    fn test_build_maxp() {
+-        let data = build_maxp(42);
++    fn test_rebuild_maxp() {
++        let mut original = vec![0; 32];
++        write_u32(&mut original, 0, 0x00010000);
++        let data = rebuild_maxp(&original, 42);
+         assert_eq!(read_u32(&data, 0), 0x00010000);
+         assert_eq!(read_u16(&data, 4), 42);
+     }

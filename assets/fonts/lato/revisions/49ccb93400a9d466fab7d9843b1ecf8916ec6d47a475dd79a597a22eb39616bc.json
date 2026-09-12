@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "kind": "font",
+  "id": "lato",
+  "name": "Lato",
+  "description": "Lato is a sanserif typeface family designed in the Summer 2010 and extended in the Summer 2013 by Warsaw-based designer Lukasz Dziedzic (\"Lato\" means \"Summer\" in Polish). It tries to carefully balance some potentially conflicting priorities: it should seem quite \"transparent\" when used in body text but would display some original traits when used in larger sizes. The classical proportions, particularly visible in the uppercase, give the letterforms familiar harmony and elegance. At the same time, its sleek sanserif look makes evident the fact that Lato was designed in the 2010s, even though it does not follow any current trend. The semi-rounded details of the letters give Lato a feeling of warmth, while the strong structure provides stability and seriousness. In 2013-2014, the family was greatly extended (with the help of Adam Twardoch and Botio Nikoltchev) to cover 3000+ glyphs over nine weights with italics. It now supports 100+ Latin-based languages, 50+ Cyrillic-based languages as well as Greek and IPA phonetics. The Lato fonts are available free of charge under the SIL Open Font License from http://www.latofonts.com/",
+  "createdAt": "2026-09-10T11:28:44.696Z",
+  "faces": [
+    {
+      "id": "400-normal",
+      "family": "Lato",
+      "postscriptName": "Lato-Regular",
+      "weight": 400,
+      "style": "normal",
+      "file": {
+        "file": "files/d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251.ttf",
+        "hash": "d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251",
+        "mime": "font/ttf",
+        "bytes": 656568
+      }
+    },
+    {
+      "id": "600-normal",
+      "family": "Lato",
+      "postscriptName": "Lato-SemiBold",
+      "weight": 600,
+      "style": "normal",
+      "file": {
+        "file": "files/71b8b7decbe75a881ed267be539d402bd1e9420b799658aada4e0d1bd5af803c.ttf",
+        "hash": "71b8b7decbe75a881ed267be539d402bd1e9420b799658aada4e0d1bd5af803c",
+        "mime": "font/ttf",
+        "bytes": 668548
+      }
+    },
+    {
+      "id": "700-normal",
+      "family": "Lato",
+      "postscriptName": "Lato-Bold",
+      "weight": 700,
+      "style": "normal",
+      "file": {
+        "file": "files/8a0aace75d33794eece4b28187bfc1df0bbd2888b5d8a56e01788c8d65d16be1.ttf",
+        "hash": "8a0aace75d33794eece4b28187bfc1df0bbd2888b5d8a56e01788c8d65d16be1",
+        "mime": "font/ttf",
+        "bytes": 656544
+      }
+    },
+    {
+      "id": "400-italic",
+      "family": "Lato",
+      "postscriptName": "Lato-Italic",
+      "weight": 400,
+      "style": "italic",
+      "file": {
+        "file": "files/e399c44efe1387100531d26c7e4800c5d12251b890d6654a3098c7c679cb1786.ttf",
+        "hash": "e399c44efe1387100531d26c7e4800c5d12251b890d6654a3098c7c679cb1786",
+        "mime": "font/ttf",
+        "bytes": 722900
+      }
+    },
+    {
+      "id": "600-italic",
+      "family": "Lato",
+      "postscriptName": "Lato-SemiBoldItalic",
+      "weight": 600,
+      "style": "italic",
+      "file": {
+        "file": "files/5adeb6b334d8fb99ef053bc052b952773d544315e0e1d668a12c0ce8bd51375c.ttf",
+        "hash": "5adeb6b334d8fb99ef053bc052b952773d544315e0e1d668a12c0ce8bd51375c",
+        "mime": "font/ttf",
+        "bytes": 697364
+      }
+    },
+    {
+      "id": "700-italic",
+      "family": "Lato",
+      "postscriptName": "Lato-BoldItalic",
+      "weight": 700,
+      "style": "italic",
+      "file": {
+        "file": "files/62c1b7f0d2e74b45960154c3520efc337b553db0961bfdc950d5618334596cc8.ttf",
+        "hash": "62c1b7f0d2e74b45960154c3520efc337b553db0961bfdc950d5618334596cc8",
+        "mime": "font/ttf",
+        "bytes": 698364
+      }
+    }
+  ],
+  "compatibility": {
+    "status": "ready",
+    "defaultEligible": true
+  },
+  "specimen": {
+    "file": "files/4a6b566dbb28adb473a8789ce5169306f42f0c8a070ac92bae93636f36348b0d.pdf",
+    "hash": "4a6b566dbb28adb473a8789ce5169306f42f0c8a070ac92bae93636f36348b0d",
+    "mime": "application/pdf",
+    "bytes": 102765
+  },
+  "revision": "49ccb93400a9d466fab7d9843b1ecf8916ec6d47a475dd79a597a22eb39616bc"
+}

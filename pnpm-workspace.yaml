@@ -1,0 +1,8 @@
+allowBuilds:
+  esbuild: true
+minimumReleaseAgeExclude:
+  - '@formepdf/core@0.20.1'
+  - '@formepdf/react@0.20.1'
+  - '@formepdf/shared@0.20.1'
+overrides:
+  '@formepdf/core': file:vendor/formepdf/formepdf-core-0.20.1-opendoc.3.tgz

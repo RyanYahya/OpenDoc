@@ -1,0 +1,19 @@
+{
+  "family": "Inter",
+  "purpose": "Bundled browser interface, independent of document font assets",
+  "license": "InterUI-LICENSE.txt",
+  "files": [
+    {
+      "file": "InterUI-Regular.ttf",
+      "weight": 400,
+      "source": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfMZg.ttf",
+      "sha256": "1b08e7fc267a5c7e1d614100f604b83e7e8a0be241f0f288faa2b3ac93a683ba"
+    },
+    {
+      "file": "InterUI-Medium.ttf",
+      "weight": 500,
+      "source": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuI6fMZg.ttf",
+      "sha256": "8c883f63b2c4157d997319f2c8bc6995ed4357ef371940d31ca159004a4aae63"
+    }
+  ]
+}

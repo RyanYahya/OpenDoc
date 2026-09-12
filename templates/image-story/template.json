@@ -1,0 +1,13 @@
+{
+  "name": "Image story",
+  "description": "Image-led editorial pages: full-bleed covers, half-page splits, panoramas with insets, diptychs, collage, and floating text panels. Mix selected compositions with flowing prose.",
+  "format": "A4 or Letter · Flexible image compositions",
+  "structure": [
+    "Replaceable image and text placeholders only; artwork belongs to each document and appearance comes from its theme.",
+    "Choose individual compositions; the specimen is a menu, not a required seven-page sequence.",
+    "Managed image frames support proportional crops, containment, alignment, and rounded or circular windows.",
+    "Covers and overlays use reliable full-page managed artwork with native selectable text.",
+    "Bounded feature pages carry concise copy; ordinary Pages carry long prose and references.",
+    "Theme typography, paper, and colors remain live. Adapt title sizes and image balance for the material."
+  ]
+}

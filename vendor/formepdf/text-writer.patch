@@ -1,0 +1,507 @@
+diff --git a/engine/src/pdf/mod.rs b/engine/src/pdf/mod.rs
+index 1357c11..f61857d 100644
+--- a/engine/src/pdf/mod.rs
++++ b/engine/src/pdf/mod.rs
+@@ -79,29 +79,17 @@ struct FormFieldData {
+ 
+ pub struct PdfWriter;
+ 
+-/// Embedding data for a custom TrueType font.
+-#[allow(dead_code)]
++/// PDF character codes are distinct from subset glyph IDs: the same glyph
++/// can represent different source strings (for example, "fi" and U+FB01).
+ struct CustomFontEmbedData {
+-    ttf_data: Vec<u8>,
+-    /// Maps original glyph IDs (from shaping) to remapped GIDs in the subset font.
+-    gid_remap: HashMap<u16, u16>,
+-    /// Maps original glyph IDs to their Unicode character(s) for ToUnicode CMap.
+-    glyph_to_char: HashMap<u16, char>,
+-    /// Legacy fallback: maps chars to subset GIDs (for page number placeholders).
+-    char_to_gid: HashMap<char, u16>,
+-    units_per_em: u16,
+-    ascender: i16,
+-    descender: i16,
++    glyph_to_cid: HashMap<(u16, String), u16>,
++    char_to_cid: HashMap<char, u16>,
+ }
+ 
+-/// Font usage data collected from layout elements.
+ struct FontUsage {
+-    /// Characters used per font (for standard font subsetting fallback).
+     chars: HashSet<char>,
+-    /// Glyph IDs used per font (from shaped PositionedGlyphs).
+     glyph_ids: HashSet<u16>,
+-    /// Maps glyph ID → first char it represents (for ToUnicode CMap).
+-    glyph_to_char: HashMap<u16, char>,
++    glyph_texts: HashSet<(u16, String)>,
+ }
+ 
+ /// Tracks allocated PDF objects during writing.
+@@ -1692,14 +1680,9 @@ impl PdfWriter {
+                     let _ = writeln!(stream, "BT");
+ 
+                     // Set word spacing for justification (PDF Tw operator)
+-                    if line.word_spacing.abs() > 0.001 {
+-                        let _ = writeln!(stream, "{:.4} Tw", line.word_spacing);
+-                    }
+-
+-                    // Track current text matrix position for relative Td moves
+-                    let mut tm_x = 0.0_f64;
+-                    let mut tm_y = 0.0_f64;
++                    let _ = writeln!(stream, "{:.4} Tw", line.word_spacing);
+                     let mut x_cursor = line.x;
++                    let mut spaces_before = 0usize;
+ 
+                     // Track group spans for per-group text decoration
+                     let mut group_spans: Vec<(f64, f64, TextDecoration, Color)> = Vec::new();
+@@ -1723,23 +1706,20 @@ impl PdfWriter {
+                         };
+                         let font_name = format!("F{}", idx);
+ 
+-                        // Td is relative to current text matrix position
+-                        let dx = x_cursor - tm_x;
+-                        let dy = pdf_y - tm_y;
++                        // Each style run starts at its layout position.
+                         let _ = writeln!(
+                             stream,
+-                            "{:.3} {:.3} {:.3} rg\n/{} {:.1} Tf\n{:.2} Tc\n{:.2} {:.2} Td",
++                            "{:.3} {:.3} {:.3} rg\n/{} {:.4} Tf\n{:.4} Tc\n{:.4} Tw\n1 0 0 1 {:.4} {:.4} Tm",
+                             glyph_color.r,
+                             glyph_color.g,
+                             glyph_color.b,
+                             font_name,
+                             first.font_size,
+                             first.letter_spacing,
+-                            dx,
+-                            dy
++                            line.word_spacing,
++                            x_cursor,
++                            pdf_y
+                         );
+-                        tm_x = x_cursor;
+-                        tm_y = pdf_y;
+ 
+                         // Check for page number sentinel characters
+                         let raw_text: String = group.iter().map(|g| g.char_value).collect();
+@@ -1750,40 +1730,24 @@ impl PdfWriter {
+ 
+                         if is_custom {
+                             if let Some(embed_data) = builder.custom_font_data.get(&font_key) {
+-                                let mut hex = String::new();
+                                 if has_placeholder {
+-                                    // Sentinel text: replace with actual values and use char→gid fallback
+                                     let pn = PAGE_NUMBER_SENTINEL.to_string();
+                                     let tp = TOTAL_PAGES_SENTINEL.to_string();
+                                     let text_after = raw_text
+                                         .replace(&pn, &page_number.to_string())
+                                         .replace(&tp, &total_pages.to_string());
++                                    let mut hex = String::new();
+                                     for ch in text_after.chars() {
+-                                        let gid =
+-                                            embed_data.char_to_gid.get(&ch).copied().unwrap_or(0);
+-                                        let _ = write!(hex, "{:04X}", gid);
++                                        let cid = embed_data.char_to_cid.get(&ch).copied().unwrap_or(0);
++                                        let _ = write!(hex, "{:04X}", cid);
+                                     }
++                                    let _ = writeln!(stream, "<{}> Tj", hex);
+                                 } else {
+-                                    // Shaped text: use glyph IDs directly (remapped through subset)
+-                                    for g in group.iter() {
+-                                        let new_gid = embed_data
+-                                            .gid_remap
+-                                            .get(&g.glyph_id)
+-                                            .copied()
+-                                            .unwrap_or_else(|| {
+-                                                // Fallback: try char→gid
+-                                                embed_data
+-                                                    .char_to_gid
+-                                                    .get(&g.char_value)
+-                                                    .copied()
+-                                                    .unwrap_or(0)
+-                                            });
+-                                        let _ = write!(hex, "{:04X}", new_gid);
+-                                    }
++                                    Self::write_positioned_custom_glyphs(
++                                        stream, group, embed_data, line.x, pdf_y,
++                                        spaces_before, line.word_spacing,
++                                    );
+                                 }
+-                                let _ = writeln!(stream, "<{}> Tj", hex);
+-                            } else {
+-                                let _ = writeln!(stream, "<> Tj");
+                             }
+                         } else {
+                             let pn = PAGE_NUMBER_SENTINEL.to_string();
+@@ -1813,12 +1777,11 @@ impl PdfWriter {
+                         // Advance x_cursor past this group using shaped advances
+                         // Account for word_spacing on spaces (Tw adds to each space char)
+                         if let Some(last) = group.last() {
+-                            let space_count_in_group =
+-                                group.iter().filter(|g| g.char_value == ' ').count();
++                            spaces_before += group.iter().filter(|g| g.char_value == ' ').count();
+                             x_cursor = line.x
+                                 + last.x_offset
+                                 + last.x_advance
+-                                + space_count_in_group as f64 * line.word_spacing;
++                                + spaces_before as f64 * line.word_spacing;
+                         }
+ 
+                         // Check if this group has text decoration
+@@ -2157,17 +2120,14 @@ impl PdfWriter {
+                             &builder.font_objects,
+                         );
+                         let font_name = format!("F{}", idx);
+-                        let _ = writeln!(stream, "/{} {:.1} Tf", font_name, first.font_size);
++                        let _ = writeln!(stream, "/{} {:.4} Tf", font_name, first.font_size);
+                         let is_custom = builder.custom_font_data.contains_key(&fk);
+                         if is_custom {
+                             if let Some(embed_data) = builder.custom_font_data.get(&fk) {
+-                                let mut hex = String::new();
+-                                for g in group.iter() {
+-                                    let gid =
+-                                        embed_data.gid_remap.get(&g.glyph_id).copied().unwrap_or(0);
+-                                    let _ = write!(hex, "{:04X}", gid);
+-                                }
+-                                let _ = writeln!(stream, "<{}> Tj", hex);
++                                Self::write_positioned_custom_glyphs(
++                                    stream, group, embed_data, -text_width / 2.0,
++                                    -cap_height / 2.0, 0, 0.0,
++                                );
+                             }
+                         } else {
+                             let hex_str: String = group
+@@ -2898,14 +2858,14 @@ impl PdfWriter {
+                     let usage = font_usage_map.get(key);
+                     let used_glyph_ids = usage.map(|u| &u.glyph_ids);
+                     let used_chars = usage.map(|u| &u.chars);
+-                    let glyph_to_char = usage.map(|u| &u.glyph_to_char);
++                    let glyph_texts = usage.map(|u| &u.glyph_texts);
+                     let type0_obj_id = Self::write_custom_font_objects(
+                         builder,
+                         key,
+                         data,
+                         used_glyph_ids.cloned().unwrap_or_default(),
+                         used_chars.cloned().unwrap_or_default(),
+-                        glyph_to_char.cloned().unwrap_or_default(),
++                        glyph_texts.cloned().unwrap_or_default(),
+                     )?;
+                     builder.font_objects.push((key.clone(), type0_obj_id));
+                 }
+@@ -2939,34 +2899,23 @@ impl PdfWriter {
+                         let usage = font_usage.entry(key).or_insert_with(|| FontUsage {
+                             chars: HashSet::new(),
+                             glyph_ids: HashSet::new(),
+-                            glyph_to_char: HashMap::new(),
++                            glyph_texts: HashSet::new(),
+                         });
+                         usage.chars.insert(glyph.char_value);
+                         // A page-number sentinel becomes digits at write
+                         // time — subset all ten for this font, or the
+                         // substituted numbers would render as .notdef
+-                        // (char_to_gid would have no digit entries).
++                        // (char_to_cid would have no digit entries).
+                         if glyph.char_value == PAGE_NUMBER_SENTINEL
+                             || glyph.char_value == TOTAL_PAGES_SENTINEL
+                         {
+                             usage.chars.extend('0'..='9');
+                         }
+                         usage.glyph_ids.insert(glyph.glyph_id);
+-                        // For ligatures, use the first char of the cluster
+-                        usage
+-                            .glyph_to_char
+-                            .entry(glyph.glyph_id)
+-                            .or_insert(glyph.char_value);
+-                        // If there's cluster_text, record all chars for this glyph
+-                        if let Some(ref ct) = glyph.cluster_text {
+-                            // First char already recorded above; cluster_text is for ToUnicode
+-                            if let Some(first_char) = ct.chars().next() {
+-                                usage
+-                                    .glyph_to_char
+-                                    .entry(glyph.glyph_id)
+-                                    .or_insert(first_char);
+-                            }
+-                        }
++                        usage.glyph_texts.insert((
++                            glyph.glyph_id,
++                            Self::glyph_text(glyph),
++                        ));
+                     }
+                 }
+             }
+@@ -3561,19 +3510,19 @@ impl PdfWriter {
+             .join(" ")
+     }
+ 
+-    /// Write the 5 CIDFont PDF objects for a custom TrueType font.
++    /// Write the CIDFont PDF objects for a custom TrueType font.
+     /// Returns the object ID of the Type0 root font dictionary.
+     ///
+     /// `used_glyph_ids`: original glyph IDs from shaping (from PositionedGlyph.glyph_id).
+     /// `used_chars`: characters used (for char→gid fallback, e.g., page number placeholders).
+-    /// `glyph_to_char_map`: maps original glyph ID → first Unicode char (for ToUnicode CMap).
++    /// `glyph_texts`: original glyph ID and complete source text for each PDF character.
+     fn write_custom_font_objects(
+         builder: &mut PdfBuilder,
+         key: &FontKey,
+         ttf_data: &[u8],
+         used_glyph_ids: HashSet<u16>,
+         used_chars: HashSet<char>,
+-        glyph_to_char_map: HashMap<u16, char>,
++        mut glyph_texts: HashSet<(u16, String)>,
+     ) -> Result<usize, FormeError> {
+         let face = ttf_parser::Face::parse(ttf_data, 0).map_err(|e| {
+             FormeError::FontError(format!(
+@@ -3613,27 +3562,32 @@ impl PdfWriter {
+             }
+         };
+ 
+-        // Build char→new_gid mapping (for placeholder fallback in content stream)
+-        let char_to_gid: HashMap<char, u16> = char_to_orig_gid
+-            .iter()
+-            .filter_map(|(&ch, &orig_gid)| gid_remap.get(&orig_gid).map(|&new_gid| (ch, new_gid)))
+-            .collect();
+-
+-        // Build glyph_id→new_gid mapping (for shaped content stream)
+-        let gid_remap_for_embed = gid_remap.clone();
+-
+-        // Build new_gid→char mapping for ToUnicode CMap
+-        let mut new_gid_to_char: HashMap<u16, char> = HashMap::new();
+-        // From shaped glyph→char mapping
+-        for (&orig_gid, &ch) in &glyph_to_char_map {
+-            if let Some(&new_gid) = gid_remap.get(&orig_gid) {
+-                new_gid_to_char.entry(new_gid).or_insert(ch);
+-            }
++        // Include unshaped placeholder characters, then allocate stable CIDs by
++        // (original GID, source string), not by GID alone. This preserves both
++        // ligature sequences and literal presentation characters in one font.
++        for (&ch, &gid) in &char_to_orig_gid {
++            glyph_texts.insert((gid, ch.to_string()));
++        }
++        let mut glyph_texts: Vec<_> = glyph_texts.into_iter().collect();
++        glyph_texts.sort();
++        if glyph_texts.len() > u16::MAX as usize {
++            return Err(FormeError::FontError(format!(
++                "Font '{}' exceeds the PDF two-byte character code limit", key.family
++            )));
+         }
+-        // Fill in from char→gid mapping too
+-        for (&ch, &new_gid) in &char_to_gid {
+-            new_gid_to_char.entry(new_gid).or_insert(ch);
++        let mut glyph_to_cid = HashMap::new();
++        let mut cid_to_gid = HashMap::from([(0u16, 0u16)]);
++        let mut cid_to_text = HashMap::new();
++        for (index, (orig_gid, text)) in glyph_texts.into_iter().enumerate() {
++            let cid = (index + 1) as u16;
++            let subset_gid = gid_remap.get(&orig_gid).copied().unwrap_or(0);
++            cid_to_gid.insert(cid, subset_gid);
++            cid_to_text.insert(cid, text.clone());
++            glyph_to_cid.insert((orig_gid, text), cid);
+         }
++        let char_to_cid = char_to_orig_gid.iter().filter_map(|(&ch, &gid)| {
++            glyph_to_cid.get(&(gid, ch.to_string())).map(|&cid| (ch, cid))
++        }).collect();
+ 
+         let pdf_font_name = Self::sanitize_font_name(&key.family, key.weight, key.italic);
+ 
+@@ -3694,20 +3648,34 @@ impl PdfWriter {
+             data: font_descriptor_dict.into_bytes(),
+         });
+ 
++        // Explicit CIDToGIDMap permits multiple source strings to share a glyph.
++        let cidmap_id = builder.objects.len();
++        let mut cidmap = vec![0u8; cid_to_gid.len() * 2];
++        for (&cid, &gid) in &cid_to_gid {
++            cidmap[cid as usize * 2..cid as usize * 2 + 2]
++                .copy_from_slice(&gid.to_be_bytes());
++        }
++        let compressed_map = compress_to_vec_zlib(&cidmap, 6);
++        let mut cidmap_data = format!(
++            "<< /Length {} /Filter /FlateDecode >>\nstream\n", compressed_map.len()
++        ).into_bytes();
++        cidmap_data.extend_from_slice(&compressed_map);
++        cidmap_data.extend_from_slice(b"\nendstream");
++        builder.objects.push(PdfObject { id: cidmap_id, data: cidmap_data });
++
+         // 3. CIDFont dictionary (DescendantFont)
+         let cidfont_id = builder.objects.len();
+-        // Build /W array using new_gid→width from subset face
+-        let w_array = Self::build_w_array_from_gids(&gid_remap, &subset_face, subset_upem);
++        let w_array = Self::build_w_array_from_gids(&cid_to_gid, &subset_face, subset_upem);
+         let default_width = subset_face
+             .glyph_hor_advance(ttf_parser::GlyphId(0))
+-            .map(|adv| (adv as f64 * 1000.0 / subset_upem as f64) as u32)
+-            .unwrap_or(1000);
++            .map(|adv| adv as f64 * 1000.0 / subset_upem as f64)
++            .unwrap_or(1000.0);
+         let cidfont_dict = format!(
+             "<< /Type /Font /Subtype /CIDFontType2 /BaseFont /{} \
+              /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> \
+-             /FontDescriptor {} 0 R /DW {} /W {} \
+-             /CIDToGIDMap /Identity >>",
+-            pdf_font_name, font_descriptor_id, default_width, w_array,
++             /FontDescriptor {} 0 R /DW {:.4} /W {} \
++             /CIDToGIDMap {} 0 R >>",
++            pdf_font_name, font_descriptor_id, default_width, w_array, cidmap_id,
+         );
+         builder.objects.push(PdfObject {
+             id: cidfont_id,
+@@ -3716,7 +3684,7 @@ impl PdfWriter {
+ 
+         // 4. ToUnicode CMap
+         let tounicode_id = builder.objects.len();
+-        let cmap_content = Self::build_tounicode_cmap_from_gids(&new_gid_to_char, &pdf_font_name);
++        let cmap_content = Self::build_tounicode_cmap_from_gids(&cid_to_text, &pdf_font_name);
+         let compressed_cmap = compress_to_vec_zlib(cmap_content.as_bytes(), 6);
+         let mut tounicode_data: Vec<u8> = Vec::new();
+         let _ = write!(
+@@ -3749,59 +3717,35 @@ impl PdfWriter {
+         builder.custom_font_data.insert(
+             key.clone(),
+             CustomFontEmbedData {
+-                ttf_data: embed_ttf,
+-                gid_remap: gid_remap_for_embed,
+-                glyph_to_char: glyph_to_char_map,
+-                char_to_gid,
+-                units_per_em,
+-                ascender,
+-                descender,
++                glyph_to_cid,
++                char_to_cid,
+             },
+         );
+ 
+         Ok(type0_id)
+     }
+ 
+-    /// Build the /W array from gid_remap (orig_gid→new_gid) using the subset face.
++    /// Widths are keyed by PDF CID, while metrics come from the subset GID.
+     fn build_w_array_from_gids(
+-        gid_remap: &HashMap<u16, u16>,
++        cid_to_gid: &HashMap<u16, u16>,
+         face: &ttf_parser::Face,
+         units_per_em: u16,
+     ) -> String {
+         let scale = 1000.0 / units_per_em as f64;
+-
+-        let mut entries: Vec<(u16, u32)> = Vec::new();
+-        let mut seen_gids: HashSet<u16> = HashSet::new();
+-
+-        for &new_gid in gid_remap.values() {
+-            if seen_gids.contains(&new_gid) {
+-                continue;
+-            }
+-            seen_gids.insert(new_gid);
+-            let advance = face
+-                .glyph_hor_advance(ttf_parser::GlyphId(new_gid))
+-                .unwrap_or(0);
+-            let width = (advance as f64 * scale) as u32;
+-            entries.push((new_gid, width));
+-        }
+-
+-        entries.sort_by_key(|(gid, _)| *gid);
+-
+-        // Build the W array using individual entries: gid [width]
++        let mut entries: Vec<_> = cid_to_gid.iter().collect();
++        entries.sort_by_key(|(&cid, _)| cid);
+         let mut result = String::from("[");
+-        for (gid, width) in &entries {
+-            let _ = write!(result, " {} [{}]", gid, width);
++        for (&cid, &gid) in entries {
++            let advance = face.glyph_hor_advance(ttf_parser::GlyphId(gid)).unwrap_or(0);
++            let _ = write!(result, " {} [{:.4}]", cid, advance as f64 * scale);
+         }
+         result.push_str(" ]");
+         result
+     }
+ 
+-    /// Build a ToUnicode CMap from new_gid → char mapping.
+-    fn build_tounicode_cmap_from_gids(gid_to_char: &HashMap<u16, char>, font_name: &str) -> String {
+-        let mut gid_to_unicode: Vec<(u16, u32)> = gid_to_char
+-            .iter()
+-            .map(|(&gid, &ch)| (gid, ch as u32))
+-            .collect();
++    /// Encode complete source strings as UTF-16BE, including surrogate pairs.
++    fn build_tounicode_cmap_from_gids(gid_to_char: &HashMap<u16, String>, font_name: &str) -> String {
++        let mut gid_to_unicode: Vec<_> = gid_to_char.iter().collect();
+         gid_to_unicode.sort_by_key(|(gid, _)| *gid);
+ 
+         let mut cmap = String::new();
+@@ -3823,7 +3767,11 @@ impl PdfWriter {
+         for chunk in gid_to_unicode.chunks(100) {
+             let _ = writeln!(cmap, "{} beginbfchar", chunk.len());
+             for &(gid, unicode) in chunk {
+-                let _ = writeln!(cmap, "<{:04X}> <{:04X}>", gid, unicode);
++                let _ = write!(cmap, "<{:04X}> <", gid);
++                for unit in unicode.encode_utf16() {
++                    let _ = write!(cmap, "{:04X}", unit);
++                }
++                let _ = writeln!(cmap, ">");
+             }
+             let _ = writeln!(cmap, "endbfchar");
+         }
+@@ -3906,6 +3854,34 @@ impl PdfWriter {
+ 
+     /// Group consecutive glyphs by (font_family, font_weight, font_style, font_size, color)
+     /// for multi-font text run rendering.
++    fn glyph_text(glyph: &PositionedGlyph) -> String {
++        glyph.cluster_text.clone().unwrap_or_else(|| glyph.char_value.to_string())
++    }
++
++    /// The shaper has already applied kerning, mark offsets, and letter spacing.
++    /// Emit those positions directly; a plain Tj would instead use hmtx advances
++    /// and lose GPOS. Absolute matrices also preserve vertical mark positioning.
++    fn write_positioned_custom_glyphs(
++        stream: &mut String,
++        glyphs: &[&PositionedGlyph],
++        embed_data: &CustomFontEmbedData,
++        line_x: f64,
++        baseline_y: f64,
++        mut spaces_before: usize,
++        word_spacing: f64,
++    ) {
++        let _ = writeln!(stream, "0 Tc\n0 Tw");
++        for glyph in glyphs {
++            let cid = embed_data.glyph_to_cid
++                .get(&(glyph.glyph_id, Self::glyph_text(glyph)))
++                .copied().unwrap_or(0);
++            let x = line_x + glyph.x_offset + spaces_before as f64 * word_spacing;
++            let y = baseline_y + glyph.y_offset;
++            let _ = writeln!(stream, "1 0 0 1 {:.4} {:.4} Tm\n<{:04X}> Tj", x, y, cid);
++            if glyph.char_value == ' ' { spaces_before += 1; }
++        }
++    }
++
+     fn group_glyphs_by_style(glyphs: &[PositionedGlyph]) -> Vec<Vec<&PositionedGlyph>> {
+         if glyphs.is_empty() {
+             return vec![];
+@@ -4840,8 +4816,8 @@ mod tests {
+     fn test_tounicode_cmap_format() {
+         // glyph_to_char: maps subset glyph IDs → Unicode chars
+         let mut glyph_to_char = HashMap::new();
+-        glyph_to_char.insert(36u16, 'A');
+-        glyph_to_char.insert(37u16, 'B');
++        glyph_to_char.insert(36u16, "A".to_string());
++        glyph_to_char.insert(37u16, "B".to_string());
+ 
+         let cmap = PdfWriter::build_tounicode_cmap_from_gids(&glyph_to_char, "TestFont");
+ 
+@@ -4870,6 +4846,19 @@ mod tests {
+         );
+     }
+ 
++    #[test]
++    fn test_tounicode_preserves_ligatures_and_surrogate_pairs() {
++        let mappings = HashMap::from([
++            (1, "ffi".to_string()), (2, "\u{1D400}".to_string()),
++            (3, "\u{FB01}".to_string()), (4, "fi".to_string()),
++        ]);
++        let cmap = PdfWriter::build_tounicode_cmap_from_gids(&mappings, "Test");
++        assert!(cmap.contains("<0001> <006600660069>"));
++        assert!(cmap.contains("<0002> <D835DC00>"));
++        assert!(cmap.contains("<0003> <FB01>"));
++        assert!(cmap.contains("<0004> <00660069>"));
++    }
++
+     #[test]
+     fn test_w_array_format() {
+         let mut char_to_gid = HashMap::new();

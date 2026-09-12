@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "opendoc": ["./src/document/index.tsx"],
+      "opendoc/assets": ["./src/assets/index.ts"],
+      "opendoc/template": ["./src/template/index.ts"],
+      "opendoc/themes": ["./src/themes/index.ts"],
+      "opendoc/jsx-runtime": ["./src/runtime/jsx-runtime.ts"],
+      "opendoc/jsx-dev-runtime": ["./src/runtime/jsx-dev-runtime.ts"],
+      "opendoc/package.json": ["./package.json"],
+      "opendoc/tsconfig.workspace.json": ["./tsconfig.workspace.json"]
+    },
+    "types": ["node", "vite/client"]
+  },
+  "include": ["src", "documents", "templates", "themes", "tests", "vite.config.ts"]
+}

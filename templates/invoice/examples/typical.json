@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "title": "Website content services",
+  "number": "SAMPLE-INV-001",
+  "issuedOn": "2026-09-08",
+  "dueOn": "2026-09-22",
+  "reference": "SAMPLE-Q-001",
+  "seller": {
+    "name": "Example Studio",
+    "details": "Studio address placeholder\nContact details placeholder"
+  },
+  "customer": {
+    "name": "Example Client",
+    "details": "Client address placeholder\nAttention: project contact"
+  },
+  "synthetic": true,
+  "pricing": {
+    "currency": {
+      "code": "USD",
+      "decimals": 2
+    },
+    "items": [
+      {
+        "id": "planning",
+        "description": "Content planning workshop",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "writing",
+        "description": "Website copy package: supplied scope and agreed deliverables",
+        "quantity": "1",
+        "unit": "package",
+        "unitPrice": "600.00"
+      },
+      {
+        "id": "review",
+        "description": "Review and revision sessions",
+        "quantity": "3",
+        "unit": "hours",
+        "unitPrice": "75.00"
+      }
+    ],
+    "discount": "25.00",
+    "tax": {
+      "label": "Illustrative tax",
+      "ratePercent": "10"
+    }
+  },
+  "amountPaid": "320.00",
+  "paymentInstructions": "Payment details placeholder. Supply the agreed method and verified recipient details before issuing a real invoice.",
+  "paymentReference": "SAMPLE-INV-001",
+  "notes": [
+    {
+      "id": "scope",
+      "title": "Scope note",
+      "text": "Illustrative services only. Replace the sample with the actual goods or services and any necessary supporting details."
+    }
+  ]
+}

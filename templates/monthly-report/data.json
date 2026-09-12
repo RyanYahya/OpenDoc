@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "title": "__OPENDOC_TITLE__",
+  "organization": "Northline Studio",
+  "preparedBy": "Operations team",
+  "period": {
+    "start": "2026-08-01",
+    "end": "2026-08-31"
+  },
+  "issuedOn": "2026-09-04",
+  "synthetic": true,
+  "sourceNote": "Synthetic demonstration data created for OpenDoc. The measures, narrative, names, risks, and commitments are illustrative and do not describe an actual organization. No external research or operational records were used.",
+  "summary": "August was a month of consolidation. The team completed more work with fewer late handoffs, while the oldest unresolved requests continued to absorb attention. The clearest improvement came from a simple change: every new assignment began with a named owner and a written definition of completion. That reduced the time spent deciding who should move a piece of work forward. The remaining constraint is capacity in final review. Adding more work at the front of the process would increase waiting time unless that constraint is addressed. September should therefore focus on closing the oldest requests, protecting review time, and testing a second reviewer on one service line before making a wider commitment.",
+  "metrics": [
+    {
+      "id": "completed-requests",
+      "label": "Requests completed",
+      "value": 86,
+      "target": 80,
+      "precision": 0,
+      "note": "Six above plan; the work mix was broadly unchanged."
+    },
+    {
+      "id": "on-time-delivery",
+      "label": "Delivered on time",
+      "value": 91.9,
+      "target": 95,
+      "unit": "%",
+      "precision": 1,
+      "note": "Final review caused five of the seven late handoffs."
+    },
+    {
+      "id": "median-cycle",
+      "label": "Median cycle time",
+      "value": 4.2,
+      "target": 4,
+      "unit": "days",
+      "precision": 1,
+      "note": "Calendar days from accepted brief to delivery."
+    },
+    {
+      "id": "open-backlog",
+      "label": "Open at month end",
+      "value": 23,
+      "precision": 0,
+      "note": "Eight requests are more than ten days old."
+    }
+  ],
+  "highlights": [
+    {
+      "id": "clearer-starts",
+      "title": "A clearer start reduced avoidable returns",
+      "body": "The intake checklist now asks for one decision owner, the expected output, and the date on which it becomes useful. Reviewers returned fewer briefs for clarification, and the weekly planning meeting spent less time reconstructing context. The change is deliberately small: the checklist remains on the assignment itself, where both the requester and the team can see it. It does not create a separate approval queue."
+    },
+    {
+      "id": "review-capacity",
+      "title": "The bottleneck moved into final review",
+      "body": "Most assignments passed through preparation without difficulty, but review demand was concentrated in the last week. Work arriving together competed for the same specialist. The result was a set of late handoffs that had little to do with the quality of the original brief. A protected review session twice a week is the next experiment. Its purpose is to make capacity visible early enough to adjust commitments."
+    },
+    {
+      "id": "oldest-work",
+      "title": "The oldest requests need individual decisions",
+      "body": "The eight requests older than ten days are not one problem. Three need a decision from the requester, two are waiting for missing material, and three require specialist review. The team will give each request an explicit next step and a named decision date. Closing the register administratively would improve the count while leaving the underlying work unresolved, so completion will continue to require a delivered or explicitly cancelled outcome."
+    }
+  ],
+  "risks": [
+    {
+      "id": "single-reviewer",
+      "title": "Review depends on one specialist",
+      "level": "high",
+      "owner": "Maya Chen",
+      "mitigation": "A planned absence could delay several active assignments at once. Pair a second reviewer with the specialist on one service line, record the review criteria, and compare decisions before expanding the arrangement. The immediate aim is dependable cover, with quality checked on a small sample."
+    },
+    {
+      "id": "uncertain-demand",
+      "title": "September demand is uneven",
+      "level": "medium",
+      "owner": "Jon Bell",
+      "mitigation": "Two possible assignments have not yet been confirmed. Keep them visible in the capacity review, but do not count them as accepted work or reserve a full delivery slot. Confirm scope and timing with the requesters before changing existing commitments."
+    }
+  ],
+  "actions": [
+    {
+      "id": "backlog-decisions",
+      "title": "Agree a next step and decision date for every request older than ten days.",
+      "owner": "Jon Bell",
+      "due": "2026-09-08",
+      "status": "in-progress"
+    },
+    {
+      "id": "protect-review",
+      "title": "Reserve two review sessions each week and publish available capacity.",
+      "owner": "Maya Chen",
+      "due": "2026-09-09",
+      "status": "planned"
+    },
+    {
+      "id": "pair-review",
+      "title": "Run a paired review on five assignments from one service line.",
+      "owner": "Maya Chen",
+      "due": "2026-09-18",
+      "status": "planned"
+    },
+    {
+      "id": "intake-audit",
+      "title": "Check a sample of ten new briefs for a named owner and a clear completion test.",
+      "owner": "Ari Patel",
+      "due": "2026-09-21",
+      "status": "planned"
+    },
+    {
+      "id": "next-review",
+      "title": "Review the experiments, late handoffs, and age of unresolved work together.",
+      "owner": "Operations team",
+      "due": "2026-09-30",
+      "status": "planned"
+    }
+  ],
+  "notes": [
+    {
+      "id": "measurement-window",
+      "title": "The measurement window",
+      "body": "Completed requests and on-time delivery include work delivered during August, even when it began earlier. Cycle time uses the same completed group. The open register is a separate snapshot taken at the end of the month. These measures should not be added together as if they were counts of the same population."
+    },
+    {
+      "id": "interpretation",
+      "title": "How to read the targets",
+      "body": "The targets are planning thresholds supplied with this example. A result above a target is not automatically better: lower cycle time is desirable, while a higher completion count may reflect a change in work mix. Interpret each value alongside its definition and the narrative before drawing a conclusion."
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "family": "Open Sans",
+  "stylesheet": "https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap",
+  "license": "https://raw.githubusercontent.com/google/fonts/main/ofl/opensans/OFL.txt",
+  "files": [
+    {
+      "filename": "OpenSans-Italic.ttf",
+      "url": "https://fonts.gstatic.com/s/opensans/v44/memQYaGs126MiZpBA-UFUIcVXSCEkx2cmqvXlWq8tWZ0Pw86hd0Rk8ZkaVc.ttf",
+      "sha256": "1bc0594a83762b2c25d38915a34464b7fec6088298ca22d151757bf98d6700ec",
+      "weight": 400,
+      "style": "italic",
+      "assetFile": "files/1bc0594a83762b2c25d38915a34464b7fec6088298ca22d151757bf98d6700ec.ttf"
+    },
+    {
+      "filename": "OpenSans-SemiboldItalic.ttf",
+      "url": "https://fonts.gstatic.com/s/opensans/v44/memQYaGs126MiZpBA-UFUIcVXSCEkx2cmqvXlWq8tWZ0Pw86hd0RkxhjaVc.ttf",
+      "sha256": "ff4fdc11204e0edd14e9a0bb6c374b847a9093b0ec2c16702e03afca79ac4ef7",
+      "weight": 600,
+      "style": "italic",
+      "assetFile": "files/ff4fdc11204e0edd14e9a0bb6c374b847a9093b0ec2c16702e03afca79ac4ef7.ttf"
+    },
+    {
+      "filename": "OpenSans-BoldItalic.ttf",
+      "url": "https://fonts.gstatic.com/s/opensans/v44/memQYaGs126MiZpBA-UFUIcVXSCEkx2cmqvXlWq8tWZ0Pw86hd0RkyFjaVc.ttf",
+      "sha256": "6d3884d0d57c1b67e9c50c54eca7b69c535c114e76bd7a9cfda0258588185553",
+      "weight": 700,
+      "style": "italic",
+      "assetFile": "files/6d3884d0d57c1b67e9c50c54eca7b69c535c114e76bd7a9cfda0258588185553.ttf"
+    },
+    {
+      "filename": "OpenSans-Regular.ttf",
+      "url": "https://fonts.gstatic.com/s/opensans/v44/memSYaGs126MiZpBA-UvWbX2vVnXBbObj2OVZyOOSr4dVJWUgsjZ0C4n.ttf",
+      "sha256": "47ed1cfaa7ffca04a04ab850b2938fd52c09d1b44cfa3e2980878e166b0cbd87",
+      "weight": 400,
+      "style": "normal",
+      "assetFile": "files/47ed1cfaa7ffca04a04ab850b2938fd52c09d1b44cfa3e2980878e166b0cbd87.ttf"
+    },
+    {
+      "filename": "OpenSans-Semibold.ttf",
+      "url": "https://fonts.gstatic.com/s/opensans/v44/memSYaGs126MiZpBA-UvWbX2vVnXBbObj2OVZyOOSr4dVJWUgsgH1y4n.ttf",
+      "sha256": "733eb93b167e6d45de09aa768f6c0355647c2c26f5416dbc7407a08ed41e81c6",
+      "weight": 600,
+      "style": "normal",
+      "assetFile": "files/733eb93b167e6d45de09aa768f6c0355647c2c26f5416dbc7407a08ed41e81c6.ttf"
+    },
+    {
+      "filename": "OpenSans-Bold.ttf",
+      "url": "https://fonts.gstatic.com/s/opensans/v44/memSYaGs126MiZpBA-UvWbX2vVnXBbObj2OVZyOOSr4dVJWUgsg-1y4n.ttf",
+      "sha256": "75367e6da7d914eaed87883ba51b2a2b5816b5cdbb39f96ec5c81a5b032bfd5a",
+      "weight": 700,
+      "style": "normal",
+      "assetFile": "files/75367e6da7d914eaed87883ba51b2a2b5816b5cdbb39f96ec5c81a5b032bfd5a.ttf"
+    }
+  ],
+  "downloadedAt": "2026-09-10T09:57:24.746Z",
+  "preparation": "Google-supplied static TTF files, preserved without modification."
+}

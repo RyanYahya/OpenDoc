@@ -1,0 +1,11 @@
+{
+  "name": "Editorial essay",
+  "description": "A literary reading column with indented paragraphs, a considered opening, and quiet page furniture. For essays, opinion pieces, and long-form reflections.",
+  "format": "A4 · Single column",
+  "structure": [
+    "Title, byline, and standfirst share the opening page with the body.",
+    "A narrow column and close paragraph rhythm support sustained reading. Openings sit flush left; subsequent paragraphs begin with a first-line indent.",
+    "Occasional visuals span the full text width; references sit quietly at the end.",
+    "Discreet page numbers leave the page free of running headers and rules."
+  ]
+}

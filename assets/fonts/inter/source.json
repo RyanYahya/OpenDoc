@@ -1,0 +1,57 @@
+{
+  "family": "Inter",
+  "stylesheet": "https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap",
+  "license": "https://raw.githubusercontent.com/google/fonts/main/ofl/inter/OFL.txt",
+  "files": [
+    {
+      "filename": "Inter-Italic.ttf",
+      "url": "https://fonts.gstatic.com/s/inter/v20/UcCM3FwrK3iLTcvneQg7Ca725JhhKnNqk4j1ebLhAm8SrXTc2dthjQ.ttf",
+      "sha256": "ef8f755d933b9310804cc9152f1f18cb2ac460d6b05054ec913d889c9f11f79e",
+      "weight": 400,
+      "style": "italic",
+      "assetFile": "files/ef8f755d933b9310804cc9152f1f18cb2ac460d6b05054ec913d889c9f11f79e.ttf"
+    },
+    {
+      "filename": "Inter-SemiboldItalic.ttf",
+      "url": "https://fonts.gstatic.com/s/inter/v20/UcCM3FwrK3iLTcvneQg7Ca725JhhKnNqk4j1ebLhAm8SrXTcB9xhjQ.ttf",
+      "sha256": "5b6f0c6f26e5c554a64cdcc3a9b5d802b7f9aec6206f1dbcfcdcad7b5860a2a9",
+      "weight": 600,
+      "style": "italic",
+      "assetFile": "files/5b6f0c6f26e5c554a64cdcc3a9b5d802b7f9aec6206f1dbcfcdcad7b5860a2a9.ttf"
+    },
+    {
+      "filename": "Inter-BoldItalic.ttf",
+      "url": "https://fonts.gstatic.com/s/inter/v20/UcCM3FwrK3iLTcvneQg7Ca725JhhKnNqk4j1ebLhAm8SrXTcPtxhjQ.ttf",
+      "sha256": "c1811d32ac0f6eed1bbf57529f2ecdfc6c717d48a969dd864942436315a1b198",
+      "weight": 700,
+      "style": "italic",
+      "assetFile": "files/c1811d32ac0f6eed1bbf57529f2ecdfc6c717d48a969dd864942436315a1b198.ttf"
+    },
+    {
+      "filename": "Inter-Regular.ttf",
+      "url": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfMZg.ttf",
+      "sha256": "1b08e7fc267a5c7e1d614100f604b83e7e8a0be241f0f288faa2b3ac93a683ba",
+      "weight": 400,
+      "style": "normal",
+      "assetFile": "files/1b08e7fc267a5c7e1d614100f604b83e7e8a0be241f0f288faa2b3ac93a683ba.ttf"
+    },
+    {
+      "filename": "Inter-Semibold.ttf",
+      "url": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuGKYMZg.ttf",
+      "sha256": "e7a1aaf7eda9f2fad4131725fa556265ec75ca7b2d756260173a040363e8d4f7",
+      "weight": 600,
+      "style": "normal",
+      "assetFile": "files/e7a1aaf7eda9f2fad4131725fa556265ec75ca7b2d756260173a040363e8d4f7.ttf"
+    },
+    {
+      "filename": "Inter-Bold.ttf",
+      "url": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuFuYMZg.ttf",
+      "sha256": "b37284b5701b6b168dfc770aa1a4ac492106422fd3ba76bc7641e37434e8019c",
+      "weight": 700,
+      "style": "normal",
+      "assetFile": "files/b37284b5701b6b168dfc770aa1a4ac492106422fd3ba76bc7641e37434e8019c.ttf"
+    }
+  ],
+  "downloadedAt": "2026-09-10T09:57:23.214Z",
+  "preparation": "Google-supplied static TTF files, preserved without modification."
+}

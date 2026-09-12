@@ -1,0 +1,11 @@
+{
+  "name": "Monthly report",
+  "description": "A repeatable operational review with validated local data, period measures, narrative highlights, risks, and dated actions. Empty sections are omitted and long reports flow naturally.",
+  "format": "A4 · Data-driven report",
+  "structure": [
+    "The title, organization, reporting period, and preparation details share the first page with an opening summary.",
+    "Optional performance measures use explicit units and targets. Tables repeat their headers across pages.",
+    "Highlights, risks, actions, and reading notes retain stable record identities as their data changes or moves.",
+    "Each document owns its JSON input. A visible source note records the evidence basis; synthetic examples are identified in the PDF."
+  ]
+}

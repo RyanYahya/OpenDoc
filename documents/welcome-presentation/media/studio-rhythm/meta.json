@@ -1,0 +1,13 @@
+{
+  "title": "The shape of a working season",
+  "description": "Weekly hours by workstream across twelve weeks and twenty-four fictional documents. One stacked area chart, adapted for a presentation from the welcome guide’s synthetic dataset.",
+  "file": "image.png",
+  "kind": "chart",
+  "alt": "A single stacked area chart shows hours per week for research, drafting, design, and review across twelve weeks. Total effort peaks at 100 hours in week three.",
+  "sources": [
+    "Original synthetic demonstration dataset authored for the OpenDoc welcome document, 11 September 2026. No project activity or product performance was measured."
+  ],
+  "data": "data.json",
+  "recipe": "recipe.py",
+  "attribution": "Illustrative data only. This is not an OpenDoc productivity benchmark."
+}

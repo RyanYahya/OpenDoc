@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "projects": [
+    {
+      "id": "getting-started",
+      "name": "Getting started",
+      "defaultTheme": "neutral"
+    }
+  ],
+  "assignments": {
+    "welcome": "getting-started",
+    "welcome-presentation": "getting-started"
+  },
+  "formats": {
+    "welcome-presentation": "presentation"
+  }
+}

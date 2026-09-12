@@ -1,0 +1,11 @@
+{
+  "name": "Consulting report",
+  "description": "An optional cover and structured report pages, with clear section openings, generous exhibit width, and consistent navigation. For advisory reports, assessments, and recommendations.",
+  "format": "A4 · Cover and report",
+  "structure": [
+    "An optional bottom-aligned cover gives the title, subtitle, author, and date a clear hierarchy. Short documents can begin directly with the body.",
+    "Consistent margins align section headings, prose, tables, and exhibits on a shared reading width.",
+    "Exhibits can pair a descriptive headline with a caption and source note. Native tables repeat their headers when they continue.",
+    "A running title and page numbers support navigation. References follow the authored content; no section order is prescribed."
+  ]
+}

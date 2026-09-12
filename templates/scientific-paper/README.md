@@ -1,0 +1,13 @@
+# Scientific paper
+
+A flexible, single-column manuscript layout using native Forme flow. Defaults are A4 portrait, 72-point side and 58-point top/bottom margins, a 22-point centered title, 11/16.5-point body typography, and 9-point paragraph gaps. The abstract is inset 24 points on each side and uses 10/14.5-point text. The body width is approximately 451 points; the abstract width is approximately 403 points. Page numbers sit centrally below the text.
+
+`ScientificPaper` takes `title`, `theme`, and ordinary OpenDoc blocks as `children`. Optional `authors`, `affiliations`, and `correspondence` form the opening. `abstract` accepts inline content, including Strong, Em, or Cite; `keywords` is an optional string. Both remain breakable, and an abstract's label is part of the same paragraph so it cannot be stranded by itself. Omitted fields leave no reserved panels. For a structured abstract, use inline labels and content or make a local variant with ordinary Paragraph blocks.
+
+`titleStyle` accepts native Forme text styles for adjustments such as a smaller long title or left alignment. `PaperHeading` supplies compact level-2 and level-3 defaults, with an optional `style` override. There is no required section order. Keep a heading with a short lead using a native `View wrap={false}` where needed; do not wrap whole sections in an unbreakable group.
+
+Pass verified `references` and use `Cite` for citations. `citationStyle` accepts the workspace's existing `numeric` (default) or `author-date` formats. These are not full implementations of named journal bibliography styles. References follow the body. Use existing Figure, DataTable, and CrossReference blocks for numbered evidence and native table continuation. Native charts have the workspace's known font-encoding limitation; the established [Media workflow](../../docs/MEDIA.md) supplies chart assets rendered as native images. Size a complete Figure and caption to fit a page.
+
+The caller's theme supplies visual hierarchy, rhythm, and component treatments. The default catalog proof uses Neutral; `Specimen` in `preview.tsx` accepts sparse, typical, and long variants plus a theme for review. Its prose, visual areas, and table values are expressly illustrative. `starter.tsx` creates an ordinary linked document. Preserve stable authored IDs; the specimen's sequence IDs are only for its fixed proof.
+
+This is a starting manuscript design, not a journal submission specification. Adapt it to the actual document and any supplied publisher instructions, following [AGENTS.md](AGENTS.md). No custom typography engine, floating-column logic, or automatic fitting is involved.

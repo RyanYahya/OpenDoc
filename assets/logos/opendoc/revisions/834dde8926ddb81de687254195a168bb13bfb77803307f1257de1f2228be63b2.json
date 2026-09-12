@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "kind": "logo",
+  "id": "opendoc",
+  "name": "OpenDoc",
+  "description": "The existing OpenDoc wordmark. Preserve proportions; use this dark artwork on white or pale surfaces.",
+  "createdAt": "2026-09-11T06:30:59.193Z",
+  "defaultVariation": "default",
+  "variations": [
+    {
+      "id": "default",
+      "name": "On light backgrounds",
+      "description": "Original dark OpenDoc wordmark for white or pale page backgrounds.",
+      "original": {
+        "file": "files/831d5ccd9eb6709cc8439ea257c03d81452e81a28a3d1eedbd6a3b7daff687b6.png",
+        "hash": "831d5ccd9eb6709cc8439ea257c03d81452e81a28a3d1eedbd6a3b7daff687b6",
+        "mime": "image/png",
+        "bytes": 358142,
+        "width": 2172,
+        "height": 724
+      },
+      "image": {
+        "file": "files/831d5ccd9eb6709cc8439ea257c03d81452e81a28a3d1eedbd6a3b7daff687b6.png",
+        "hash": "831d5ccd9eb6709cc8439ea257c03d81452e81a28a3d1eedbd6a3b7daff687b6",
+        "mime": "image/png",
+        "bytes": 358142,
+        "width": 2172,
+        "height": 724
+      }
+    }
+  ],
+  "revision": "834dde8926ddb81de687254195a168bb13bfb77803307f1257de1f2228be63b2"
+}

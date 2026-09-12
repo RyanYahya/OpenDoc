@@ -1,0 +1,11 @@
+{
+  "name": "Invoice",
+  "description": "Invoice references and dates, seller and customer details, itemized charges, and a clear amount due with optional payment instructions and recorded payments.",
+  "format": "A4 \u00b7 Business invoice",
+  "structure": [
+    "The opening pairs issue and optional due dates with a prominent calculated amount due, below the title and invoice reference. An optional logo slot sits at the upper right.",
+    "Seller and customer details sit side by side, followed by line items with repeating table headers.",
+    "Totals align on the right. Supplied payments reduce the calculated balance; the same amount due appears in the opening and the totals.",
+    "Optional payment instructions, payment reference, and supporting notes follow the charges. Each invoice owns its data and longer content flows naturally."
+  ]
+}

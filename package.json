@@ -1,0 +1,118 @@
+{
+  "name": "@ryanyahya/opendoc",
+  "version": "0.4.0",
+  "description": "An open-source document production framework for beautiful, consistent PDFs and editable presentations with any agent.",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "opendoc": {
+    "edition": "normal"
+  },
+  "type": "module",
+  "packageManager": "pnpm@12.3.4",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "tsx src/server/index.ts",
+    "start": "tsx src/server/index.ts --production",
+    "create": "tsx src/server/create-cli.ts",
+    "projects": "tsx src/server/projects-cli.ts",
+    "export": "tsx src/server/export.ts",
+    "comments": "tsx src/server/comments-cli.ts",
+    "media": "tsx src/server/media-cli.ts",
+    "check": "tsc --noEmit",
+    "build": "vite build",
+    "test": "tsx --test tests/*.test.ts",
+    "verify": "pnpm check && pnpm build && pnpm test",
+    "themes": "tsx src/server/themes-cli.ts",
+    "assets": "tsx src/server/assets-cli.ts",
+    "package:pack": "node scripts/pack.mjs"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.8.0",
+    "@formepdf/core": "0.20.1",
+    "@formepdf/react": "0.20.1",
+    "@napi-rs/canvas": "1.0.8",
+    "@resvg/resvg-js": "^2.6.2",
+    "@shbernal/ts-pptx": "3.7.0",
+    "chokidar": "^4.0.3",
+    "fast-xml-parser": "^5.11.1",
+    "fontkit": "^2.0.4",
+    "pdfjs-dist": "6.3.289",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "ttf2eot": "3.1.0",
+    "ws": "^8.21.3",
+    "@types/fontkit": "^2.0.9",
+    "@types/node": "^22.13.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/ws": "^8.18.1",
+    "esbuild": "0.28.2",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "vite": "8.2.2"
+  },
+  "bin": {
+    "opendoc": "./bin/opendoc.mjs"
+  },
+  "exports": {
+    ".": "./src/document/index.tsx",
+    "./assets": "./src/assets/index.ts",
+    "./template": "./src/template/index.ts",
+    "./themes": "./src/themes/index.ts",
+    "./jsx-runtime": "./src/runtime/jsx-runtime.ts",
+    "./jsx-dev-runtime": "./src/runtime/jsx-dev-runtime.ts",
+    "./package.json": "./package.json",
+    "./tsconfig.workspace.json": "./tsconfig.workspace.json"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "dist/",
+    "starter/",
+    "docs/",
+    ".agents/skills/",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "README.md",
+    "VALIDATION.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "LICENSE",
+    "THIRD_PARTY.md",
+    "vendor/formepdf/",
+    "tsconfig.workspace.json",
+    "scripts/rebuild-forme.mjs"
+  ],
+  "bundleDependencies": [
+    "@formepdf/core",
+    "@formepdf/react",
+    "@types/node",
+    "@types/react"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RyanYahya/OpenDoc.git"
+  },
+  "homepage": "https://github.com/RyanYahya/OpenDoc#readme",
+  "bugs": {
+    "url": "https://github.com/RyanYahya/OpenDoc/issues"
+  },
+  "keywords": [
+    "pdf",
+    "presentations",
+    "powerpoint",
+    "documents",
+    "agents",
+    "templates",
+    "themes",
+    "headless"
+  ]
+}

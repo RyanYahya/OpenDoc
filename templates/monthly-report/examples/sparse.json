@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "title": "The first month of a simpler routine",
+  "organization": "Northline Studio",
+  "period": { "start": "2026-07-01", "end": "2026-07-31" },
+  "issuedOn": "2026-08-03",
+  "synthetic": true,
+  "sourceNote": "Synthetic OpenDoc example. All figures and activities are illustrative; no real organizational records were used.",
+  "summary": "The team began recording requests in one shared local register. Twelve assignments were completed during the month. There is not yet enough consistent history to set a useful cycle-time target. The next step is to agree a clear definition of completion and use it for every new assignment.",
+  "metrics": [
+    { "id": "completed-requests", "label": "Requests completed", "value": 12, "target": null },
+    { "id": "open-backlog", "label": "Open at month end", "value": 4 }
+  ],
+  "highlights": null,
+  "risks": [],
+  "actions": [
+    { "id": "completion-definition", "title": "Agree one definition of a completed request.", "owner": "Operations team", "due": "2026-08-07", "status": "planned" }
+  ],
+  "notes": null
+}

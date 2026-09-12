@@ -1,0 +1,17 @@
+.export-dropdown { width: 320px; }
+.export-dropdown-body { padding: 8px; }
+.export-dropdown-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.export-dropdown-heading h2 { margin: 0; font-size: var(--title-size); line-height: var(--title-leading); font-weight: 500; }
+.export-dropdown-heading .icon-button { margin: -4px -4px -4px 0; }
+.export-dropdown-body > p { margin: 6px 0 0; color: var(--muted); font-size: var(--label-size); line-height: 1.5; }
+.export-dropdown .export-filename { display: grid; gap: 8px; margin-top: 18px; }
+.export-format { display: grid; gap: 8px; margin-top: 16px; }
+.export-format .ui-select { width: 100%; justify-content: space-between; }
+.export-file { display: flex; align-items: center; gap: 10px; padding-block: 16px 6px; }
+.export-file > div { flex: 1; min-width: 0; }
+.export-file strong { display: block; font-size: var(--label-size); font-weight: 500; overflow-wrap: anywhere; }
+.export-file span { display: block; margin-top: 4px; font-size: 12px; color: var(--muted); }
+.export-status { padding: 10px; margin: 12px 0 0; background: var(--surface-raised); border: 1px solid var(--control-line); border-radius: var(--control-radius); font-size: var(--label-size); line-height: 1.5; }
+.export-status p { margin: 6px 0 10px; }
+.export-dropdown-body > .field-error { color: var(--destructive); }
+.export-save { width: 100%; justify-content: center; margin-top: 16px; }

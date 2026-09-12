@@ -1,0 +1,519 @@
+{
+  "schemaVersion": 1,
+  "title": "Keeping the work moving as the register grows",
+  "organization": "Northline Studio",
+  "preparedBy": "Operations team",
+  "period": {
+    "start": "2026-08-01",
+    "end": "2026-08-31"
+  },
+  "issuedOn": "2026-09-04",
+  "synthetic": true,
+  "sourceNote": "Synthetic OpenDoc stress example. Every organization, person, measure, and activity is invented to test long prose, repeated table headers, and stable record identities. This is not operational evidence.",
+  "summary": "August was a month of consolidation. The team completed more work with fewer late handoffs, while the oldest unresolved requests continued to absorb attention. The clearest improvement came from a simple change: every new assignment began with a named owner and a written definition of completion. That reduced the time spent deciding who should move a piece of work forward. The remaining constraint is capacity in final review. Adding more work at the front of the process would increase waiting time unless that constraint is addressed. September should therefore focus on closing the oldest requests, protecting review time, and testing a second reviewer on one service line before making a wider commitment. This extended edition includes a complete register of follow-up work. The register deliberately preserves detail that would be lost in a short scorecard: which part of the process each commitment affects, who owns the next move, and when that move is due. The length is purposeful. A reliable report must remain readable when a quiet month becomes a busy one, without requiring its author to repair individual page breaks. Readers can use the section outline to move between interpretation and the register, while the running title and page numbers maintain context.",
+  "metrics": [
+    {
+      "id": "completed-requests",
+      "label": "Requests completed",
+      "value": 86,
+      "target": 80,
+      "precision": 0,
+      "note": "Six above plan; the work mix was broadly unchanged."
+    },
+    {
+      "id": "on-time-delivery",
+      "label": "Delivered on time",
+      "value": 91.9,
+      "target": 95,
+      "unit": "%",
+      "precision": 1,
+      "note": "Final review caused five of the seven late handoffs."
+    },
+    {
+      "id": "median-cycle",
+      "label": "Median cycle time",
+      "value": 4.2,
+      "target": 4,
+      "unit": "days",
+      "precision": 1,
+      "note": "Calendar days from accepted brief to delivery."
+    },
+    {
+      "id": "open-backlog",
+      "label": "Open at month end",
+      "value": 23,
+      "precision": 0,
+      "note": "Eight requests are more than ten days old."
+    }
+  ],
+  "highlights": [
+    {
+      "id": "clearer-starts",
+      "title": "A clearer start reduced avoidable returns",
+      "body": "The intake checklist now asks for one decision owner, the expected output, and the date on which it becomes useful. Reviewers returned fewer briefs for clarification, and the weekly planning meeting spent less time reconstructing context. The change is deliberately small: the checklist remains on the assignment itself, where both the requester and the team can see it. It does not create a separate approval queue."
+    },
+    {
+      "id": "review-capacity",
+      "title": "The bottleneck moved into final review",
+      "body": "Most assignments passed through preparation without difficulty, but review demand was concentrated in the last week. Work arriving together competed for the same specialist. The result was a set of late handoffs that had little to do with the quality of the original brief. A protected review session twice a week is the next experiment. Its purpose is to make capacity visible early enough to adjust commitments."
+    },
+    {
+      "id": "oldest-work",
+      "title": "The oldest requests need individual decisions",
+      "body": "The eight requests older than ten days are not one problem. Three need a decision from the requester, two are waiting for missing material, and three require specialist review. The team will give each request an explicit next step and a named decision date. Closing the register administratively would improve the count while leaving the underlying work unresolved, so completion will continue to require a delivered or explicitly cancelled outcome."
+    },
+    {
+      "id": "brief-quality",
+      "title": "Brief quality is improving",
+      "body": "A good brief makes an assignment easier to begin and easier to finish. The current checklist asks the requester to describe the intended reader, the decision the work supports, and the form the answer should take. These questions expose uncertainty while it is still inexpensive to resolve. The team is tracking clarification requests alongside completion counts because faster delivery is of limited value when the result answers the wrong question."
+    },
+    {
+      "id": "handoff-notes",
+      "title": "Handoff notes make incomplete work legible",
+      "body": "Several assignments pass between two people before review. The new handoff note records what has been completed, what remains uncertain, and the next useful action. It does not repeat the full history. A short note is most useful when it gives the recipient enough context to move immediately. The team will inspect a small sample at the next review to check whether the note saves time or merely adds another writing task."
+    },
+    {
+      "id": "small-batches",
+      "title": "Smaller batches reduce waiting",
+      "body": "Work released to review in a single batch tends to wait together. Smaller releases may shorten that queue, but the effect depends on reviewer availability and the cost of switching between assignments. The team will try smaller batches on one service line first, with a fixed review window. The experiment will compare time spent waiting, number of returns, and the amount of reviewer time required per completed assignment."
+    },
+    {
+      "id": "requester-response",
+      "title": "Requester response needs an explicit deadline",
+      "body": "A request that is waiting for a decision can remain technically open for weeks without anyone acting. The register now distinguishes work the team can advance from work that requires an external answer. When an answer is needed, the owner records the question and a date for follow-up. The purpose is to create an honest account of what is blocking progress, rather than to attribute every delay to the delivery team."
+    },
+    {
+      "id": "definitions",
+      "title": "Definitions are part of the work",
+      "body": "Two teams can produce different completion counts from the same register if they use different rules. This month the operational definition of completion was written next to the scorecard: the output has been delivered and accepted, or the requester has explicitly cancelled it. Drafts sent for comment are still in progress. The definition will remain stable across reporting periods unless there is a documented reason to change it."
+    },
+    {
+      "id": "capacity-view",
+      "title": "Capacity needs a forward view",
+      "body": "A month-end scorecard shows what already happened. The next planning review will also examine accepted work due in the coming fortnight. This makes it possible to discuss a likely capacity conflict while dates can still be negotiated. Tentative demand will be shown separately from accepted assignments. The distinction matters because a speculative opportunity should not silently displace a commitment that the team has already made."
+    },
+    {
+      "id": "review-learning",
+      "title": "Review should leave useful learning behind",
+      "body": "When a reviewer returns an assignment, the reason should be specific enough to improve the next attempt. A note such as needs more work does not tell the author what to change. The pilot will use a short set of categories, followed by one concrete observation. The categories are aids to conversation, not a quality score. Repeated patterns will be discussed in the weekly review without naming individuals in the report."
+    }
+  ],
+  "risks": [
+    {
+      "id": "single-reviewer",
+      "title": "Review depends on one specialist",
+      "level": "high",
+      "owner": "Maya Chen",
+      "mitigation": "A planned absence could delay several active assignments at once. Pair a second reviewer with the specialist on one service line, record the review criteria, and compare decisions before expanding the arrangement. The immediate aim is dependable cover, with quality checked on a small sample."
+    },
+    {
+      "id": "uncertain-demand",
+      "title": "September demand is uneven",
+      "level": "medium",
+      "owner": "Jon Bell",
+      "mitigation": "Two possible assignments have not yet been confirmed. Keep them visible in the capacity review, but do not count them as accepted work or reserve a full delivery slot. Confirm scope and timing with the requesters before changing existing commitments."
+    },
+    {
+      "id": "definition-drift",
+      "title": "Definitions may drift across service lines",
+      "level": "medium",
+      "owner": "Ari Patel",
+      "mitigation": "Use one completed-work definition for the reporting period. Record any proposed change with the reason, the first period it affects, and whether historical measures can be compared. Do not revise previous figures silently."
+    },
+    {
+      "id": "unowned-dependencies",
+      "title": "External dependencies can become unowned",
+      "level": "high",
+      "owner": "Jon Bell",
+      "mitigation": "Give every waiting item a named owner and a dated next action, even when the answer must come from outside the team. Escalate unresolved dependencies through the existing review instead of creating a separate tracking system."
+    },
+    {
+      "id": "late-scope-change",
+      "title": "Late scope changes can erase the original commitment",
+      "level": "medium",
+      "owner": "Maya Chen",
+      "mitigation": "When a requester changes the intended output, record the new scope and date next to the original agreement. Review the effect on other accepted work before promising a revised delivery date."
+    },
+    {
+      "id": "quality-shortcut",
+      "title": "Throughput targets can encourage premature completion",
+      "level": "high",
+      "owner": "Ari Patel",
+      "mitigation": "Keep acceptance in the completion definition and inspect a small sample of recently closed requests. Discuss returns and rework with the completion count so that a faster close does not conceal an unfinished outcome."
+    },
+    {
+      "id": "review-fatigue",
+      "title": "Review demand can crowd out preparation",
+      "level": "medium",
+      "owner": "Maya Chen",
+      "mitigation": "Keep review sessions bounded and publish the work ready for each session in advance. If demand persistently exceeds available time, reduce accepted scope or change the capacity plan explicitly."
+    },
+    {
+      "id": "register-maintenance",
+      "title": "The register can become expensive to maintain",
+      "level": "low",
+      "owner": "Operations team",
+      "mitigation": "Remove fields that do not support a decision. Owners should update the next action and status where they already work, with the monthly report generated from the same information rather than a second manually maintained copy."
+    }
+  ],
+  "actions": [
+    {
+      "id": "harbor-review-cycle-1",
+      "title": "Harbor, review cycle 1. Confirm the requester and the accepted completion test for the open brief.",
+      "owner": "Maya Chen",
+      "due": "2026-09-08",
+      "status": "planned"
+    },
+    {
+      "id": "juniper-review-cycle-1",
+      "title": "Juniper, review cycle 1. Collect the missing source material and record any remaining gaps before review.",
+      "owner": "Jon Bell",
+      "due": "2026-09-09",
+      "status": "in-progress"
+    },
+    {
+      "id": "orchard-review-cycle-1",
+      "title": "Orchard, review cycle 1. Pair the service-line reviewer with a second reviewer on a completed example.",
+      "owner": "Ari Patel",
+      "due": "2026-09-10",
+      "status": "complete"
+    },
+    {
+      "id": "beacon-review-cycle-1",
+      "title": "Beacon, review cycle 1. Agree the next decision date with the requester and update the active register.",
+      "owner": "Operations team",
+      "due": "2026-09-11",
+      "status": "planned"
+    },
+    {
+      "id": "cedar-review-cycle-1",
+      "title": "Cedar, review cycle 1. Check the handoff note for a clear next action and an identified owner.",
+      "owner": "Maya Chen",
+      "due": "2026-09-12",
+      "status": "in-progress"
+    },
+    {
+      "id": "willow-review-cycle-1",
+      "title": "Willow, review cycle 1. Review accepted work due in the next fortnight against available review time.",
+      "owner": "Jon Bell",
+      "due": "2026-09-13",
+      "status": "complete"
+    },
+    {
+      "id": "meadow-review-cycle-1",
+      "title": "Meadow, review cycle 1. Inspect recently closed work for acceptance and document any necessary return.",
+      "owner": "Ari Patel",
+      "due": "2026-09-14",
+      "status": "planned"
+    },
+    {
+      "id": "summit-review-cycle-1",
+      "title": "Summit, review cycle 1. Update the operating definition where a repeated ambiguity has been observed.",
+      "owner": "Operations team",
+      "due": "2026-09-15",
+      "status": "in-progress"
+    },
+    {
+      "id": "harbor-review-cycle-2",
+      "title": "Harbor, review cycle 2. Confirm the requester and the accepted completion test for the open brief.",
+      "owner": "Maya Chen",
+      "due": "2026-09-16",
+      "status": "complete"
+    },
+    {
+      "id": "juniper-review-cycle-2",
+      "title": "Juniper, review cycle 2. Collect the missing source material and record any remaining gaps before review.",
+      "owner": "Jon Bell",
+      "due": "2026-09-17",
+      "status": "planned"
+    },
+    {
+      "id": "orchard-review-cycle-2",
+      "title": "Orchard, review cycle 2. Pair the service-line reviewer with a second reviewer on a completed example.",
+      "owner": "Ari Patel",
+      "due": "2026-09-18",
+      "status": "in-progress"
+    },
+    {
+      "id": "beacon-review-cycle-2",
+      "title": "Beacon, review cycle 2. Agree the next decision date with the requester and update the active register.",
+      "owner": "Operations team",
+      "due": "2026-09-19",
+      "status": "complete"
+    },
+    {
+      "id": "cedar-review-cycle-2",
+      "title": "Cedar, review cycle 2. Check the handoff note for a clear next action and an identified owner.",
+      "owner": "Maya Chen",
+      "due": "2026-09-20",
+      "status": "planned"
+    },
+    {
+      "id": "willow-review-cycle-2",
+      "title": "Willow, review cycle 2. Review accepted work due in the next fortnight against available review time.",
+      "owner": "Jon Bell",
+      "due": "2026-09-21",
+      "status": "in-progress"
+    },
+    {
+      "id": "meadow-review-cycle-2",
+      "title": "Meadow, review cycle 2. Inspect recently closed work for acceptance and document any necessary return.",
+      "owner": "Ari Patel",
+      "due": "2026-09-22",
+      "status": "complete"
+    },
+    {
+      "id": "summit-review-cycle-2",
+      "title": "Summit, review cycle 2. Update the operating definition where a repeated ambiguity has been observed.",
+      "owner": "Operations team",
+      "due": "2026-09-23",
+      "status": "planned"
+    },
+    {
+      "id": "harbor-review-cycle-3",
+      "title": "Harbor, review cycle 3. Confirm the requester and the accepted completion test for the open brief.",
+      "owner": "Maya Chen",
+      "due": "2026-09-24",
+      "status": "in-progress"
+    },
+    {
+      "id": "juniper-review-cycle-3",
+      "title": "Juniper, review cycle 3. Collect the missing source material and record any remaining gaps before review.",
+      "owner": "Jon Bell",
+      "due": "2026-09-25",
+      "status": "complete"
+    },
+    {
+      "id": "orchard-review-cycle-3",
+      "title": "Orchard, review cycle 3. Pair the service-line reviewer with a second reviewer on a completed example.",
+      "owner": "Ari Patel",
+      "due": "2026-09-26",
+      "status": "planned"
+    },
+    {
+      "id": "beacon-review-cycle-3",
+      "title": "Beacon, review cycle 3. Agree the next decision date with the requester and update the active register.",
+      "owner": "Operations team",
+      "due": "2026-09-27",
+      "status": "in-progress"
+    },
+    {
+      "id": "cedar-review-cycle-3",
+      "title": "Cedar, review cycle 3. Check the handoff note for a clear next action and an identified owner.",
+      "owner": "Maya Chen",
+      "due": "2026-09-28",
+      "status": "complete"
+    },
+    {
+      "id": "willow-review-cycle-3",
+      "title": "Willow, review cycle 3. Review accepted work due in the next fortnight against available review time.",
+      "owner": "Jon Bell",
+      "due": "2026-09-29",
+      "status": "planned"
+    },
+    {
+      "id": "meadow-review-cycle-3",
+      "title": "Meadow, review cycle 3. Inspect recently closed work for acceptance and document any necessary return.",
+      "owner": "Ari Patel",
+      "due": "2026-09-30",
+      "status": "in-progress"
+    },
+    {
+      "id": "summit-review-cycle-3",
+      "title": "Summit, review cycle 3. Update the operating definition where a repeated ambiguity has been observed.",
+      "owner": "Operations team",
+      "due": "2026-09-08",
+      "status": "complete"
+    },
+    {
+      "id": "harbor-review-cycle-4",
+      "title": "Harbor, review cycle 4. Confirm the requester and the accepted completion test for the open brief.",
+      "owner": "Maya Chen",
+      "due": "2026-09-09",
+      "status": "planned"
+    },
+    {
+      "id": "juniper-review-cycle-4",
+      "title": "Juniper, review cycle 4. Collect the missing source material and record any remaining gaps before review.",
+      "owner": "Jon Bell",
+      "due": "2026-09-10",
+      "status": "in-progress"
+    },
+    {
+      "id": "orchard-review-cycle-4",
+      "title": "Orchard, review cycle 4. Pair the service-line reviewer with a second reviewer on a completed example.",
+      "owner": "Ari Patel",
+      "due": "2026-09-11",
+      "status": "complete"
+    },
+    {
+      "id": "beacon-review-cycle-4",
+      "title": "Beacon, review cycle 4. Agree the next decision date with the requester and update the active register.",
+      "owner": "Operations team",
+      "due": "2026-09-12",
+      "status": "planned"
+    },
+    {
+      "id": "cedar-review-cycle-4",
+      "title": "Cedar, review cycle 4. Check the handoff note for a clear next action and an identified owner.",
+      "owner": "Maya Chen",
+      "due": "2026-09-13",
+      "status": "in-progress"
+    },
+    {
+      "id": "willow-review-cycle-4",
+      "title": "Willow, review cycle 4. Review accepted work due in the next fortnight against available review time.",
+      "owner": "Jon Bell",
+      "due": "2026-09-14",
+      "status": "complete"
+    },
+    {
+      "id": "meadow-review-cycle-4",
+      "title": "Meadow, review cycle 4. Inspect recently closed work for acceptance and document any necessary return.",
+      "owner": "Ari Patel",
+      "due": "2026-09-15",
+      "status": "planned"
+    },
+    {
+      "id": "summit-review-cycle-4",
+      "title": "Summit, review cycle 4. Update the operating definition where a repeated ambiguity has been observed.",
+      "owner": "Operations team",
+      "due": "2026-09-16",
+      "status": "in-progress"
+    },
+    {
+      "id": "harbor-review-cycle-5",
+      "title": "Harbor, review cycle 5. Confirm the requester and the accepted completion test for the open brief.",
+      "owner": "Maya Chen",
+      "due": "2026-09-17",
+      "status": "complete"
+    },
+    {
+      "id": "juniper-review-cycle-5",
+      "title": "Juniper, review cycle 5. Collect the missing source material and record any remaining gaps before review.",
+      "owner": "Jon Bell",
+      "due": "2026-09-18",
+      "status": "planned"
+    },
+    {
+      "id": "orchard-review-cycle-5",
+      "title": "Orchard, review cycle 5. Pair the service-line reviewer with a second reviewer on a completed example.",
+      "owner": "Ari Patel",
+      "due": "2026-09-19",
+      "status": "in-progress"
+    },
+    {
+      "id": "beacon-review-cycle-5",
+      "title": "Beacon, review cycle 5. Agree the next decision date with the requester and update the active register.",
+      "owner": "Operations team",
+      "due": "2026-09-20",
+      "status": "complete"
+    },
+    {
+      "id": "cedar-review-cycle-5",
+      "title": "Cedar, review cycle 5. Check the handoff note for a clear next action and an identified owner.",
+      "owner": "Maya Chen",
+      "due": "2026-09-21",
+      "status": "planned"
+    },
+    {
+      "id": "willow-review-cycle-5",
+      "title": "Willow, review cycle 5. Review accepted work due in the next fortnight against available review time.",
+      "owner": "Jon Bell",
+      "due": "2026-09-22",
+      "status": "in-progress"
+    },
+    {
+      "id": "meadow-review-cycle-5",
+      "title": "Meadow, review cycle 5. Inspect recently closed work for acceptance and document any necessary return.",
+      "owner": "Ari Patel",
+      "due": "2026-09-23",
+      "status": "complete"
+    },
+    {
+      "id": "summit-review-cycle-5",
+      "title": "Summit, review cycle 5. Update the operating definition where a repeated ambiguity has been observed.",
+      "owner": "Operations team",
+      "due": "2026-09-24",
+      "status": "planned"
+    },
+    {
+      "id": "harbor-review-cycle-6",
+      "title": "Harbor, review cycle 6. Confirm the requester and the accepted completion test for the open brief.",
+      "owner": "Maya Chen",
+      "due": "2026-09-25",
+      "status": "in-progress"
+    },
+    {
+      "id": "juniper-review-cycle-6",
+      "title": "Juniper, review cycle 6. Collect the missing source material and record any remaining gaps before review.",
+      "owner": "Jon Bell",
+      "due": "2026-09-26",
+      "status": "complete"
+    },
+    {
+      "id": "orchard-review-cycle-6",
+      "title": "Orchard, review cycle 6. Pair the service-line reviewer with a second reviewer on a completed example.",
+      "owner": "Ari Patel",
+      "due": "2026-09-27",
+      "status": "planned"
+    },
+    {
+      "id": "beacon-review-cycle-6",
+      "title": "Beacon, review cycle 6. Agree the next decision date with the requester and update the active register.",
+      "owner": "Operations team",
+      "due": "2026-09-28",
+      "status": "in-progress"
+    },
+    {
+      "id": "cedar-review-cycle-6",
+      "title": "Cedar, review cycle 6. Check the handoff note for a clear next action and an identified owner.",
+      "owner": "Maya Chen",
+      "due": "2026-09-29",
+      "status": "complete"
+    },
+    {
+      "id": "willow-review-cycle-6",
+      "title": "Willow, review cycle 6. Review accepted work due in the next fortnight against available review time.",
+      "owner": "Jon Bell",
+      "due": "2026-09-30",
+      "status": "planned"
+    },
+    {
+      "id": "meadow-review-cycle-6",
+      "title": "Meadow, review cycle 6. Inspect recently closed work for acceptance and document any necessary return.",
+      "owner": "Ari Patel",
+      "due": "2026-09-08",
+      "status": "in-progress"
+    },
+    {
+      "id": "summit-review-cycle-6",
+      "title": "Summit, review cycle 6. Update the operating definition where a repeated ambiguity has been observed.",
+      "owner": "Operations team",
+      "due": "2026-09-09",
+      "status": "complete"
+    }
+  ],
+  "notes": [
+    {
+      "id": "measurement-window",
+      "title": "The measurement window",
+      "body": "Completed requests and on-time delivery include work delivered during August, even when it began earlier. Cycle time uses the same completed group. The open register is a separate snapshot taken at the end of the month. These measures should not be added together as if they were counts of the same population."
+    },
+    {
+      "id": "interpretation",
+      "title": "How to read the targets",
+      "body": "The targets are planning thresholds supplied with this example. A result above a target is not automatically better: lower cycle time is desirable, while a higher completion count may reflect a change in work mix. Interpret each value alongside its definition and the narrative before drawing a conclusion."
+    },
+    {
+      "id": "status-meaning",
+      "title": "The meaning of action status",
+      "body": "Planned means that an owner and intended action are recorded. In progress means that the owner has begun the work. Complete means that the supplied record reports the action as finished. These labels describe different states of work; they are not percentages of effort. The report does not infer a state from a due date or manufacture a completion claim from a missing update."
+    },
+    {
+      "id": "long-edition",
+      "title": "Why this edition is longer",
+      "body": "This example deliberately includes an extended narrative and forty-eight action records. The content is synthetic and is intended to exercise natural pagination, repeated table headings, and readable continuation across several pages. A real report should include detail only when it helps its intended reader make or examine a decision. A template that can hold a long register does not require every report to become one."
+    }
+  ]
+}

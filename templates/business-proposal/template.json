@@ -1,0 +1,11 @@
+{
+  "name": "Business proposal",
+  "description": "A clear proposal opening, readable sections, and space for scope, delivery, and optional calculated pricing. A separate cover and acceptance area are available for documents that need them.",
+  "format": "A4 \u00b7 Proposal with optional cover",
+  "structure": [
+    "A substantial title, optional subtitle, and prepared-for/by details introduce the proposal. Short proposals begin on the body page; a cover is optional. An optional logo slot sits at the upper right.",
+    "A broad reading column supports prose, deliverables, schedules, and exhibits in the author's chosen order.",
+    "Optional pricing uses validated data and calculated totals. It can sit wherever it helps the proposal, or be omitted entirely.",
+    "References and an optional acceptance area follow the body. Long material flows naturally, with quiet page numbers and an optional running title."
+  ]
+}

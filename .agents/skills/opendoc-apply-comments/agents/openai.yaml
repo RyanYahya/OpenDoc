@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenDoc: Apply comments"
+  short_description: "Revise marked passages and resolve verified feedback."
+  default_prompt: "Use $opendoc-apply-comments in this OpenDoc workspace."

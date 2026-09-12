@@ -1,0 +1,7 @@
+.skill-index { width: 336px; padding: 12px; font-size: var(--menu-font-size); line-height: var(--menu-leading); }
+.skill-index-title { font-weight: 500; }
+.skill-index-intro { color: var(--muted); margin-top: 3px; }
+.skill-index dl { margin: 12px 0 0; }
+.skill-index dl > div + div { margin-top: 10px; }
+.skill-index dt { font-weight: 500; overflow-wrap: anywhere; }
+.skill-index dd { margin: 2px 0 0; color: var(--muted); }

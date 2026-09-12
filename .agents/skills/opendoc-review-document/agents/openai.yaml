@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenDoc: Review document"
+  short_description: "Review PDFs and decks, content, fonts, and editable exports."
+  default_prompt: "Use $opendoc-review-document in this OpenDoc workspace."

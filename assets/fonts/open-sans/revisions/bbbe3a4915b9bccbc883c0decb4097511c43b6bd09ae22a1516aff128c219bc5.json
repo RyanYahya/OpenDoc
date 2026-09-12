@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "kind": "font",
+  "id": "open-sans",
+  "name": "Open Sans",
+  "description": "",
+  "createdAt": "2026-09-10T11:28:43.923Z",
+  "faces": [
+    {
+      "id": "400-italic",
+      "family": "Open Sans",
+      "postscriptName": "OpenSans-Italic",
+      "weight": 400,
+      "style": "italic",
+      "file": {
+        "file": "files/1bc0594a83762b2c25d38915a34464b7fec6088298ca22d151757bf98d6700ec.ttf",
+        "hash": "1bc0594a83762b2c25d38915a34464b7fec6088298ca22d151757bf98d6700ec",
+        "mime": "font/ttf",
+        "bytes": 127392
+      }
+    },
+    {
+      "id": "600-italic",
+      "family": "Open Sans",
+      "postscriptName": "OpenSans-SemiBoldItalic",
+      "weight": 600,
+      "style": "italic",
+      "file": {
+        "file": "files/ff4fdc11204e0edd14e9a0bb6c374b847a9093b0ec2c16702e03afca79ac4ef7.ttf",
+        "hash": "ff4fdc11204e0edd14e9a0bb6c374b847a9093b0ec2c16702e03afca79ac4ef7",
+        "mime": "font/ttf",
+        "bytes": 127548
+      }
+    },
+    {
+      "id": "700-italic",
+      "family": "Open Sans",
+      "postscriptName": "OpenSans-BoldItalic",
+      "weight": 700,
+      "style": "italic",
+      "file": {
+        "file": "files/6d3884d0d57c1b67e9c50c54eca7b69c535c114e76bd7a9cfda0258588185553.ttf",
+        "hash": "6d3884d0d57c1b67e9c50c54eca7b69c535c114e76bd7a9cfda0258588185553",
+        "mime": "font/ttf",
+        "bytes": 127156
+      }
+    },
+    {
+      "id": "400-normal",
+      "family": "Open Sans",
+      "postscriptName": "OpenSans-Regular",
+      "weight": 400,
+      "style": "normal",
+      "file": {
+        "file": "files/47ed1cfaa7ffca04a04ab850b2938fd52c09d1b44cfa3e2980878e166b0cbd87.ttf",
+        "hash": "47ed1cfaa7ffca04a04ab850b2938fd52c09d1b44cfa3e2980878e166b0cbd87",
+        "mime": "font/ttf",
+        "bytes": 122116
+      }
+    },
+    {
+      "id": "600-normal",
+      "family": "Open Sans",
+      "postscriptName": "OpenSans-SemiBold",
+      "weight": 600,
+      "style": "normal",
+      "file": {
+        "file": "files/733eb93b167e6d45de09aa768f6c0355647c2c26f5416dbc7407a08ed41e81c6.ttf",
+        "hash": "733eb93b167e6d45de09aa768f6c0355647c2c26f5416dbc7407a08ed41e81c6",
+        "mime": "font/ttf",
+        "bytes": 122060
+      }
+    },
+    {
+      "id": "700-normal",
+      "family": "Open Sans",
+      "postscriptName": "OpenSans-Bold",
+      "weight": 700,
+      "style": "normal",
+      "file": {
+        "file": "files/75367e6da7d914eaed87883ba51b2a2b5816b5cdbb39f96ec5c81a5b032bfd5a.ttf",
+        "hash": "75367e6da7d914eaed87883ba51b2a2b5816b5cdbb39f96ec5c81a5b032bfd5a",
+        "mime": "font/ttf",
+        "bytes": 122132
+      }
+    }
+  ],
+  "compatibility": {
+    "status": "ready",
+    "defaultEligible": true
+  },
+  "specimen": {
+    "file": "files/574939af301f07df8e21cfff279465c5981dd9d9cf62086f7515897df951c6f5.pdf",
+    "hash": "574939af301f07df8e21cfff279465c5981dd9d9cf62086f7515897df951c6f5",
+    "mime": "application/pdf",
+    "bytes": 85536
+  },
+  "revision": "bbbe3a4915b9bccbc883c0decb4097511c43b6bd09ae22a1516aff128c219bc5"
+}

@@ -1,0 +1,68 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import { spawn } from 'node:child_process';
+import { readFile, readdir, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { fixture, projectRoot, until } from './helpers';
+import type { DocumentState } from '../src/shared/types';
+import type { SavedExport } from '../src/shared/export';
+
+test('PDF export HTTP saves exact preview bytes, authenticates writes, downloads and recovers receipts', { timeout: 60_000 }, async () => {
+  const f = await fixture();
+  const child = spawn(process.execPath, ['--import', 'tsx', resolve(projectRoot, 'src/server/index.ts')], { cwd: f.root, env: { ...process.env, OPENDOC_PORT: '0' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  let logs = ''; child.stdout.on('data', data => logs += data); child.stderr.on('data', data => logs += data);
+  try {
+    let connection: { origin: string; token: string } | undefined;
+    await until(async () => { try { connection = JSON.parse(await readFile(resolve(f.root, '.opendoc/server.json'), 'utf8')); return true; } catch { if (child.exitCode !== null) throw new Error(logs); return false; } });
+    const { origin, token } = connection!;
+    assert.deepEqual(await fetch(`${origin}/api/exports/capabilities`).then(r => r.json()), { copyFile: process.platform === 'darwin' });
+    const headers = { 'Content-Type': 'application/json', 'X-OpenDoc-Token': token, Origin: origin };
+    const post = (path: string, value: unknown) => fetch(`${origin}${path}`, { method: 'POST', headers, body: JSON.stringify(value) });
+    let state: DocumentState;
+    await until(async () => { state = (await fetch(`${origin}/api/documents`).then(r => r.json()))[0]; return state?.status === 'ready'; }, 30_000);
+    const request = { id: randomUUID(), hash: state!.artifact!.hash, filename: 'Résumé.pdf' };
+    const route = '/api/documents/proof/exports';
+    assert.equal((await fetch(`${origin}${route}`, { method: 'POST', body: JSON.stringify(request) })).status, 403);
+    assert.equal((await post(route, { ...request, hash: 'stale' })).status, 409);
+    assert.equal((await post(route, { ...request, filename: '../outside.pdf' })).status, 400);
+    const unsupported = await post(route, { ...request, format: 'pptx', filename: 'Proof.pptx' });
+    assert.equal(unsupported.status, 400);
+    assert.match(await unsupported.text(), /presentations only/);
+    const previewResponse = await fetch(`${origin}/api/documents/proof/pdf?hash=${request.hash}`);
+    const preview = Buffer.from(new Uint8Array(await previewResponse.arrayBuffer()));
+    const response = await post(route, request);
+    assert.equal(response.status, 200, await response.clone().text());
+    const saved = await response.json() as SavedExport;
+    assert.deepEqual(await readFile(saved.path), preview);
+    assert.deepEqual(await post(route, request).then(r => r.json()), saved);
+    assert.deepEqual(await fetch(`${origin}/api/exports/${request.id}`).then(r => r.json()), { result: saved });
+    const download = await fetch(`${origin}/api/exports/${request.id}/download`);
+    assert.equal(download.headers.get('content-type'), 'application/pdf');
+    assert.match(download.headers.get('content-disposition')!, /attachment;.*filename\*=UTF-8''R%C3%A9sum%C3%A9.pdf/);
+    assert.deepEqual(Buffer.from(await download.arrayBuffer()), preview);
+    assert.match((await fetch(`${origin}/api/exports/${request.id}/open`)).headers.get('content-disposition')!, /^inline;/);
+    assert.equal((await fetch(`${origin}/api/exports/${request.id}/reveal`, { method: 'POST' })).status, 403);
+    assert.equal((await fetch(`${origin}/api/exports/${request.id}/copy`, { method: 'POST' })).status, 403);
+    assert.equal((await post(`/api/exports/${randomUUID()}/copy`, {})).status, 404);
+    assert.equal((await fetch(`${origin}/api/exports/${randomUUID()}/download`)).status, 404);
+    await writeFile(f.entry, (await readFile(f.entry, 'utf8')).replace('A first draft', 'A revised draft'));
+    await until(async () => { const next = (await fetch(`${origin}/api/documents`).then(r => r.json()))[0]; return next?.status === 'ready' && next.artifact.hash !== request.hash; });
+    assert.deepEqual(await post(route, request).then(r => r.json()), saved, 'A completed receipt remains valid after a source change.');
+    assert.equal((await post(route, { ...request, id: randomUUID() })).status, 409);
+    assert.equal((await readdir(resolve(f.root, 'output'))).length, 1);
+    assert.equal((await fetch(`${origin}${route}`).then(r => r.json()))[0].id, saved.id);
+    assert.equal((await fetch(`${origin}/api/exports/${saved.id}`, { method: 'DELETE' })).status, 403);
+    assert.equal((await fetch(`${origin}/api/exports/${saved.id}/restore`, { method: 'POST' })).status, 403);
+    assert.equal((await fetch(`${origin}/api/exports/${saved.id}`, { method: 'DELETE', headers })).status, 200);
+    assert.deepEqual(await fetch(`${origin}${route}`).then(r => r.json()), []);
+    assert.equal((await fetch(`${origin}/api/exports/${saved.id}/download`)).status, 404);
+    assert.equal((await post(route, request)).status, 409);
+    assert.equal((await post(`/api/exports/${saved.id}/restore`, {})).status, 200);
+    assert.deepEqual(await readFile(saved.path), preview);
+  } finally {
+    child.kill('SIGTERM');
+    await new Promise<void>(accept => { if (child.exitCode !== null) accept(); else child.once('exit', () => accept()); });
+    await f.cleanup();
+  }
+});

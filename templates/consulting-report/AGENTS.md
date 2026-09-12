@@ -1,0 +1,11 @@
+# Consulting report
+
+Use this template as a soft foundation for a consulting document. Its character is clear hierarchy, consistent alignment, readable evidence, and useful navigation. The cover groups its content toward the bottom using native page alignment. The cover, type sizes, margins, and spacing are defaults, not a fixed rule system. A long title may need smaller type through `titleStyle`; a short report may work better with `cover={false}`. Rebalance the composition, adjust exhibit proportions, and adapt the rhythm to the actual reader and material. There is room for variation and creativity.
+
+The design research favored distinct title/body/note levels, clear section openings, exhibits with informative headlines, and sources close to the evidence. These are useful directions, not a mandatory writing method. Let the writer choose the content and its order. Add a summary or contents page only when it helps the document; do not force every report into the same outline. Use emphasis selectively so a reader can scan without every sentence competing for attention.
+
+Tables and charts need legible labels, units, and enough width. Prefer simplifying or reorienting a dense exhibit over shrinking its text beyond comfortable reading. Keep captions with figures and use existing native table header repetition. Choose a short `runningTitle` if the full title crowds the header. The cover is optional; page numbers follow the PDF's physical page order, including the cover.
+
+Use existing OpenDoc blocks and Forme's native Page, Fixed, View, Text, and Table flow. Keep variable prose breakable, and use Section for a heading with a short lead. Avoid custom text fitting, page splitting, simulated newspaper columns, or renderer patches. The theme supplies visual hierarchy, rhythm, and component treatments; document-specific design changes should stay local or use options that preserve shared defaults. Preserve stable IDs and accurate evidence.
+
+Review the actual PDF after adapting it. Shared changes need short and long specimens, table continuations, a second theme, and a working starter. Use Neutral for the catalog preview. Read `RESEARCH.md` for the formatting references and `README.md` for the component's options. Preserve unrelated documents and templates.

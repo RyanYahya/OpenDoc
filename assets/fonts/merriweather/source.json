@@ -1,0 +1,57 @@
+{
+  "family": "Merriweather",
+  "stylesheet": "https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap",
+  "license": "https://raw.githubusercontent.com/google/fonts/main/ofl/merriweather/OFL.txt",
+  "files": [
+    {
+      "filename": "Merriweather-Italic.ttf",
+      "url": "https://fonts.gstatic.com/s/merriweather/v33/u-4B0qyriQwlOrhSvowK_l5-eTxCVx0ZbwLvKH2Gk9hLmp0v5yA-xXPqCzLvPee1XYk_XSf-FmTCUF3w.ttf",
+      "sha256": "afff81272b7653417bb6f8bef57add055b1f9fda36f27eba5f32b40752bd08da",
+      "weight": 400,
+      "style": "italic",
+      "assetFile": "files/afff81272b7653417bb6f8bef57add055b1f9fda36f27eba5f32b40752bd08da.ttf"
+    },
+    {
+      "filename": "Merriweather-SemiboldItalic.ttf",
+      "url": "https://fonts.gstatic.com/s/merriweather/v33/u-4B0qyriQwlOrhSvowK_l5-eTxCVx0ZbwLvKH2Gk9hLmp0v5yA-xXPqCzLvPee1XYk_XSf-FmQcV13w.ttf",
+      "sha256": "fa71baebdd20a7d0de2e5e445a5922530fe9e1d740efbe791f113b682d3cb093",
+      "weight": 600,
+      "style": "italic",
+      "assetFile": "files/fa71baebdd20a7d0de2e5e445a5922530fe9e1d740efbe791f113b682d3cb093.ttf"
+    },
+    {
+      "filename": "Merriweather-BoldItalic.ttf",
+      "url": "https://fonts.gstatic.com/s/merriweather/v33/u-4B0qyriQwlOrhSvowK_l5-eTxCVx0ZbwLvKH2Gk9hLmp0v5yA-xXPqCzLvPee1XYk_XSf-FmQlV13w.ttf",
+      "sha256": "e9864a6790bf712a04e20f3662b206a1535186ed3e877fd859dd5fb9682335df",
+      "weight": 700,
+      "style": "italic",
+      "assetFile": "files/e9864a6790bf712a04e20f3662b206a1535186ed3e877fd859dd5fb9682335df.ttf"
+    },
+    {
+      "filename": "Merriweather-Regular.ttf",
+      "url": "https://fonts.gstatic.com/s/merriweather/v33/u-4D0qyriQwlOrhSvowK_l5UcA6zuSYEqOzpPe3HOZJ5eX1WtLaQwmYiScCmDxhtNOKl8yDr3icqEw.ttf",
+      "sha256": "e029d3b71e5bae3877c73f4f2b15af28db16593d49b0aed2a328d37ff7075846",
+      "weight": 400,
+      "style": "normal",
+      "assetFile": "files/e029d3b71e5bae3877c73f4f2b15af28db16593d49b0aed2a328d37ff7075846.ttf"
+    },
+    {
+      "filename": "Merriweather-Semibold.ttf",
+      "url": "https://fonts.gstatic.com/s/merriweather/v33/u-4D0qyriQwlOrhSvowK_l5UcA6zuSYEqOzpPe3HOZJ5eX1WtLaQwmYiScCmDxhtNOKl8yDrACAqEw.ttf",
+      "sha256": "1c54f91b910454251c4c2b7bd4e472e1abf265fba7ca3c0ef2eee2f41324099e",
+      "weight": 600,
+      "style": "normal",
+      "assetFile": "files/1c54f91b910454251c4c2b7bd4e472e1abf265fba7ca3c0ef2eee2f41324099e.ttf"
+    },
+    {
+      "filename": "Merriweather-Bold.ttf",
+      "url": "https://fonts.gstatic.com/s/merriweather/v33/u-4D0qyriQwlOrhSvowK_l5UcA6zuSYEqOzpPe3HOZJ5eX1WtLaQwmYiScCmDxhtNOKl8yDrOSAqEw.ttf",
+      "sha256": "90b7db4460fcd1a5ca49575c2668a793f3cd6447664d312a068d690e1c01e6bc",
+      "weight": 700,
+      "style": "normal",
+      "assetFile": "files/90b7db4460fcd1a5ca49575c2668a793f3cd6447664d312a068d690e1c01e6bc.ttf"
+    }
+  ],
+  "downloadedAt": "2026-09-10T09:57:26.347Z",
+  "preparation": "Google-supplied static TTF files, preserved without modification."
+}

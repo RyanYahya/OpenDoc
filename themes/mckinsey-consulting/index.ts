@@ -1,0 +1,60 @@
+import type { DocTheme } from 'opendoc/themes';
+
+export const colors = {
+  white: '#FFFFFF', ink: '#051C2C', focus: '#2251FF', muted: '#4D4D4D', rule: '#D0D0D0',
+  soft: '#F0F0F0', pale: '#AAE6F0', cyan: '#00A9F4', blue1: '#034B6F', blue2: '#027AB1',
+  blue3: '#39BDF3', blue4: '#71D2F1', positive: '#3C96B4', caution: '#FAA082', negative: '#E5546C',
+};
+
+export const theme: DocTheme = {
+  id: 'mckinsey-consulting', name: 'McKinsey Consulting',
+  description: 'An independent consulting system: answer-first headlines, rigorous exhibits, deep blue structure and electric blue focus.',
+  body: 'OpenDoc Sans', heading: 'OpenDoc Sans', ink: colors.ink, muted: colors.muted,
+  accent: colors.focus, paper: colors.white, line: colors.rule,
+  fontSize: 10.5, lineHeight: 1.42, margin: 48, paragraphGap: 10,
+  pageSize: 'A4', runningHeader: true, runningFooter: true, footerLabel: 'Analysis / Working paper',
+  useFor: ['Executive decisions', 'Analytical reports', 'Business cases'],
+  principles: ['State the answer before the evidence.', 'Make the comparison explicit.', 'Let one datum carry the color.'],
+  palette: [
+    { name: 'Deep blue', value: colors.ink, role: 'Structure, text and inverse covers' },
+    { name: 'Electric blue', value: colors.focus, role: 'One focal datum or conclusion' },
+    { name: 'White', value: colors.white, role: 'Exhibit canvas and inverse text' },
+    { name: 'Gray', value: colors.muted, role: 'Annotations and source notes' },
+    { name: 'Rule', value: colors.rule, role: 'Hairlines and chart axes' },
+    { name: 'Soft', value: colors.soft, role: 'Context bands' },
+    { name: 'Pale blue', value: colors.pale, role: 'Implication fields and selected rows' },
+    { name: 'Cyan', value: colors.cyan, role: 'Secondary emphasis' },
+    { name: 'Series 1', value: colors.blue1, role: 'Ordered dark series' },
+    { name: 'Series 2', value: colors.blue2, role: 'Ordered mid-dark series' },
+    { name: 'Series 3', value: colors.blue3, role: 'Ordered mid-light series' },
+    { name: 'Series 4', value: colors.blue4, role: 'Ordered light series' },
+    { name: 'Positive', value: colors.positive, role: 'Favorable movement' },
+    { name: 'Caution', value: colors.caution, role: 'Watch items' },
+    { name: 'Negative', value: colors.negative, role: 'Adverse exceptions' },
+  ],
+  geometry: [
+    'Square rectangles; no rounded analytical containers.',
+    'A4, 48 pt margins, 12-column construction with 12 pt gutters.',
+    'A 4 pt spacing unit; 0.5 pt rules and directly labeled bars.',
+    'Claim → metric frame → evidence → implication → source.',
+  ],
+  design: {
+    typography: {
+      h1: { fontSize: 31, lineHeight: 1.1, letterSpacing: -0.6, marginBottom: 16 },
+      h2: { fontSize: 19, lineHeight: 1.15, marginTop: 24, marginBottom: 10 },
+      h3: { fontSize: 12, marginTop: 16, marginBottom: 8 },
+      label: { fontSize: 8, fontWeight: 600, letterSpacing: 1.1 },
+      lead: { fontSize: 12, lineHeight: 1.4, color: colors.muted },
+      small: { fontSize: 8, lineHeight: 1.35 },
+      caption: { fontSize: 8.5, lineHeight: 1.35 },
+    },
+    page: { margin: { top: 48, bottom: 52, left: 48, right: 48 }, style: { backgroundColor: colors.white } },
+    title: { block: { borderBottomWidth: 0, paddingBottom: 0, marginBottom: 24 }, eyebrow: { marginBottom: 12 } },
+    cover: { page: { backgroundColor: colors.ink }, block: { borderTopWidth: 0, marginTop: 92 }, title: { fontSize: 58, lineHeight: 1.04, color: colors.white }, subtitle: { color: colors.pale }, eyebrow: { color: colors.pale }, byline: { color: colors.pale }, footer: { color: colors.pale } },
+    furniture: { header: { letterSpacing: 0.7, paddingBottom: 16 }, text: { fontSize: 7.5 }, footer: { borderTopWidth: 0.5, paddingTop: 8 }, pageNumber: 'total' },
+    table: { header: { backgroundColor: colors.ink }, headerText: { color: colors.white, fontSize: 8.5, fontWeight: 600 }, cell: { padding: 8 }, text: { fontSize: 9 }, alternate: colors.soft },
+    figure: { block: { marginTop: 12, marginBottom: 20 } },
+    callout: { block: { backgroundColor: colors.pale, borderLeftWidth: 0, padding: 16, marginBottom: 16 }, title: { color: colors.ink, fontWeight: 600, fontSize: 10 }, text: { fontSize: 10.5, color: colors.ink } },
+    list: { gap: 8, item: { marginBottom: 8 } },
+  },
+};

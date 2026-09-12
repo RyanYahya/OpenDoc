@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "title": "__OPENDOC_TITLE__",
+  "number": "SAMPLE-Q-001",
+  "issuedOn": "2026-09-08",
+  "validUntil": "2026-09-22",
+  "seller": {
+    "name": "Example Studio",
+    "details": "Studio address placeholder\nContact details placeholder"
+  },
+  "client": {
+    "name": "Example Client",
+    "details": "Client address placeholder\nAttention: project contact"
+  },
+  "synthetic": true,
+  "introduction": "A sample scope and pricing schedule. Replace the illustrative details with the work and commercial terms actually agreed with the client.",
+  "pricing": {
+    "currency": {
+      "code": "USD",
+      "decimals": 2
+    },
+    "items": [
+      {
+        "id": "planning",
+        "description": "Content planning workshop",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "writing",
+        "description": "Website copy package: supplied scope and agreed deliverables",
+        "quantity": "1",
+        "unit": "package",
+        "unitPrice": "600.00"
+      },
+      {
+        "id": "review",
+        "description": "Review and revision sessions",
+        "quantity": "3",
+        "unit": "hours",
+        "unitPrice": "75.00"
+      }
+    ],
+    "discount": "25.00",
+    "tax": {
+      "label": "Illustrative tax",
+      "ratePercent": "10"
+    }
+  },
+  "terms": [
+    {
+      "id": "delivery",
+      "title": "Delivery",
+      "text": "Illustrative schedule placeholder. Supply the milestones, dependencies, and delivery dates that apply to the actual work."
+    },
+    {
+      "id": "payment",
+      "title": "Payment",
+      "text": "Illustrative payment placeholder. Supply the agreed payment schedule and any relevant reference details."
+    }
+  ],
+  "acceptance": "Optional acceptance wording placeholder. Replace with the agreed process, or omit this area when acceptance is recorded elsewhere."
+}

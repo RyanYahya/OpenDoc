@@ -1,0 +1,11 @@
+{
+  "name": "Executive brief",
+  "description": "A compact title block, an optional prominent takeaway, and closely spaced sections with room for small exhibits. For concise updates, briefings, and decision notes.",
+  "format": "A4 · Compact brief",
+  "structure": [
+    "A compact, left-aligned title shares the opening page with the text. A label, author, and date are optional.",
+    "An optional opening takeaway uses larger, stronger type without requiring a particular argument or outline.",
+    "A broad single column and compact section headings make room for prose, a small table, or a figure in the author's chosen order.",
+    "References follow the text and page numbers sit quietly below. Aim for a concise document; longer material flows naturally without forced fitting."
+  ]
+}

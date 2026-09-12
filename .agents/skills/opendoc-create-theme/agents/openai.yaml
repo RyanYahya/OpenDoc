@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenDoc: Create theme"
+  short_description: "Build a visual system for documents and presentations."
+  default_prompt: "Use $opendoc-create-theme in this OpenDoc workspace."

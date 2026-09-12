@@ -1,0 +1,241 @@
+{
+  "schemaVersion": 1,
+  "title": "Website content services",
+  "number": "SAMPLE-INV-001",
+  "issuedOn": "2026-09-08",
+  "dueOn": "2026-09-22",
+  "reference": "SAMPLE-Q-001",
+  "seller": {
+    "name": "Example Studio",
+    "details": "Studio address placeholder\nContact details placeholder"
+  },
+  "customer": {
+    "name": "Example Client",
+    "details": "Client address placeholder\nAttention: project contact"
+  },
+  "synthetic": true,
+  "pricing": {
+    "currency": {
+      "code": "USD",
+      "decimals": 2
+    },
+    "items": [
+      {
+        "id": "service-1",
+        "description": "Illustrative service 1: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-2",
+        "description": "Illustrative service 2: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-3",
+        "description": "Illustrative service 3: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-4",
+        "description": "Illustrative service 4: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-5",
+        "description": "Illustrative service 5: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-6",
+        "description": "Illustrative service 6: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-7",
+        "description": "Illustrative service 7: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-8",
+        "description": "Illustrative service 8: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-9",
+        "description": "Illustrative service 9: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-10",
+        "description": "Illustrative service 10: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-11",
+        "description": "Illustrative service 11: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-12",
+        "description": "Illustrative service 12: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-13",
+        "description": "Illustrative service 13: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-14",
+        "description": "Illustrative service 14: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-15",
+        "description": "Illustrative service 15: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-16",
+        "description": "Illustrative service 16: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-17",
+        "description": "Illustrative service 17: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-18",
+        "description": "Illustrative service 18: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-19",
+        "description": "Illustrative service 19: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-20",
+        "description": "Illustrative service 20: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-21",
+        "description": "Illustrative service 21: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-22",
+        "description": "Illustrative service 22: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-23",
+        "description": "Illustrative service 23: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-24",
+        "description": "Illustrative service 24: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-25",
+        "description": "Illustrative service 25: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-26",
+        "description": "Illustrative service 26: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-27",
+        "description": "Illustrative service 27: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      },
+      {
+        "id": "service-28",
+        "description": "Illustrative service 28: preparation, delivery, and review of a clearly described item for this example.",
+        "quantity": "2.5",
+        "unit": "hours",
+        "unitPrice": "160.00"
+      }
+    ],
+    "discount": "25.00",
+    "tax": {
+      "label": "Illustrative tax",
+      "ratePercent": "10"
+    }
+  },
+  "amountPaid": "320.00",
+  "paymentInstructions": "Payment details placeholder. Supply the agreed method and verified recipient details before issuing a real invoice.",
+  "paymentReference": "SAMPLE-INV-001",
+  "notes": [
+    {
+      "id": "scope",
+      "title": "Scope note",
+      "text": "Illustrative services only. Replace the sample with the actual goods or services and any necessary supporting details."
+    },
+    {
+      "id": "supporting-detail",
+      "title": "Supporting detail",
+      "text": "This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. This is an illustrative note about the services described in the invoice. No real delivery or payment is being claimed. "
+    }
+  ]
+}

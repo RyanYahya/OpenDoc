@@ -1,0 +1,234 @@
+{
+  "basis": "Synthetic data for a design demonstration; not observed work or product performance.",
+  "units": {
+    "pages": "pages",
+    "research": "hours",
+    "drafting": "hours",
+    "design": "hours",
+    "review": "hours"
+  },
+  "stages": [
+    "research",
+    "drafting",
+    "design",
+    "review"
+  ],
+  "documents": [
+    {
+      "id": "document-01-1",
+      "week": 1,
+      "pages": 7,
+      "research": 7,
+      "drafting": 11,
+      "design": 4,
+      "review": 5
+    },
+    {
+      "id": "document-01-2",
+      "week": 1,
+      "pages": 14,
+      "research": 10,
+      "drafting": 16,
+      "design": 8,
+      "review": 7
+    },
+    {
+      "id": "document-02-1",
+      "week": 2,
+      "pages": 10,
+      "research": 9,
+      "drafting": 14,
+      "design": 5,
+      "review": 7
+    },
+    {
+      "id": "document-02-2",
+      "week": 2,
+      "pages": 17,
+      "research": 12,
+      "drafting": 19,
+      "design": 9,
+      "review": 9
+    },
+    {
+      "id": "document-03-1",
+      "week": 3,
+      "pages": 13,
+      "research": 11,
+      "drafting": 17,
+      "design": 6,
+      "review": 9
+    },
+    {
+      "id": "document-03-2",
+      "week": 3,
+      "pages": 20,
+      "research": 14,
+      "drafting": 22,
+      "design": 10,
+      "review": 11
+    },
+    {
+      "id": "document-04-1",
+      "week": 4,
+      "pages": 16,
+      "research": 13,
+      "drafting": 20,
+      "design": 7,
+      "review": 11
+    },
+    {
+      "id": "document-04-2",
+      "week": 4,
+      "pages": 6,
+      "research": 5,
+      "drafting": 10,
+      "design": 11,
+      "review": 3
+    },
+    {
+      "id": "document-05-1",
+      "week": 5,
+      "pages": 19,
+      "research": 15,
+      "drafting": 8,
+      "design": 8,
+      "review": 3
+    },
+    {
+      "id": "document-05-2",
+      "week": 5,
+      "pages": 9,
+      "research": 7,
+      "drafting": 13,
+      "design": 3,
+      "review": 5
+    },
+    {
+      "id": "document-06-1",
+      "week": 6,
+      "pages": 5,
+      "research": 6,
+      "drafting": 11,
+      "design": 9,
+      "review": 5
+    },
+    {
+      "id": "document-06-2",
+      "week": 6,
+      "pages": 12,
+      "research": 9,
+      "drafting": 16,
+      "design": 4,
+      "review": 7
+    },
+    {
+      "id": "document-07-1",
+      "week": 7,
+      "pages": 8,
+      "research": 8,
+      "drafting": 14,
+      "design": 10,
+      "review": 7
+    },
+    {
+      "id": "document-07-2",
+      "week": 7,
+      "pages": 15,
+      "research": 11,
+      "drafting": 19,
+      "design": 5,
+      "review": 9
+    },
+    {
+      "id": "document-08-1",
+      "week": 8,
+      "pages": 11,
+      "research": 10,
+      "drafting": 17,
+      "design": 11,
+      "review": 9
+    },
+    {
+      "id": "document-08-2",
+      "week": 8,
+      "pages": 18,
+      "research": 13,
+      "drafting": 22,
+      "design": 6,
+      "review": 11
+    },
+    {
+      "id": "document-09-1",
+      "week": 9,
+      "pages": 14,
+      "research": 12,
+      "drafting": 20,
+      "design": 3,
+      "review": 11
+    },
+    {
+      "id": "document-09-2",
+      "week": 9,
+      "pages": 4,
+      "research": 15,
+      "drafting": 10,
+      "design": 7,
+      "review": 3
+    },
+    {
+      "id": "document-10-1",
+      "week": 10,
+      "pages": 17,
+      "research": 14,
+      "drafting": 8,
+      "design": 4,
+      "review": 3
+    },
+    {
+      "id": "document-10-2",
+      "week": 10,
+      "pages": 7,
+      "research": 6,
+      "drafting": 13,
+      "design": 8,
+      "review": 5
+    },
+    {
+      "id": "document-11-1",
+      "week": 11,
+      "pages": 20,
+      "research": 5,
+      "drafting": 11,
+      "design": 5,
+      "review": 5
+    },
+    {
+      "id": "document-11-2",
+      "week": 11,
+      "pages": 10,
+      "research": 8,
+      "drafting": 16,
+      "design": 9,
+      "review": 7
+    },
+    {
+      "id": "document-12-1",
+      "week": 12,
+      "pages": 6,
+      "research": 7,
+      "drafting": 14,
+      "design": 6,
+      "review": 7
+    },
+    {
+      "id": "document-12-2",
+      "week": 12,
+      "pages": 13,
+      "research": 10,
+      "drafting": 19,
+      "design": 10,
+      "review": 9
+    }
+  ]
+}

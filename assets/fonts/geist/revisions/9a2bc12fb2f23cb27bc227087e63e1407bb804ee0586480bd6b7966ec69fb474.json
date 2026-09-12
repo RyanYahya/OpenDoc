@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "kind": "font",
+  "id": "geist",
+  "name": "Geist",
+  "description": "",
+  "createdAt": "2026-09-10T12:43:43.407Z",
+  "faces": [
+    {
+      "id": "400-normal",
+      "family": "Geist",
+      "postscriptName": "Geist-Regular",
+      "weight": 400,
+      "style": "normal",
+      "file": {
+        "file": "files/ccce59465ae5c61930ada5453834f60500fbd95084d85db63e0e65fad0125455.ttf",
+        "hash": "ccce59465ae5c61930ada5453834f60500fbd95084d85db63e0e65fad0125455",
+        "mime": "font/ttf",
+        "bytes": 72916
+      }
+    },
+    {
+      "id": "500-normal",
+      "family": "Geist",
+      "postscriptName": "Geist-Medium",
+      "weight": 500,
+      "style": "normal",
+      "file": {
+        "file": "files/a8eefb873ba9c9020665f8a98302697ce1f3b79ab2deef6ee508c0ca6a82e876.ttf",
+        "hash": "a8eefb873ba9c9020665f8a98302697ce1f3b79ab2deef6ee508c0ca6a82e876",
+        "mime": "font/ttf",
+        "bytes": 72996
+      }
+    },
+    {
+      "id": "700-normal",
+      "family": "Geist",
+      "postscriptName": "Geist-Bold",
+      "weight": 700,
+      "style": "normal",
+      "file": {
+        "file": "files/1a9874b3be0fc168692a3d2327bccb4d28835653d3b91537a755296a467a83e3.ttf",
+        "hash": "1a9874b3be0fc168692a3d2327bccb4d28835653d3b91537a755296a467a83e3",
+        "mime": "font/ttf",
+        "bytes": 72984
+      }
+    }
+  ],
+  "compatibility": {
+    "status": "ready",
+    "defaultEligible": true
+  },
+  "specimen": {
+    "file": "files/f5e95110d70593672515080bee9148463ada0a7f77b89ed65a3d43cb2b0ff83a.pdf",
+    "hash": "f5e95110d70593672515080bee9148463ada0a7f77b89ed65a3d43cb2b0ff83a",
+    "mime": "application/pdf",
+    "bytes": 29329
+  },
+  "revision": "9a2bc12fb2f23cb27bc227087e63e1407bb804ee0586480bd6b7966ec69fb474"
+}

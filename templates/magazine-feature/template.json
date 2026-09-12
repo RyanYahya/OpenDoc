@@ -1,0 +1,11 @@
+{
+  "name": "Magazine feature",
+  "description": "A broad visual opening followed by an offset reading column, with room for photographs and display quotes. For profiles, interviews, and illustrated features.",
+  "format": "A4 · Offset single column",
+  "structure": [
+    "A large headline, optional kicker, standfirst, and byline open the feature without a separate cover.",
+    "The opening visual spans the page's full content width; its caption stays with it.",
+    "Body text flows in a narrower column offset to the right, with flush paragraphs and open spacing.",
+    "Optional display quotes interrupt the reading rhythm in normal flow. References follow the body; page numbers sit quietly below."
+  ]
+}

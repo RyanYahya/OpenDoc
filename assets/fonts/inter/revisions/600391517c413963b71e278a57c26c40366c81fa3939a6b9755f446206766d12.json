@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "kind": "font",
+  "id": "inter",
+  "name": "Inter",
+  "description": "",
+  "createdAt": "2026-09-10T11:28:42.398Z",
+  "faces": [
+    {
+      "id": "400-italic",
+      "family": "Inter",
+      "postscriptName": "Inter-Italic",
+      "weight": 400,
+      "style": "italic",
+      "file": {
+        "file": "files/ef8f755d933b9310804cc9152f1f18cb2ac460d6b05054ec913d889c9f11f79e.ttf",
+        "hash": "ef8f755d933b9310804cc9152f1f18cb2ac460d6b05054ec913d889c9f11f79e",
+        "mime": "font/ttf",
+        "bytes": 328252
+      }
+    },
+    {
+      "id": "600-italic",
+      "family": "Inter",
+      "postscriptName": "Inter-SemiBoldItalic",
+      "weight": 600,
+      "style": "italic",
+      "file": {
+        "file": "files/5b6f0c6f26e5c554a64cdcc3a9b5d802b7f9aec6206f1dbcfcdcad7b5860a2a9.ttf",
+        "hash": "5b6f0c6f26e5c554a64cdcc3a9b5d802b7f9aec6206f1dbcfcdcad7b5860a2a9",
+        "mime": "font/ttf",
+        "bytes": 329620
+      }
+    },
+    {
+      "id": "700-italic",
+      "family": "Inter",
+      "postscriptName": "Inter-BoldItalic",
+      "weight": 700,
+      "style": "italic",
+      "file": {
+        "file": "files/c1811d32ac0f6eed1bbf57529f2ecdfc6c717d48a969dd864942436315a1b198.ttf",
+        "hash": "c1811d32ac0f6eed1bbf57529f2ecdfc6c717d48a969dd864942436315a1b198",
+        "mime": "font/ttf",
+        "bytes": 330132
+      }
+    },
+    {
+      "id": "400-normal",
+      "family": "Inter",
+      "postscriptName": "Inter-Regular",
+      "weight": 400,
+      "style": "normal",
+      "file": {
+        "file": "files/1b08e7fc267a5c7e1d614100f604b83e7e8a0be241f0f288faa2b3ac93a683ba.ttf",
+        "hash": "1b08e7fc267a5c7e1d614100f604b83e7e8a0be241f0f288faa2b3ac93a683ba",
+        "mime": "font/ttf",
+        "bytes": 324820
+      }
+    },
+    {
+      "id": "600-normal",
+      "family": "Inter",
+      "postscriptName": "Inter-SemiBold",
+      "weight": 600,
+      "style": "normal",
+      "file": {
+        "file": "files/e7a1aaf7eda9f2fad4131725fa556265ec75ca7b2d756260173a040363e8d4f7.ttf",
+        "hash": "e7a1aaf7eda9f2fad4131725fa556265ec75ca7b2d756260173a040363e8d4f7",
+        "mime": "font/ttf",
+        "bytes": 326048
+      }
+    },
+    {
+      "id": "700-normal",
+      "family": "Inter",
+      "postscriptName": "Inter-Bold",
+      "weight": 700,
+      "style": "normal",
+      "file": {
+        "file": "files/b37284b5701b6b168dfc770aa1a4ac492106422fd3ba76bc7641e37434e8019c.ttf",
+        "hash": "b37284b5701b6b168dfc770aa1a4ac492106422fd3ba76bc7641e37434e8019c",
+        "mime": "font/ttf",
+        "bytes": 326468
+      }
+    }
+  ],
+  "compatibility": {
+    "status": "ready",
+    "defaultEligible": true
+  },
+  "specimen": {
+    "file": "files/957db8560d510a198a7d0333fae7b6b444b00c20801581126273978d778eb3c3.pdf",
+    "hash": "957db8560d510a198a7d0333fae7b6b444b00c20801581126273978d778eb3c3",
+    "mime": "application/pdf",
+    "bytes": 62387
+  },
+  "revision": "600391517c413963b71e278a57c26c40366c81fa3939a6b9755f446206766d12"
+}

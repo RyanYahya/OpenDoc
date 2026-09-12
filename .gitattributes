@@ -1,0 +1,6 @@
+# Unified diffs use a literal space for blank context lines.
+vendor/formepdf/*.patch -whitespace
+# Preserve generated vector paths and verbatim upstream font licenses.
+documents/**/media/**/*.svg -whitespace
+assets/**/OFL.txt -whitespace
+assets/fonts/*-LICENSE.* -whitespace

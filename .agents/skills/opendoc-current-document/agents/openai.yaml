@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenDoc: Current document"
+  short_description: "Locate the active document, slide, selection, or asset."
+  default_prompt: "Use $opendoc-current-document in this OpenDoc workspace."

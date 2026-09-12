@@ -1,0 +1,17 @@
+{
+  "synthetic": true,
+  "pricing": {
+    "currency": {
+      "code": "USD",
+      "decimals": 2
+    },
+    "items": [
+      {
+        "id": "service",
+        "description": "Illustrative service",
+        "quantity": "1",
+        "unitPrice": "100.00"
+      }
+    ]
+  }
+}

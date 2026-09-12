@@ -1,0 +1,11 @@
+{
+  "title": "The shape of a working season",
+  "description": "Three coordinated views of a synthetic 24-document studio: weekly hours by workstream, total hours by workstream, and document length against total effort. Demonstrates a detailed local chart with reusable data and a generation recipe.",
+  "file": "image.png",
+  "kind": "chart",
+  "alt": "A stacked area chart shows twelve weeks of research, drafting, design and review. A horizontal bar chart totals each workstream; a scatterplot compares pages and hours for twenty-four fictional documents.",
+  "sources": ["Original synthetic demonstration dataset authored for the OpenDoc welcome document, 11 September 2026. No project activity or product performance was measured."],
+  "data": "data.json",
+  "recipe": "recipe.py",
+  "attribution": "Illustrative data only. This is not an OpenDoc productivity benchmark."
+}

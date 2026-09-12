@@ -1,0 +1,13 @@
+# Quotation
+
+Use this as a soft foundation for a business quotation, with room for variation and creativity. Its starting character is a clear commercial heading, paired business/client details, a readable pricing table, and totals aligned to the right. Adapt the title size, spacing, visual identity, and relative emphasis to the actual business and scope. For example, a longer project title can use a smaller `titleStyle`, and a short quote may need neither introductory prose nor an acceptance area.
+
+Keep each document's input in its own `data.json`. The shared template owns the layout; the caller's theme owns visual hierarchy, rhythm, and component treatments. Change one document's design locally unless a shared option preserves other documents' defaults. Terms and acceptance are supplied text, not generated legal conditions or a prescribed sales method. Preserve quoted wording and stable record IDs. Do not invent business identities, dates, rates, prices, or approval.
+
+Validation and calculation are functional requirements. Use decimal strings for quantity and money, explicit currency precision, and the documented rounding order. Totals are calculated; do not type a second total into the document. The current pricing model supports one currency, an optional fixed discount, and one supplied tax rate on the discounted subtotal. Extend the contract explicitly if the real case requires multiple rates, inclusive pricing, credits, or other charges; do not hide those cases in free text or imply that this generic template certifies compliance.
+
+Use native Forme flow and existing OpenDoc blocks. Tables repeat their headers, totals stay together, and long terms flow. Business details occupy a bounded pair of columns; put lengthy background in the introduction or terms. Do not force a one-page result, manually split lines, auto-shrink the content, or patch the renderer. Omit unused optional fields rather than adding filler. Keep illustrative data visibly marked until all sample material has been replaced with supplied facts.
+
+Review every adapted PDF. Shared changes need sparse, typical, and long datasets, a second theme, arithmetic and invalid-input checks, and a created document whose private data and export work. Preserve unrelated templates, documents, and feedback.
+
+The opening logo placeholder is an adaptable brand slot. Replace it with supplied, proportionally sized artwork through `logo`, or pass null to omit it. Do not invent a real company logo or alter its colors to match a theme. Keep the stable logo block ID and check the opening and downstream page breaks after replacement.
