@@ -155,6 +155,10 @@ export function prepareDocument(input: ReactNode) {
       checkId(id, kind);
       if (Object.hasOwn(runtime.blocks, id)) throw new Error(`Duplicate block id: ${id}. Keep every block ID unique within a document.`);
       runtime.blocks[id] = { id, kind, source, text: '', ...(runtime.currentSlide || kind === 'slide' ? { slideId: kind === 'slide' ? id : runtime.currentSlide } : {}) };
+      if (kind === 'paragraph' && el.props.maxLines !== undefined) {
+        if (!Number.isInteger(el.props.maxLines) || el.props.maxLines < 1) throw new Error(`Paragraph ${id} maxLines must be a positive integer.`);
+        runtime.blocks[id].maxLines = el.props.maxLines;
+      }
       if (kind === 'heading' || kind === 'section') {
         const title = plainText(kind === 'section' ? el.props.title : el.props.children);
         requireText(title, `${kind} ${id} title`);
@@ -409,14 +413,14 @@ export const Heading = block(function Heading({ level = 2, children, style, base
   return <Tag bookmark={bookmark === false ? undefined : bookmark ?? plainText(children).trim()} style={{ ...themeType(t, `h${level}`, baseStyle), ...style }}><TextSlot slot="children" from="children">{children}</TextSlot></Tag>;
 }, 'heading');
 
-export const Paragraph = block(function Paragraph({ children, style, baseStyle, role, href }: Props & { role?: ThemeTypeRole; baseStyle?: F.Style }) {
+export const Paragraph = block(function Paragraph({ children, style, baseStyle, role, href }: Props & { role?: ThemeTypeRole; baseStyle?: F.Style; maxLines?: number }) {
   return <F.Text href={href} style={{ marginBottom: runtime.theme.paragraphGap, minWidowLines: 2, minOrphanLines: 2, ...baseStyle, ...(role && runtime.theme.design?.typography?.[role]), ...style }}><TextSlot slot="children" from="children">{children}</TextSlot></F.Text>;
 }, 'paragraph');
 
 /** Continuous prose: flush openings, fixed first-line indents, optional paragraph spacing in points. */
 export function Prose({ children }: { children: ReactNode; paragraphGap?: number }) { return <>{children}</>; }
 
-export const Block = block(function Block({ children, style }: Props) { return <F.View style={style}>{children}</F.View>; }, 'block');
+export const Block = block(function Block({ children, style, keepTogether }: Props & { keepTogether?: boolean }) { return <F.View wrap={keepTogether === undefined ? undefined : !keepTogether} style={style}>{children}</F.View>; }, 'block');
 
 /** A short opening stays with its heading; the rest of the section remains normal flowing content. */
 export const Section = block(function Section({ id, title, lead, level = 2, children, style }: Props & { title: ReactNode; lead: ReactNode; level?: 1 | 2 | 3 }) {
@@ -438,7 +442,7 @@ export const TitleBlock = block(function TitleBlock({ id, eyebrow, title, subtit
   </F.View>;
 }, 'title');
 
-export const Callout = block(function Callout({ title, children, style }: Props & { title?: string }) {
+export const Callout = block(function Callout({ title, children, style, keepTogether }: Props & { title?: string; keepTogether?: boolean }) {
   const t = runtime.theme;
   const inlineTypes = new Set<unknown>([F.Text, F.Em, F.Strong, Strong, F.Link, Cite, CrossReference, Note, TextSlot]);
   const content: ReactNode[] = [];
@@ -457,7 +461,7 @@ export const Callout = block(function Callout({ title, children, style }: Props 
   authored.forEach((child, childIndex) => collect(typeof child === 'string' || typeof child === 'number'
     ? <TextSlot slot="children" from="children" childIndex={childIndex}>{child}</TextSlot> : child));
   flush();
-  return <F.View style={{ backgroundColor: t.paper, borderLeftWidth: 2, borderColor: t.accent, padding: 14, marginTop: 6, marginBottom: 18, ...t.design?.callout?.text, ...t.design?.callout?.block, ...style }}>
+  return <F.View wrap={keepTogether === undefined ? undefined : !keepTogether} style={{ backgroundColor: t.paper, borderLeftWidth: 2, borderColor: t.accent, padding: 14, marginTop: 6, marginBottom: 18, ...t.design?.callout?.text, ...t.design?.callout?.block, ...style }}>
     {title && <F.Text style={{ ...themeType(t, 'label', { fontWeight: 600, fontSize: 10, letterSpacing: 0 }), marginBottom: 6, ...t.design?.callout?.title }}><TextSlot slot="title" from="title">{title}</TextSlot></F.Text>}
     {content}
   </F.View>;

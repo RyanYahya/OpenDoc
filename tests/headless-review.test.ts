@@ -21,6 +21,8 @@ test('review requires exactly one contained document or specimen identity', () =
   assert.deepEqual(parseReviewArgs(['proof', '--json']), { help: false, json: true, target: { kind: 'document', id: 'proof' } });
   assert.equal(parseReviewArgs(['--theme', 'neutral']).target?.kind, 'theme');
   assert.equal(parseReviewArgs(['--template', 'executive-brief']).target?.kind, 'template');
+  assert.equal(parseReviewArgs(['proof', '--export']).export, true);
+  assert.throws(() => parseReviewArgs(['--theme', 'neutral', '--export']), /requires a document/);
   for (const args of [[], ['proof', 'other'], ['proof', '--theme', 'neutral'], ['--theme', 'neutral', '--template', 'brief'], ['../outside'], ['--theme', '../neutral'], ['--theme', ''], ['--theme', '', 'proof'], ['--theme', 'neutral', '--theme', 'neutral']]) assert.throws(() => parseReviewArgs(args));
 });
 
@@ -51,13 +53,19 @@ test('review returns exact PDF bytes, page images, extracted text, and stable so
     await writeFile(resolve(f.root, '.opendoc/server.json'), 'not a GUI session');
     const reviewed = await reviewTarget(f.root, { kind: 'document', id: 'proof' });
     if (reviewed.status !== 'ready') throw new Error(reviewed.error);
-    const saved = await readFile(reviewed.outputs.review);
+    let saved = await readFile(reviewed.outputs.review);
     const pdf = await readFile(reviewed.outputs.pdf);
     assert.equal(sha256(pdf), reviewed.hash);
     assert.equal(reviewed.visualReview, 'required');
     assert.equal(reviewed.factualReview, 'required');
     assert.equal(reviewed.pages.length, reviewed.pageCount);
     assert.ok(reviewed.blocks.some(block => block.id === 'target' && block.source?.file === 'documents/proof/index.tsx'));
+    assert.equal(reviewed.changes.previousHash, null);
+    assert.deepEqual(reviewed.changes.changedPages, reviewed.pages.map(page => page.page));
+    const inspected = reviewed.pages[0].elements!.find(element => element.blockId === 'target' && element.nodeType === 'Text')!;
+    assert.equal(inspected.source?.file, 'documents/proof/index.tsx');
+    assert.equal(inspected.localBounds.x, inspected.bounds.x - inspected.parentBounds.x);
+    assert.ok(inspected.lineCount! > 0);
     assert.match(await readFile(reviewed.outputs.text, 'utf8'), /stable paragraph/);
     for (const page of reviewed.pages) {
       const png = await readFile(page.image);
@@ -96,8 +104,11 @@ test('review returns exact PDF bytes, page images, extracted text, and stable so
     assert.deepEqual(await readFile(reviewed.outputs.pdf), pdf);
     assert.deepEqual(await readFile(reviewed.outputs.review), saved);
     await writeFile(reviewed.outputs.text, originalText);
-    await publishReview(f.root, { kind: 'document', id: 'proof' }, artifact, pdf, () => true);
-    assert.deepEqual(await readFile(reviewed.outputs.review), saved, 'Replacing an existing review publishes the whole exact set.');
+    const repeated = await publishReview(f.root, { kind: 'document', id: 'proof' }, artifact, pdf, () => true);
+    assert.equal(repeated.changes.previousHash, reviewed.hash);
+    assert.deepEqual(repeated.changes.changedPages, [], 'Unchanged page images and text need no new visual comparison.');
+    assert.deepEqual(await readFile(reviewed.outputs.pdf), pdf);
+    saved = await readFile(reviewed.outputs.review);
     await writeFile(f.entry, source('<Paragraph id="outside" style={{marginLeft:-100}}>An off-page paragraph.</Paragraph>'));
     const failed = await reviewTarget(f.root, { kind: 'document', id: 'proof' });
     assert.equal(failed.status, 'error');

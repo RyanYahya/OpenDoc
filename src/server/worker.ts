@@ -14,6 +14,7 @@ import type { LayoutInfo, ElementInfo } from '@formepdf/core';
 import type { BlockInfo, DocumentMeta, DocumentProvenance, RenderArtifact, Fragment, DocumentFormat, SlideInfo } from '../shared/types';
 import { RenderFailure } from './render-error';
 import { inspectLayout, assertLayoutSafe, assertSlideLayout } from './preflight';
+import { inspectPresentationCompatibility } from './pptx-compatibility';
 import { containedFile } from './files';
 import { readProjects } from './projects';
 import { originalBinding, type SourceOverride } from './source-overrides';
@@ -151,6 +152,7 @@ try {
   }
   for (const message of result.warnings) issues.push({ code: 'renderer-warning', severity: 'warning', message });
   assertLayoutSafe(issues);
+  if (capture.format === 'presentation') issues.push(...inspectPresentationCompatibility(result.doc, result.layout, capture.slides, capture.blocks));
   const artifact: RenderArtifact = { meta: capture.meta, format: capture.format, ...(capture.format === 'presentation' ? { slides: capture.slides } : {}), media: capture.media ?? [], assets: capture.assets ?? [], assetBindings: capture.assetBindings, assetDependencies: capture.assetDependencies ?? [], textTargets, blocks: capture.blocks, pages, provenance, issues, outline, hash: createHash('sha256').update(result.pdf).digest('hex'), renderedAt: new Date().toISOString() };
   await mkdir(destination, { recursive: true });
   await writeFile(resolve(destination, 'document.pdf'), result.pdf);

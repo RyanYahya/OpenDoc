@@ -7,6 +7,7 @@ import TsPptx, { type TextPropsOptions } from '@shbernal/ts-pptx';
 import type { ElementInfo, ElementStyleInfo, LayoutInfo, Color } from '@formepdf/core';
 import type { FormeDocument, FormeNode, FormeStyle } from '@formepdf/react';
 import type { DocumentMeta, SlideInfo, SourceLocation } from '../shared/types';
+import { inspectPresentationCompatibility, roundedPanel, type PaintStyle } from './pptx-compatibility';
 
 export interface PresentationCapture {
   version: 1; hash: string; meta: DocumentMeta; slides: SlideInfo[]; doc: FormeDocument; layout: LayoutInfo;
@@ -14,7 +15,6 @@ export interface PresentationCapture {
 type TextKind = Extract<FormeNode['kind'], { type: 'Text' | 'Heading' }>;
 type Run = { text: string; style: FormeStyle; href?: string };
 type FontFace = { bytes: Buffer; family: string; weight: number; italic: boolean; restrictions: { noEmbedding?: boolean; bitmapOnly?: boolean; viewOnly?: boolean } };
-type PaintStyle = ElementStyleInfo & { borderStyle?: Partial<Record<'top' | 'right' | 'bottom' | 'left', string>>; transform?: unknown };
 const PT = 72;
 const key = (location: SourceLocation | undefined, type: string) => `${location?.file ?? ''}:${location?.line ?? 0}:${location?.column ?? 0}:${type}`;
 const hex = (color: Color) => [color.r, color.g, color.b].map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join('').toUpperCase();
@@ -56,6 +56,8 @@ function fontCatalog(doc: FormeDocument) {
 
 export async function presentationBytes(capture: PresentationCapture): Promise<Uint8Array> {
   if (capture.version !== 1 || capture.slides.length !== capture.layout.pages.length || capture.doc.children.length !== capture.slides.length) throw new Error('The presentation preview is incomplete. Render it again before exporting.');
+  const compatibility = inspectPresentationCompatibility(capture.doc, capture.layout, capture.slides);
+  if (compatibility.length) throw new Error(compatibility.map(issue => issue.message).join('\n'));
   const fonts = fontCatalog(capture.doc), used = new Map<string, FontFace>();
   const pptx = new TsPptx();
   pptx.defineLayout({ name: 'OPENDOC', width: 960 / PT, height: 540 / PT });
@@ -85,12 +87,6 @@ export async function presentationBytes(capture: PresentationCapture): Promise<U
     if (page.width !== 960 || page.height !== 540 || sourcePage.kind.type !== 'Page') throw new Error('PowerPoint export requires 960 × 540 presentation slides.');
     const sources = new Map<string, FormeNode[]>();
     function indexSource(node: FormeNode) {
-      const styles = [node.style, ...('runs' in node.kind ? node.kind.runs?.map(run => run.style) ?? [] : [])];
-      for (const style of styles) {
-        if (!style) continue;
-        const unsupported = style.transform?.length ? 'transforms' : style.boxShadow ? 'shadows' : style.background && style.background.type !== 'color' ? 'gradients' : style.wordSpacing ? 'custom word spacing' : style.textAlign === 'Justify' ? 'justified text' : undefined;
-        if (unsupported) throw new Error(`Slide ${label}: PowerPoint export does not yet support ${unsupported}.`);
-      }
       if (['Text', 'Heading', 'Image'].includes(node.kind.type)) {
         const id = key(node.sourceLocation, node.kind.type), list = sources.get(id) ?? [];
         list.push(node); sources.set(id, list);
@@ -103,17 +99,20 @@ export async function presentationBytes(capture: PresentationCapture): Promise<U
     function visit(node: ElementInfo) {
       const style = node.style as PaintStyle;
       if (style.opacity === 0) return;
-      if (style.opacity !== undefined && style.opacity !== 1) throw new Error(`Slide ${label}: PowerPoint export does not yet support group opacity.`);
-      if (style.transform) throw new Error(`Slide ${label}: PowerPoint export does not yet support transforms.`);
       if (node.kind === 'Rect') {
-        if (Object.values(style.borderRadius ?? {}).some(radius => radius !== 0)) throw new Error(`Slide ${label}: PowerPoint export does not yet support rounded corners.`);
-        if (style.backgroundColor) slide.addShape('rect', { ...box(node), line: { transparency: 100 }, fill: fill(style.backgroundColor) });
-        for (const side of ['top', 'right', 'bottom', 'left'] as const) if (style.borderWidth?.[side] > 0) {
-          if (style.borderStyle?.[side] !== 'solid') throw new Error(`Slide ${label}: PowerPoint export does not yet support this border style.`);
-          const horizontal = side === 'top' || side === 'bottom';
-          slide.addShape('line', { x: (node.x + (side === 'right' ? node.width : 0)) / PT, y: (node.y + (side === 'bottom' ? node.height : 0)) / PT,
-            w: horizontal ? node.width / PT : 0, h: horizontal ? 0 : node.height / PT,
-            line: { ...fill(style.borderColor[side]), width: style.borderWidth[side], beginArrowType: 'none', endArrowType: 'none' } });
+        const { radius } = roundedPanel(node);
+        if (radius > 0) {
+          if (style.backgroundColor || style.borderWidth.top > 0) slide.addShape('roundRect', { ...box(node), rectRadius: radius / PT,
+            line: style.borderWidth.top > 0 ? { ...fill(style.borderColor.top), width: style.borderWidth.top } : { transparency: 100 },
+            fill: style.backgroundColor ? fill(style.backgroundColor) : { transparency: 100 } });
+        } else {
+          if (style.backgroundColor) slide.addShape('rect', { ...box(node), line: { transparency: 100 }, fill: fill(style.backgroundColor) });
+          for (const side of ['top', 'right', 'bottom', 'left'] as const) if (style.borderWidth?.[side] > 0) {
+            const horizontal = side === 'top' || side === 'bottom';
+            slide.addShape('line', { x: (node.x + (side === 'right' ? node.width : 0)) / PT, y: (node.y + (side === 'bottom' ? node.height : 0)) / PT,
+              w: horizontal ? node.width / PT : 0, h: horizontal ? 0 : node.height / PT,
+              line: { ...fill(style.borderColor[side]), width: style.borderWidth[side], beginArrowType: 'none', endArrowType: 'none' } });
+          }
         }
       }
       const type = /^H[1-6]$/.test(node.nodeType) ? 'Heading' : node.nodeType;

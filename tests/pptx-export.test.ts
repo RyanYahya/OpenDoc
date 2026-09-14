@@ -12,6 +12,7 @@ import { ExportStore } from '../src/server/exports';
 import { exportDocuments, parseExportArgs } from '../src/server/export-batch';
 import type { SavedExport } from '../src/shared/export';
 import type { DocumentState } from '../src/shared/types';
+import { reviewTarget } from '../src/server/review';
 
 async function presentationFixture() {
   const f = await fixture();
@@ -22,7 +23,7 @@ import {Strong,Em,Link} from '@formepdf/react';
 export const meta={title:'Editable proof',description:'Synthetic export test',theme:'neutral'};
 export default function Proof(){return <Presentation title={meta.title}>
 <Slide id="first"><Heading id="title">Editable proof</Heading><Paragraph id="body">A <Strong>bold</Strong> and <Em>italic</Em> choice. <Link href="https://example.com/evidence">Evidence</Link></Paragraph><Block id="logo"><Image src={${JSON.stringify(resolve(f.root, 'assets/brand/wordmark.png'))}} style={{width:120,height:40}}/></Block></Slide>
-<Slide id="last"><Paragraph id="ending">The final slide.</Paragraph><Paragraph id="number">{'{{pageNumber}} / {{totalPages}}'}</Paragraph></Slide></Presentation>}`);
+<Slide id="last"><Block id="panel" style={{width:300,height:100,borderRadius:12,borderWidth:1,borderColor:'#123456',backgroundColor:'#eef2ff',padding:16}}><Paragraph id="ending">The final slide.</Paragraph></Block><Paragraph id="number">{'{{pageNumber}} / {{totalPages}}'}</Paragraph></Slide></Presentation>}`);
   return f;
 }
 const xml = (parts: Map<string, Uint8Array>, path: string) => Buffer.from(parts.get(path)!).toString();
@@ -39,6 +40,9 @@ test('PowerPoint uses the exact captured preview, native rich text, images, and 
     assert.match(xml(parts, 'ppt/slides/_rels/slide1.xml.rels'), /https:\/\/example.com\/evidence/);
     assert.match(xml(parts, 'ppt/slides/slide2.xml'), /The final slide/);
     assert.match(xml(parts, 'ppt/slides/slide2.xml'), /2 \/ 2/);
+    assert.match(xml(parts, 'ppt/slides/slide2.xml'), /prst="roundRect"/);
+    assert.match(xml(parts, 'ppt/slides/slide2.xml'), /name="adj" fmla="val 12000"/);
+    assert.equal(render.artifact.issues?.some(issue => issue.format === 'pptx'), false);
     assert.equal([...parts.keys()].filter(path => /^ppt\/slides\/slide\d+.xml$/.test(path)).length, 2);
     const embedded = [...parts].filter(([path]) => path.startsWith('ppt/fonts/'));
     assert.equal(embedded.length, 3);
@@ -65,6 +69,42 @@ test('PowerPoint uses the exact captured preview, native rich text, images, and 
     const shadow = structuredClone(capture);
     shadow.doc.children[0].style.transform = [{ type: 'translate', x: 10, y: 0 }];
     await assert.rejects(presentationBytes(shadow), /transforms/);
+  } finally { await f.cleanup(); }
+});
+
+test('review exports a single captured revision and warns about unsupported PPTX styling before export', async () => {
+  const f = await presentationFixture();
+  try {
+    const first = await reviewTarget(f.root, { kind: 'document', id: 'proof' }, { export: true });
+    if (first.status !== 'ready') throw new Error(first.error);
+    assert.equal(first.powerpointVisualReview, 'required');
+    const saved = await readFile(first.outputs.pptx!);
+    const parts = await readZip(saved);
+    assert.match(xml(parts, 'ppt/slides/slide2.xml'), /prst="roundRect"/);
+    const original = await readFile(f.entry, 'utf8');
+    await writeFile(f.entry, original.replace('The final slide.', 'A revised final slide.'));
+    const revised = await reviewTarget(f.root, { kind: 'document', id: 'proof' }, { export: true });
+    if (revised.status !== 'ready') throw new Error(revised.error);
+    assert.deepEqual(revised.changes.changedPages, [2]);
+    assert.match(xml(await readZip(await readFile(revised.outputs.pptx!)), 'ppt/slides/slide2.xml'), /A revised final slide/);
+    const manifest = await readFile(revised.outputs.review), pdf = await readFile(revised.outputs.pdf), pptx = await readFile(revised.outputs.pptx!);
+    await writeFile(f.entry, original.replace('borderRadius:12', 'borderRadius:12,borderLeftWidth:3,boxShadow:"1px 1px 2px #999999"'));
+    const render = await renderOnce(f.root, 'proof');
+    const issues = render.artifact.issues!.filter(issue => issue.format === 'pptx');
+    assert.ok(issues.some(issue => /nonuniform rounded borders/.test(issue.message) && issue.blockId === 'panel' && issue.page === 2 && issue.bounds));
+    assert.ok(issues.some(issue => /shadows/.test(issue.message) && issue.source?.file === 'documents/proof/index.tsx'));
+    const failed = await reviewTarget(f.root, { kind: 'document', id: 'proof' }, { export: true });
+    assert.equal(failed.status, 'error');
+    if (failed.status === 'error') assert.ok(failed.issues.some(issue => issue.format === 'pptx'));
+    assert.deepEqual(await readFile(revised.outputs.review), manifest);
+    assert.deepEqual(await readFile(revised.outputs.pdf), pdf);
+    assert.deepEqual(await readFile(revised.outputs.pptx!), pptx);
+    await writeFile(f.entry, original.replace(/<Slide id="last">[\s\S]*?<\/Slide>/, ''));
+    const shortened = await reviewTarget(f.root, { kind: 'document', id: 'proof' });
+    if (shortened.status !== 'ready') throw new Error(shortened.error);
+    assert.deepEqual(shortened.changes.removedPages, [2]);
+    assert.equal(shortened.outputs.pptx, undefined);
+    assert.equal((await readdir(shortened.outputs.directory)).includes('document.pptx'), false, 'PDF-only review must not leave a stale editable deck beside the new PDF.');
   } finally { await f.cleanup(); }
 });
 
