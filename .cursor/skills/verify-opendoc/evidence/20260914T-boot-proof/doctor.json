@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "origin": "http://127.0.0.1:4318",
+  "pid": 31223,
+  "node": "v24.19.0",
+  "htmlContainsOpenDoc": true,
+  "documents": {
+    "welcome": {
+      "status": "ready",
+      "name": "Welcome to OpenDoc",
+      "pages": 8,
+      "hash": "c42648e1547598f1864dc55be17daf4bf7a38914d3417ef311a42b6e2f9f902b"
+    },
+    "welcome-presentation": {
+      "status": "ready",
+      "name": "Welcome to OpenDoc",
+      "pages": 14,
+      "hash": "10f55d4ad1db310ad2a0303c641ea0d375894b9b668baa16b8615a2272066a9d"
+    }
+  },
+  "checkedAt": "2026-09-14T03:45:51.883Z"
+}

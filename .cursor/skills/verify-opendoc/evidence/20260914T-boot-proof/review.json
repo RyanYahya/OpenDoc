@@ -1,0 +1,14 @@
+{
+  "status": "ready",
+  "id": "welcome",
+  "pageCount": 8,
+  "hash": "c42648e1547598f1864dc55be17daf4bf7a38914d3417ef311a42b6e2f9f902b",
+  "visualReview": "required",
+  "factualReview": "required",
+  "outputs": {
+    "directory": "/workspace/output/reviews/documents/welcome",
+    "pdf": "/workspace/output/reviews/documents/welcome/document.pdf",
+    "text": "/workspace/output/reviews/documents/welcome/document.txt",
+    "review": "/workspace/output/reviews/documents/welcome/review.json"
+  }
+}

@@ -36,6 +36,7 @@ Preconditions:
 
 ## Gotchas
 
+- The full `GET /api/documents/welcome` body is too large for a shell argv. Write it to a file and read fields from disk (the drive helper does this). Poll readiness with `?view=summary`.
 - First render after launch is not instant. Poll `status`; do not treat a `rendering` document as failed.
 - A `409` on export means the preview hash is stale or the document is in error. Re-GET the document and retry with the new hash.
 - While the Normal server is up, checkout `export.ts` must use the preview. If `source` is `render`, the GUI was not authoritative — doctor the session before claiming a Normal proof.
