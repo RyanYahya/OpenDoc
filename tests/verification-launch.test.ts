@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, mkdir, writeFile, readFile, rm, access } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, rm, access, symlink, realpath } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { projectRoot, until } from './helpers';
@@ -10,6 +10,18 @@ import { projectRoot, until } from './helpers';
 const exec = promisify(execFile);
 const helpers = resolve(projectRoot, '.cursor/skills/verify-opendoc/helpers');
 const alive = (pid: number) => { try { process.kill(pid, 0); return true; } catch { return false; } };
+
+test('verification resolves linked checkout roots before invoking guarded CLI entrypoints', { skip: process.platform === 'win32' }, async () => {
+  const root = await mkdtemp(resolve(tmpdir(), 'opendoc-linked-launch-'));
+  try {
+    const checkout = resolve(root, 'checkout'), link = resolve(root, 'linked');
+    await mkdir(checkout);
+    await writeFile(resolve(checkout, 'package.json'), '{"name": "@ryanyahya/opendoc"}');
+    await symlink(checkout, link, 'dir');
+    const { stdout } = await exec('bash', ['-c', 'source "$1"; printf "%s" "$REPO_ROOT"', 'verify-root', resolve(helpers, 'common.sh')], { env: { ...process.env, VERIFY_REPO_ROOT: link } });
+    assert.equal(stdout, await realpath(checkout));
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
 
 // Exercise the real shell helpers against a disposable server implementing the
 // session contract. Failure modes must never publish readiness or orphan a child.
@@ -24,7 +36,6 @@ for (const mode of ['matching', 'mismatched', 'unavailable', 'malformed'] as con
       await mkdir(resolve(root, '.opendoc'));
       await writeFile(resolve(root, 'package.json'), JSON.stringify({ name: '@ryanyahya/opendoc', type: 'module' }, null, 2));
       // The launcher imports tsx; resolve it from the repository without copying dependencies.
-      const { symlink } = await import('node:fs/promises');
       await symlink(resolve(projectRoot, 'node_modules'), resolve(root, 'node_modules'), 'dir');
       await writeFile(resolve(root, 'src/server/index.ts'), `
 import { createServer } from 'node:http';

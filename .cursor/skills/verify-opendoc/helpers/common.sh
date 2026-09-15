@@ -8,7 +8,9 @@ SKILL_DIR="$(cd "$helpers_dir/.." && pwd)"
 
 find_repo_root() {
   local dir="${VERIFY_REPO_ROOT:-$PWD}"
-  dir="$(cd "$dir" && pwd)"
+  # CLI entrypoint guards compare import.meta.url with argv[1]. Keep both on
+  # the physical path, including macOS /tmp -> /private/tmp and linked checkouts.
+  dir="$(cd "$dir" && pwd -P)"
   while [[ "$dir" != "/" ]]; do
     if [[ -f "$dir/package.json" ]] && grep -q '"name": "@ryanyahya/opendoc"' "$dir/package.json"; then
       printf '%s\n' "$dir"
