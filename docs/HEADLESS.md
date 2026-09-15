@@ -75,6 +75,21 @@ npx opendoc review my-report --json
 
 The result identifies the exact PDF hash, output paths, page count and dimensions, page images/text, render issues, and stable block/source information. `status: "ready"` and exit code 0 mean the review artifacts were prepared and technical render/layout checks passed. **They do not mean visual or factual review is complete.** The manifest keeps `visualReview` and `factualReview` as `"required"`.
 
+Each page also includes `elements` for diagnosing placement: rendered bounds, parent bounds, local offsets, clipping ancestors, line counts, and block/source identity. See [layout diagnostics](AUTHORING.md) for explicit label line limits and keep-together controls. Presentation styling limitations appear in `issues` with `format: "pptx"`; the PDF can still be reviewed even when editable export needs corrections.
+
+After a revision, `changes.changedPages` lists pages whose rendered PNG or extracted text differs from the preceding successful review. `changes.removedPages` identifies removed trailing pages; `previousHash` identifies that prior PDF. The first review, or an older manifest without page hashes, marks every page changed. Comparison is by page position, so inserting a page can mark subsequent pages changed. This helps focus a repeat review; it neither records human approval nor compares PDF with native PowerPoint rendering.
+
+### Prepare the complete delivery set in one command
+
+```sh
+npx opendoc review my-report --export --json
+npx opendoc review project-deck --export --json
+```
+
+`--export` typechecks the workspace, renders the selected document once, prepares page images and text, and publishes the PDF plus editable PPTX for presentations as one review set. Use `outputs.pdf` and, when present, `outputs.pptx` for delivery after inspection. These files live in the review directory; this command does not create the separate `output/<id>.pdf` exports or browser export-history receipts. It works on saved source in both editions and does not use a browser session. Theme/template specimens use ordinary `review` without `--export`.
+
+If typechecking, layout, PPTX preparation, or source-freshness checks fail, the command exits unsuccessfully and retains the previous set. Use ordinary `review` to inspect a valid PDF while fixing PPTX-only limitations. `powerpointVisualReview: "required"` explicitly records that creating an editable deck does not verify its appearance in native PowerPoint. Subsequent ordinary review replaces the set with PDF review artifacts only, so use `--export` again after the final revision when both formats are needed.
+
 The agent must inspect every page image at a readable scale, examine representative extracted text, and check the content against the brief and sources. Fix clipping, missing glyphs, awkward breaks, bad crops, incorrect claims, and other material defects. After changing source, regenerate the review artifacts and inspect affected pages and adjacent breaks. The [review skill](../.agents/skills/opendoc-review-document/SKILL.md) defines the full pass. If the agent cannot inspect images, report that concrete limitation; generating PNGs is not visual inspection.
 
 Render and source-freshness failures return a nonzero exit status and structured diagnostics when available. They leave the previous successful review files intact, so those files must not be represented as the failed revision's output. Inspect the current command result before using an existing path.

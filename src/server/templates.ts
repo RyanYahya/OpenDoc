@@ -1,6 +1,7 @@
 import { lstat, readdir, readFile, rm, stat } from 'node:fs/promises';
 import { relative, resolve, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import type { LayoutInfo } from '@formepdf/core';
 import { documentDependencies, includesDependency, type DocumentDependencies, isRenderRuntimePath } from './dependencies';
 import type { TemplateDescriptor, TemplateItem, TemplatePreview } from '../shared/templates';
 import { containedFile } from './files';
@@ -139,6 +140,11 @@ export class TemplateCatalog {
     const item = await this.current(id);
     if (!item.directory || item.artifact?.hash !== hash) throw new Error('This template preview changed. Reload Templates.');
     return readFile(resolve(item.directory, 'document.pdf'));
+  }
+  async layout(id: string, hash: string): Promise<LayoutInfo> {
+    const item = await this.current(id);
+    if (!item.directory || item.artifact?.hash !== hash) throw new Error('This template preview changed. Reload Templates.');
+    return JSON.parse(await readFile(resolve(item.directory, 'layout.json'), 'utf8'));
   }
   async close() {
     this.closed = true;

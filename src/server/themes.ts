@@ -2,6 +2,7 @@ import { lstat, readdir, readFile, rm, stat } from 'node:fs/promises';
 import { dirname, relative, resolve, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { build } from 'esbuild';
+import type { LayoutInfo } from '@formepdf/core';
 import { validateTheme, type DocTheme } from '../themes/index';
 import type { ThemePreview, ThemeSummary } from '../shared/themes';
 import { containedFile } from './files';
@@ -205,6 +206,11 @@ export class ThemeCatalog {
     const item = await this.current(id);
     if (!item.directory || item.artifact?.hash !== hash) throw new Error('This theme preview changed. Reload the theme.');
     return readFile(resolve(item.directory, 'document.pdf'));
+  }
+  async layout(id: string, hash: string): Promise<LayoutInfo> {
+    const item = await this.current(id);
+    if (!item.directory || item.artifact?.hash !== hash) throw new Error('This theme preview changed. Reload the theme.');
+    return JSON.parse(await readFile(resolve(item.directory, 'layout.json'), 'utf8'));
   }
   async close() {
     this.closed = true;

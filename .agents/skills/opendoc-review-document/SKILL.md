@@ -13,11 +13,16 @@ In Headless, use the matching review command; it also works in normal OpenDoc. I
 
 ```sh
 npx opendoc review <document-id> --json
+npx opendoc review <document-id> --export --json
 npx opendoc review --theme <theme-id> --json
 npx opendoc review --template <template-id> --json
 ```
 
 Use the successful result's returned PDF, page images, extracted text, issues, and manifest paths. The manifest identifies the exact PDF hash, page count/dimensions, stable blocks, and source locations. Exit code 0 and `status: "ready"` establish artifact preparation and technical render/layout checks only; `visualReview` and `factualReview` remain `"required"`. The agent must perform the review below. Failed commands preserve previous files, which must not be presented as the failed revision's output.
+
+For documents and presentations, `--export` combines workspace typechecking, one render, page images/text, and PDF/PPTX preparation. Use its `outputs.pdf` and `outputs.pptx` after review; no separate export is needed when these files represent the final unchanged revision. PPTX-only warnings explain blocked styling and keep native appearance marked as requiring review. Use ordinary review to inspect PDF while correcting a PPTX failure. Specimens do not accept `--export`.
+
+Use `pages[].elements` to inspect actual element bounds, parent coordinates, clipping ancestors, line counts, and block/source identity. Use `changes.changedPages` and `changes.removedPages` to focus a repeat review, including adjacent page breaks. First reviews mark every page changed. Page hashes compare review PNG/text at the same page position; they do not prove native PowerPoint fidelity or record a completed visual review.
 
 - **Document:** export with `npx opendoc export <document-id>`.
 - **Presentation:** export the PDF through the same command. When PowerPoint is included, also run `npx opendoc export <document-id> --format pptx`. Default delivery includes both; honor an explicit single-format request. Confirm one 960 × 540 PDF page per authored slide, in the intended order. Review every slide at a readable scale, including source/reference slides; text, images, and captions must fit without clipping or unintended continuation. Check comments and corrections against stable component identity after slide reordering.

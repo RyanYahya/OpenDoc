@@ -7,11 +7,12 @@ export type DocumentFormat = 'document' | 'presentation';
 export interface SlideInfo { id: string }
 export interface DocumentMeta { title: string; description: string; kind?: DocumentKind; theme: string; author?: string }
 export interface SourceLocation { file: string; line: number; column: number }
-export interface BlockInfo { slideId?: string; id: string; kind: string; source?: SourceLocation; text: string }
+export interface BlockInfo { slideId?: string; id: string; kind: string; source?: SourceLocation; text: string; maxLines?: number }
+export interface Bounds { x: number; y: number; width: number; height: number }
 export interface Fragment { id: string; x: number; y: number; width: number; height: number }
 export interface PageInfo { width: number; height: number; fragments: Fragment[] }
 export interface DocumentProvenance { entry: string; template?: string; dataFile?: string }
-export interface ReviewIssue { code: string; severity: 'error' | 'warning'; message: string; page?: number; blockId?: string }
+export interface ReviewIssue { code: string; severity: 'error' | 'warning'; message: string; page?: number; blockId?: string; source?: SourceLocation; bounds?: Bounds; parentBounds?: Bounds; clippingBounds?: Bounds; relatedBlockId?: string; format?: 'pptx' }
 export interface OutlineEntry { id: string; title: string; level: number; page: number }
 export interface RenderArtifact { format?: DocumentFormat; slides?: SlideInfo[]; textTargets?: TextTarget[]; media?: MediaUse[]; assets?: AssetUse[]; assetBindings?: DocumentAssets; assetDependencies?: string[]; meta: DocumentMeta; blocks: Record<string, BlockInfo>; pages: PageInfo[]; hash: string; renderedAt: string; provenance?: DocumentProvenance; issues?: ReviewIssue[]; outline?: OutlineEntry[] }
 export interface TextEditPreview { artifact: RenderArtifact; pdfUrl: string }
