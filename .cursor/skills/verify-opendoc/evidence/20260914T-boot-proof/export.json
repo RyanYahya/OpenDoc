@@ -1,0 +1,12 @@
+{
+  "results": [
+    {
+      "id": "welcome",
+      "status": "success",
+      "pages": 8,
+      "hash": "c42648e1547598f1864dc55be17daf4bf7a38914d3417ef311a42b6e2f9f902b",
+      "path": "/workspace/output/welcome.pdf",
+      "source": "preview"
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "feature": "welcome-review-export",
+  "runId": "20260914T-boot-proof",
+  "checkedAt": "2026-09-14T03:45:57.487Z",
+  "launch": {
+    "origin": "http://127.0.0.1:4318",
+    "pid": 31223,
+    "readyLine": "OpenDoc is running at http://127.0.0.1:4318",
+    "command": "node --import tsx src/server/index.ts --production",
+    "port": 4318
+  },
+  "doctor": {
+    "ok": true,
+    "origin": "http://127.0.0.1:4318",
+    "pid": 31223,
+    "node": "v24.19.0",
+    "htmlContainsOpenDoc": true,
+    "documents": {
+      "welcome": {
+        "status": "ready",
+        "name": "Welcome to OpenDoc",
+        "pages": 8,
+        "hash": "c42648e1547598f1864dc55be17daf4bf7a38914d3417ef311a42b6e2f9f902b"
+      },
+      "welcome-presentation": {
+        "status": "ready",
+        "name": "Welcome to OpenDoc",
+        "pages": 14,
+        "hash": "10f55d4ad1db310ad2a0303c641ea0d375894b9b668baa16b8615a2272066a9d"
+      }
+    },
+    "checkedAt": "2026-09-14T03:45:51.883Z"
+  },
+  "welcome": {
+    "id": "welcome",
+    "status": "ready",
+    "title": "Welcome to OpenDoc",
+    "pages": 8,
+    "hash": "c42648e1547598f1864dc55be17daf4bf7a38914d3417ef311a42b6e2f9f902b"
+  },
+  "export": {
+    "id": "welcome",
+    "status": "success",
+    "pages": 8,
+    "hash": "c42648e1547598f1864dc55be17daf4bf7a38914d3417ef311a42b6e2f9f902b",
+    "path": "/workspace/output/welcome.pdf",
+    "source": "preview"
+  },
+  "review": {
+    "status": "ready",
+    "id": "welcome",
+    "pageCount": 8,
+    "hash": "c42648e1547598f1864dc55be17daf4bf7a38914d3417ef311a42b6e2f9f902b",
+    "visualReview": "required",
+    "factualReview": "required",
+    "outputs": {
+      "directory": "/workspace/output/reviews/documents/welcome",
+      "pdf": "/workspace/output/reviews/documents/welcome/document.pdf",
+      "text": "/workspace/output/reviews/documents/welcome/document.txt",
+      "review": "/workspace/output/reviews/documents/welcome/review.json"
+    }
+  },
+  "extractedTextExcerpt": "A   FIELD   GUIDE \nEDITION   01   /   2026 \nTHE   POSSIBILITIES   START   HERE \nWelcome to \nOpenDoc. \nA local place to make documents you are proud to share. \nBring your idea and material. Work with your preferred agent to develop the writing and \ndesign. OpenDoc turns that work into a PDF you can read, refine, and make your own. \nThis document is the demonstration: real type, real layouts, real images, and the same PDF you can export. \nOpenDoc /   A   field guide   1\n\n\f\nOpenDoc /   A   field guide   Begin with an idea \n01   /   BEGIN \nGive good work a home. \nStart with a reader, a purpose, and the material you already have. \nGive your work a home \nEvery document belongs to a project. \nUse the + beside Projects to create a home for a client, \na course, or a body of work. Choose a default t",
+  "notes": [
+    "visualReview and factualReview remain required; this proof is technical readiness plus artifact hashes.",
+    "Session token is intentionally omitted from evidence."
+  ]
+}

@@ -1,0 +1,15 @@
+pnpm install --frozen-lockfile
+# success, pnpm 12.3.4, Node v24.19.0
+
+pnpm verify
+# tsc --noEmit ok
+# vite build ok
+# tests: 402 pass, 0 fail, 2 skipped
+
+Interactive Normal boot (helpers/launch.sh):
+# OpenDoc is running at http://127.0.0.1:4318
+# pid 31223, OPENDOC_PORT=4318
+
+Skill loop: launch → doctor → drive-welcome-export → cleanup
+# evidence survived at this directory
+# server pid gone; .opendoc/server.json removed

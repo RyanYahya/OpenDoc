@@ -5,21 +5,16 @@ import type { MediaMeta, MediaKind } from '../shared/media';
 
 export const mediaId = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const kinds: MediaKind[] = ['photo', 'illustration', 'chart', 'diagram', 'image'];
-const fileHashes = new Map<string, {stamp: string; hash: string}>();
 function fileHash(file: string) {
   const info = statSync(file, {bigint:true});
   const stamp = `${info.size}:${info.mtimeNs}:${info.ctimeNs}:${info.ino}`;
-  const cached = fileHashes.get(file);
-  if (cached?.stamp === stamp) return cached.hash;
   const digest = createHash('sha256'), buffer = Buffer.allocUnsafe(64 * 1024);
   const fd = openSync(file, 'r');
   try { let count; while ((count = readSync(fd, buffer, 0, buffer.length, null)) > 0) digest.update(buffer.subarray(0,count)); }
   finally { closeSync(fd); }
   const after = statSync(file,{bigint:true});
   if (`${after.size}:${after.mtimeNs}:${after.ctimeNs}:${after.ino}` !== stamp) throw new Error('A source changed while it was being read. Try again after the edit finishes.');
-  const hash = digest.digest('hex');
-  if (fileHashes.size >= 256) fileHashes.delete(fileHashes.keys().next().value!);
-  fileHashes.set(file,{stamp,hash}); return hash;
+  return digest.digest('hex');
 }
 export const hashBytes = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 
