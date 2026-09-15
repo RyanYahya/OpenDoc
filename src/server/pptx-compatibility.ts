@@ -50,6 +50,11 @@ export function inspectPresentationCompatibility(doc: FormeDocument, layout: Lay
       if (style.opacity === 0) return;
       if (style.opacity !== undefined && style.opacity !== 1) add('group opacity', 'Use opaque groups and set transparency on individual fill or text colors.', id, node);
       if (style.transform) add('transforms', 'Position and size the element directly.', id, node);
+      // PPTX shapes do not clip separately exported descendants to rounded corners.
+      // This also applies to unpainted containers (kind None).
+      if (style.overflow === 'Hidden' && node.children.length && Object.values(style.borderRadius ?? {}).some(radius => radius > 0)) {
+        add('rounded clipping of child content', 'Use square corners, or remove overflow: hidden when child clipping is not needed.', id, node);
+      }
       if (node.kind === 'Rect') {
         const panel = roundedPanel(node);
         if (panel.unsupported) add(panel.unsupported, panel.correction!, id, node);

@@ -44,6 +44,8 @@ pnpm verify          # tsc + production build + tests; required before claiming 
 
 It starts `node --import tsx src/server/index.ts --production` with `OPENDOC_PORT=4318`, writes `/tmp/opendoc-verify-$UID/run/run.json`, and waits until `.opendoc/server.json` exists **and** `GET /api/session` returns that process's token.
 
+An unsuccessful launch exits nonzero, stops its own child process, and retains the server log. A child that ignores termination is killed after five seconds. No ready run record is published without a successful session handshake.
+
 **Ready signals (all three):**
 
 1. Log line: `OpenDoc is running at http://127.0.0.1:<port>`
@@ -195,6 +197,7 @@ Environment:
 | `VERIFY_EVIDENCE_DIR` | `.cursor/skills/verify-opendoc/evidence` | Durable proof; never deleted by cleanup |
 | `VERIFY_RUN_ID` | UTC timestamp | Evidence subdirectory name |
 | `VERIFY_REPO_ROOT` | discovered | Override if the working directory is outside the repo |
+| `VERIFY_STARTUP_TIMEOUT_SECONDS` | `60` | Positive integer deadline for the startup handshake |
 
 ## After a change
 

@@ -108,6 +108,34 @@ test('review exports a single captured revision and warns about unsupported PPTX
   } finally { await f.cleanup(); }
 });
 
+test('rounded child clipping warns during PDF review and blocks PPTX without replacing prior exports', async () => {
+  const f = await presentationFixture();
+  try {
+    const original = await readFile(f.entry, 'utf8');
+    const prior = await reviewTarget(f.root, { kind: 'document', id: 'proof' }, { export: true });
+    if (prior.status !== 'ready') throw new Error(prior.error);
+    const saved = await Promise.all([prior.outputs.pdf, prior.outputs.pptx!, prior.outputs.review].map(path => readFile(path)));
+    for (const background of [",backgroundColor:'#0000ff'", '']) {
+      await writeFile(f.entry, original.replace(/<Slide id="last">[\s\S]*?<\/Slide>/,
+        `<Slide id="last"><Block id="clip" style={{width:300,height:150,borderRadius:40,overflow:'hidden'${background}}}><Block id="fill" style={{width:300,height:150,backgroundColor:'#ff0000'}} /></Block></Slide>`));
+      const rendered = await renderOnce(f.root, 'proof');
+      const issue = rendered.artifact.issues?.find(issue => /rounded clipping/.test(issue.message));
+      assert.equal(issue?.format, 'pptx');
+      assert.equal(issue?.severity, 'warning');
+      assert.equal(issue?.blockId, 'clip');
+      assert.equal(issue?.page, 2);
+      assert.equal(issue?.source?.file, 'documents/proof/index.tsx');
+      assert.ok(issue?.bounds);
+      await assert.rejects(readPresentationBytes(rendered.directory, rendered.artifact.hash), /rounded clipping/);
+      const rejected = await reviewTarget(f.root, { kind: 'document', id: 'proof' }, { export: true });
+      assert.equal(rejected.status, 'error');
+      assert.deepEqual(await Promise.all([prior.outputs.pdf, prior.outputs.pptx!, prior.outputs.review].map(path => readFile(path))), saved);
+    }
+    const pdfOnly = await reviewTarget(f.root, { kind: 'document', id: 'proof' });
+    assert.equal(pdfOnly.status, 'ready', 'Unsupported PPTX clipping must leave PDF review available.');
+  } finally { await f.cleanup(); }
+});
+
 test('rich links survive line boundaries and unexpected text fails rather than disappearing', () => {
   const source = { type: 'Text' as const, content: 'Read the evidence today.', runs: [{ content: 'Read ' }, { content: 'the evidence', style: { fontWeight: 600 }, href: 'https://example.com/evidence' }, { content: ' today.' }] };
   const runs = presentationTextRuns(source, [{ textContent: 'Read the ' }, { textContent: 'evidence today.' }])!;

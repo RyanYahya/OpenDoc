@@ -7,6 +7,11 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
 require_node
+startup_timeout="${VERIFY_STARTUP_TIMEOUT_SECONDS:-60}"
+if [[ ! "$startup_timeout" =~ ^[1-9][0-9]*$ ]]; then
+  echo "VERIFY_STARTUP_TIMEOUT_SECONDS must be a positive integer." >&2
+  exit 1
+fi
 mkdir -p "$RUN_DIR"
 
 if [[ -f "$RUN_DIR/run.json" ]]; then
@@ -42,10 +47,29 @@ export OPENDOC_PORT="$DEFAULT_PORT"
   exec node --import tsx "$REPO_ROOT/src/server/index.ts" --production
 ) >> "$RUN_DIR/server.log" 2>&1 &
 pid=$!
+ready=false
+# Until startup succeeds, this shell owns the child directly. Do not leave a
+# failed launch running without a usable run.json for the cleanup helper.
+cleanup_failed_launch() {
+  local result=$?
+  if [[ "$ready" != true ]]; then
+    kill -TERM "$pid" 2>/dev/null || true
+    local stop_deadline=$((SECONDS + 5))
+    while pid_alive "$pid" && (( SECONDS < stop_deadline )); do sleep 0.1; done
+    if pid_alive "$pid"; then kill -KILL "$pid" 2>/dev/null || true; fi
+    wait "$pid" 2>/dev/null || true
+    rm -f "$RUN_DIR/helper.pid"
+  fi
+  return "$result"
+}
+trap cleanup_failed_launch EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 echo "$pid" > "$RUN_DIR/helper.pid"
 
-deadline=$((SECONDS + 60))
+deadline=$((SECONDS + startup_timeout))
 origin=""
+authenticated=false
 while (( SECONDS < deadline )); do
   if ! pid_alive "$pid"; then
     echo "OpenDoc exited during startup. Last log lines:" >&2
@@ -58,8 +82,9 @@ while (( SECONDS < deadline )); do
     token="$(node -p 'JSON.parse(process.argv[1]).token' "$session")"
     if [[ "$session_pid" == "$pid" ]]; then
       if body="$(curl -fsS --max-time 2 "$origin/api/session")"; then
-        remote_token="$(node -p 'JSON.parse(process.argv[1]).token' "$body")"
+        remote_token="$(node -p 'JSON.parse(process.argv[1]).token' "$body" 2>/dev/null || true)"
         if [[ "$remote_token" == "$token" ]]; then
+          authenticated=true
           break
         fi
       fi
@@ -68,8 +93,8 @@ while (( SECONDS < deadline )); do
   sleep 0.2
 done
 
-if [[ -z "$origin" ]] || ! pid_alive "$pid"; then
-  echo "OpenDoc did not become ready within 60 seconds. Log:" >&2
+if [[ "$authenticated" != true ]] || ! pid_alive "$pid"; then
+  echo "OpenDoc did not become ready within $startup_timeout seconds. Log:" >&2
   tail -n 40 "$RUN_DIR/server.log" >&2
   exit 1
 fi
@@ -90,6 +115,7 @@ const run={
 fs.writeFileSync(process.argv[6], JSON.stringify(run,null,2)+"\n");
 ' "$pid" "$origin" "$REPO_ROOT" "$ready_line" "$OPENDOC_PORT" "$RUN_DIR/run.json"
 
+ready=true
 echo "OpenDoc is ready at $origin (pid $pid)"
 echo "Session file: $SESSION_FILE"
 echo "Run record: $RUN_DIR/run.json"
