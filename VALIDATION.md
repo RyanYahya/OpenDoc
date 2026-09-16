@@ -24,7 +24,7 @@ After `pnpm verify`, run `pnpm package:pack` and use both generated tarballs: `o
 Exercise both tarballs outside the source checkout on macOS and Linux with Node.js 24 or newer and npm. For a release that is not published, set `OPENDOC_PACKAGE_TARBALL` to the selected tarball's absolute path so initialization installs the same reviewed artifact. For normal OpenDoc:
 
 ```sh
-export OPENDOC_PACKAGE_TARBALL=/absolute/path/to/ryanyahya-opendoc-0.4.0.tgz
+export OPENDOC_PACKAGE_TARBALL=/absolute/path/to/ryanyahya-opendoc-0.5.0.tgz
 npm exec --yes --package="$OPENDOC_PACKAGE_TARBALL" -- opendoc init /tmp/opendoc-acceptance --no-start --json
 cd /tmp/opendoc-acceptance
 npx opendoc check --json
@@ -44,7 +44,7 @@ Stop the foreground service with **Ctrl-C**, start it again, and stop it before 
 Use a separate disposable workspace and the Headless tarball:
 
 ```sh
-export OPENDOC_PACKAGE_TARBALL=/absolute/path/to/ryanyahya-opendoc-headless-0.4.0.tgz
+export OPENDOC_PACKAGE_TARBALL=/absolute/path/to/ryanyahya-opendoc-headless-0.5.0.tgz
 npm exec --yes --package="$OPENDOC_PACKAGE_TARBALL" -- opendoc-headless init /tmp/opendoc-headless-acceptance --json
 cd /tmp/opendoc-headless-acceptance
 npx opendoc check --json
