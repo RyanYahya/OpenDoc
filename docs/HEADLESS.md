@@ -21,7 +21,7 @@ Run subsequent commands from the initialized workspace or one of its subfolders.
 ```json
 {
   "dependencies": {
-    "opendoc": "npm:@ryanyahya/opendoc-headless@0.4.0"
+    "opendoc": "npm:@ryanyahya/opendoc-headless@0.5.0"
   }
 }
 ```

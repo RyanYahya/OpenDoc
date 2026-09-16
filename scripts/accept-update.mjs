@@ -11,12 +11,12 @@ import { relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 if (Number(process.versions.node.split('.')[0]) < 24) throw new Error('Update acceptance requires Node.js 24 or newer.');
-if (process.argv.length !== 3) throw new Error('Usage: node scripts/accept-update.mjs <opendoc-release-0.4.0-tarball.tgz>');
+if (process.argv.length !== 3) throw new Error('Usage: node scripts/accept-update.mjs <opendoc-release-tarball.tgz>');
 const sourceTarball = await realpath(resolve(process.argv[2]));
 const checkout = fileURLToPath(new URL('../', import.meta.url));
 const directory = await mkdtemp(resolve(tmpdir(), 'opendoc-update-acceptance-'));
 assert.ok(relative(checkout, directory).startsWith('..'), 'Acceptance must run outside the source checkout.');
-const tarball = resolve(directory, 'release-0.4.0.tgz');
+const tarball = resolve(directory, 'release.tgz');
 await copyFile(sourceTarball, tarball);
 const manifestPath = resolve(directory, 'acceptance.json');
 const logPath = resolve(directory, 'acceptance.log');
@@ -35,6 +35,7 @@ let live;
 let userManifest;
 const packageNames = { normal: '@ryanyahya/opendoc', headless: '@ryanyahya/opendoc-headless' };
 let edition, packageName, shortName;
+let baseVersion, compatibleVersion, breakingVersion, brokenVersion;
 const pinFor = version => `npm:${packageName}@${version}`;
 
 function killTree(child) {
@@ -91,7 +92,7 @@ async function start(root) {
     if (child.exitCode !== null) throw new Error(redact(`The installed server exited during startup: ${server.stderr}`));
     try { return JSON.parse(server.stdout.trim()); } catch { return false; }
   }, 'the installed server');
-  assert.equal(ready.version, '0.4.0');
+  assert.equal(ready.version, baseVersion);
   assert.equal(ready.reused, false);
   server.origin = ready.origin;
   server.document = await until(async () => {
@@ -170,29 +171,36 @@ async function prepareRegistry() {
   const packageRoot = resolve(unpacked, 'package');
   const base = await jsonFile(resolve(packageRoot, 'package.json'));
   assert.ok(Object.values(packageNames).includes(base.name));
-  assert.equal(base.version, '0.4.0');
+  assert.match(base.version, /^\d+\.\d+\.\d+$/, 'Update acceptance requires a stable release.');
+  const [major, minor, patch] = base.version.split('.').map(Number);
+  assert.ok(major > 0 || minor > 0, 'The compatible-update fixture requires version 0.1.0 or later.');
+  baseVersion = base.version;
+  compatibleVersion = `${major}.${minor}.${patch + 1}`;
+  brokenVersion = `${major}.${minor}.${patch + 2}`;
+  breakingVersion = major === 0 ? `0.${minor + 1}.0` : `${major + 1}.0.0`;
+  manifest.version = baseVersion;
   packageName = base.name;
   edition = base.opendoc?.edition;
   assert.equal(packageName, packageNames[edition]);
   shortName = packageName.split('/').at(-1);
   manifest.edition = edition; manifest.packageName = packageName;
-  const candidates = new Map([['0.4.0', { file: tarball, manifest: base }]]);
-  for (const version of ['0.4.1', '0.5.0']) {
+  const candidates = new Map([[baseVersion, { file: tarball, manifest: base }]]);
+  for (const version of [compatibleVersion, breakingVersion]) {
     const candidate = { ...base, version };
     await writeFile(resolve(packageRoot, 'package.json'), JSON.stringify(candidate, null, 2) + '\n');
     const packed = JSON.parse((await run('npm', ['pack', '--ignore-scripts', '--json', '--pack-destination', archives], packageRoot)).stdout)[0];
     candidates.set(version, { file: resolve(archives, packed.filename), manifest: candidate });
   }
-  const corrupt = resolve(archives, `${shortName}-0.4.2.tgz`);
+  const corrupt = resolve(archives, `${shortName}-${brokenVersion}.tgz`);
   await writeFile(corrupt, 'Synthetic failed installation: this file is deliberately not a tar archive.\n');
-  candidates.set('0.4.2', { file: corrupt, manifest: { ...base, version: '0.4.2' } });
+  candidates.set(brokenVersion, { file: corrupt, manifest: { ...base, version: brokenVersion } });
   for (const candidate of candidates.values()) {
     const bytes = await readFile(candidate.file);
     candidate.integrity = `sha512-${createHash('sha512').update(bytes).digest('base64')}`;
     candidate.shasum = createHash('sha1').update(bytes).digest('hex');
   }
 
-  const published = new Set(['0.4.0', '0.4.1', '0.5.0']);
+  const published = new Set([baseVersion, compatibleVersion, breakingVersion]);
   const requests = { metadata: 0, tarballs: [], upstreamReads: 0, refusedWrites: 0 };
   let origin;
   const server = createServer(async (request, response) => {
@@ -221,7 +229,7 @@ async function prepareRegistry() {
           const candidate = candidates.get(version);
           return [version, { ...candidate.manifest, dist: { tarball: `${origin}/${packageName}/-/${shortName}-${version}.tgz`, integrity: candidate.integrity, shasum: candidate.shasum } }];
         }));
-        const packument = { _id: packageName, name: packageName, 'dist-tags': { latest: '0.5.0' }, versions };
+        const packument = { _id: packageName, name: packageName, 'dist-tags': { latest: breakingVersion }, versions };
         const body = pathname === `/${packageName}` ? packument : versions[pathname.split('/').at(-1)];
         response.writeHead(body ? 200 : 404, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
         response.end(request.method === 'HEAD' ? undefined : JSON.stringify(body ?? { error: 'not_found' }));
@@ -260,7 +268,7 @@ try {
   await writeFile(resolve(launcher, 'package.json'), '{"name":"opendoc-update-launcher","private":true,"type":"module"}\n');
   await run('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund', '--save-exact', `opendoc@file:${tarball}`], launcher, env);
   await cliJSON(launcher, ['init', root, '--no-start'], { ...env, OPENDOC_PACKAGE_TARBALL: tarball });
-  await installVersion(root, '0.4.0');
+  await installVersion(root, baseVersion);
 
   diagnostic('Creating user-owned instructions, document, media, asset, feedback, and export fixtures.');
   userManifest = {
@@ -325,7 +333,7 @@ export default function Report() { return <Document title={meta.title} theme={th
 
   diagnostic(`Checking read-only discovery${server ? ' and refusal while the actual server is running' : ' for Headless'}.`);
   const checked = await cliJSON(root, ['update', '--check'], env);
-  assert.deepEqual(checked, { status: 'available', currentVersion: '0.4.0', targetVersion: '0.4.1', latestCompatibleVersion: '0.4.1', latestVersion: '0.5.0', check: true, explicit: false });
+  assert.deepEqual(checked, { status: 'available', currentVersion: baseVersion, targetVersion: compatibleVersion, latestCompatibleVersion: compatibleVersion, latestVersion: breakingVersion, check: true, explicit: false });
   assert.deepEqual(await metadataSnapshot(root), initialMetadata);
   await assertOwned(root, baseline, 'read-only update check');
   if (server) {
@@ -342,9 +350,9 @@ export default function Report() { return <Document title={meta.title} theme={th
   }
 
   for (const scenario of [
-    { label: 'default compatible update', args: [], from: '0.4.0', target: '0.4.1', explicit: false },
-    { label: 'explicit breaking update', args: ['--version', '0.5.0'], from: '0.4.1', target: '0.5.0', explicit: true },
-    { label: 'explicit downgrade', args: ['--version', '0.4.0'], from: '0.5.0', target: '0.4.0', explicit: true },
+    { label: 'default compatible update', args: [], from: baseVersion, target: compatibleVersion, explicit: false },
+    { label: 'explicit breaking update', args: ['--version', breakingVersion], from: compatibleVersion, target: breakingVersion, explicit: true },
+    { label: 'explicit downgrade', args: ['--version', baseVersion], from: breakingVersion, target: baseVersion, explicit: true },
   ]) {
     diagnostic(`Exercising ${scenario.label}.`);
     const result = await cliJSON(root, ['update', ...scenario.args], env);
@@ -356,29 +364,29 @@ export default function Report() { return <Document title={meta.title} theme={th
   }
 
   diagnostic('Testing a real failed npm tarball installation and a successful retry.');
-  published.add('0.4.2');
+  published.add(brokenVersion);
   const beforeFailure = await metadataSnapshot(root);
   const runtimeBefore = snapshotDigest(await snapshot(resolve(root, 'node_modules')));
   const failure = await cli(root, ['update'], env, true);
   assert.notEqual(failure.code, 0);
   assert.match(JSON.parse(failure.stdout).error, /npm failed/);
-  assert.ok(requests.tarballs.includes('0.4.2'), 'npm attempted to fetch the deliberately broken candidate.');
+  assert.ok(requests.tarballs.includes(brokenVersion), 'npm attempted to fetch the deliberately broken candidate.');
   assert.deepEqual(await metadataSnapshot(root), beforeFailure, 'A failed npm install preserves both manifest and lockfile.');
   assert.equal(snapshotDigest(await snapshot(resolve(root, 'node_modules'))), runtimeBefore, 'A failed npm install preserves every installed dependency byte.');
-  await installVersion(root, '0.4.0');
+  await installVersion(root, baseVersion);
   await assertOwned(root, baseline, 'failed candidate installation');
-  manifest.failedInstall = { version: '0.4.2', refused: true, metadataPreserved: true, installedTreeSha256: runtimeBefore };
+  manifest.failedInstall = { version: brokenVersion, refused: true, metadataPreserved: true, installedTreeSha256: runtimeBefore };
 
-  const retry = await cliJSON(root, ['update', '--version', '0.4.1'], env);
-  assert.equal(retry.status, 'updated'); assert.equal(retry.targetVersion, '0.4.1');
-  await installVersion(root, '0.4.1');
+  const retry = await cliJSON(root, ['update', '--version', compatibleVersion], env);
+  assert.equal(retry.status, 'updated'); assert.equal(retry.targetVersion, compatibleVersion);
+  await installVersion(root, compatibleVersion);
   await assertOwned(root, baseline, 'successful retry');
   assert.equal((await cliJSON(root, ['check'])).ok, true, 'The updated runtime can typecheck the existing authored workspace.');
   const comments = await cliJSON(root, ['comments', 'list', 'update-owned']);
   assert.ok(comments.some(comment => comment.text === 'Preserve this unresolved feedback through every update.' && comment.status === 'open'));
   assert.equal(requests.refusedWrites, 0, 'No operation attempted registry publication or another registry write.');
   manifest.updates.push({ scenario: 'successful retry', ...retry });
-  manifest.finalVersion = '0.4.1';
+  manifest.finalVersion = compatibleVersion;
   manifest.ok = true;
   diagnostic('Real packed update acceptance passed; every protected file hash remained unchanged.');
 } catch (error) {
