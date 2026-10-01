@@ -351,3 +351,25 @@ test('DataTable column labels resolve by column ID, else only when their wording
   assert.equal(createTextSourceResolver('documents/proof/index.tsx', foreign).resolveAt(before.split('\n').length, before.length - before.lastIndexOf('\n'), 'columns', 0, { text: 'Item', path: [{}, 'label'] }), undefined,
     "Another component's columns may be used as logic, so their labels stay read-only.");
 });
+
+test('a correction keeps a plain JSX attribute or text plain when it can hold the new value exactly', () => {
+  const edit = (source: string, needle: string, slot: string, next: string) => {
+    const updated = replaceSourceValue(source, resolver(source)(needle, slot)!, next);
+    validateTextSyntax('index.tsx', updated);
+    assert.equal(resolver(updated)(needle, slot)?.value, next, `${source} -> ${next}`);
+    return updated;
+  };
+  const attribute = `export default () => <Card title="Programme lead" when='2020'/>;`;
+  assert.equal(edit(attribute, '<Card', 'title', 'Project “lead” 🎉'), `export default () => <Card title="Project “lead” 🎉" when='2020'/>;`);
+  assert.equal(edit(attribute, '<Card', 'when', 'It\'s 2021'), `export default () => <Card title="Programme lead" when={"It's 2021"}/>;`, 'A quote of its own kind needs an expression');
+  assert.equal(edit(attribute, '<Card', 'when', 'Say "now"'), `export default () => <Card title="Programme lead" when='Say "now"'/>;`, 'The other quote fits');
+  assert.equal(edit(attribute, '<Card', 'title', 'Back\\slash'), `export default () => <Card title="Back\\slash" when='2020'/>;`);
+  for (const next of ['Say "hi"', 'Line\nbreak', 'Braces { }', 'A & B', '<tag>'])
+    assert.match(edit(attribute, '<Card', 'title', next), /title=\{"/, `${JSON.stringify(next)} uses an expression`);
+
+  const text = `export default () => <Paragraph>\n      Original text\n    </Paragraph>;`;
+  assert.equal(edit(text, '<Paragraph', 'children', `Revised "text" it's`), `export default () => <Paragraph>\n      Revised "text" it's\n    </Paragraph>;`, 'Line breaks around the text are kept');
+  assert.equal(edit(`export default () => <Paragraph>Before <Em>it</Em></Paragraph>;`, '<Paragraph', 'children', 'After '), `export default () => <Paragraph>After <Em>it</Em></Paragraph>;`);
+  for (const next of ['Braces { }', 'A & B', 'Two\nlines', ' leading space', '<tag>', 'a > b'])
+    assert.match(edit(text, '<Paragraph', 'children', next), /<Paragraph>\{"/, `${JSON.stringify(next)} uses an expression`);
+});

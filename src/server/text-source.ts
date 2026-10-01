@@ -641,9 +641,28 @@ export function createJsonTextSourceResolver(file: string, source: string): (pat
   };
 }
 
-export function serializeSourceValue(value: TextSourceValue, next: string): string {
+/**
+ * The source token for a corrected value. `original` is the token being replaced. A plain JSX
+ * attribute string or JSX text stays plain when it can hold the new value exactly: no line
+ * breaks, quotes of its own kind, braces, angle brackets, or entities, and compiling it must
+ * yield the value. JSX text keeps the line breaks around it. Otherwise it becomes an expression.
+ */
+export function serializeSourceValue(value: TextSourceValue, next: string, original?: string): string {
   const serialized = JSON.stringify(next);
-  return value.kind === 'jsx-text' || value.kind === 'jsx-attribute' ? `{${serialized}}` : serialized;
+  if (value.kind !== 'jsx-text' && value.kind !== 'jsx-attribute') return serialized;
+  if (original !== undefined && !/[\r\n\u2028\u2029{}<>&]/.test(next)) {
+    let plain: string | undefined;
+    if (value.kind === 'jsx-attribute') {
+      const quote = original[0];
+      if ((quote === '"' || quote === "'") && !next.includes(quote)) plain = `${quote}${next}${quote}`;
+    } else if (next.trim()) {
+      // Whitespace that includes a line break is formatting JSX discards; keep it around the new text.
+      const lead = /^\s*/.exec(original)![0], trail = /\s*$/.exec(original)![0];
+      plain = `${/[\r\n]/.test(lead) ? lead : ''}${next}${/[\r\n]/.test(trail) && trail !== original ? trail : ''}`;
+    }
+    if (plain !== undefined && jsxValue(plain, value.kind === 'jsx-attribute') === next) return plain;
+  }
+  return `{${serialized}}`;
 }
 
 export function validateTextSyntax(file: string, source: string) {

@@ -89,7 +89,7 @@ test('theme components bind the labels a document writes and explain the ones th
     const code = slot('opening-code', 'code');
     await service.apply('proof', { targetId: code.id, start: 0, end: code.text.length, replacement: 'FM-09', revision: 1, hash: artifact.hash }, { id: 'proof', status: 'ready', revision: 1, artifact });
     const saved = await readFile(f.entry, 'utf8');
-    assert.equal(saved, before.replace('code="FM-02"', 'code={"FM-09"}'));
+    assert.equal(saved, before.replace('code="FM-02"', 'code="FM-09"'));
     const next = (await renderOnce(f.root, 'proof')).artifact;
     const title = next.textTargets!.find(target => target.blockId === 'chain' && target.slot === 'method-title')!;
     await service.apply('proof', { targetId: title.id, start: 0, end: title.text.length, replacement: 'Rule', revision: 2, hash: next.hash }, { id: 'proof', status: 'ready', revision: 2, artifact: next });

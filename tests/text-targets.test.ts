@@ -153,7 +153,7 @@ function shout(text: string) { return text.toUpperCase(); }`));
     const before = await readFile(f.entry, 'utf8');
     await service.apply('proof', edit, state);
     const after = await readFile(f.entry, 'utf8');
-    assert.equal(after, before.replace('<Item id="beta" title="Beta role" when="2020 to 2022"/>', '<Item id="beta" title="Beta role" when={"2021 to 2023"}/>'));
+    assert.equal(after, before.replace('<Item id="beta" title="Beta role" when="2020 to 2022"/>', '<Item id="beta" title="Beta role" when="2021 to 2023"/>'));
     const saved = (await renderOnce(f.root, 'proof')).artifact.textTargets!;
     assert.equal(saved.find(value => value.blockId === 'alpha-when')!.text, '2020 to 2022');
     assert.ok(canCorrectComponent(saved.find(value => value.blockId === 'beta-when')));
