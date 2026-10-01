@@ -15,7 +15,7 @@ import { builtClient } from './client';
 import { GuideError, readGuide } from './guides';
 import { Workspace } from './workspace';
 import { atomicWrite } from './files';
-import { addComment, changeComment, editComment, deleteComment, readComments, Conflict, withCommentLock } from './comments';
+import { addComment, changeComment, editComment, deleteComment, restoreComment, readComments, Conflict, withCommentLock } from './comments';
 import { renameDocument, duplicateDocument, deleteDocument, restoreDocument } from './documents';
 import { validId } from './render';
 import { createDocument, listStarters, CreateDocumentError } from './create';
@@ -302,9 +302,9 @@ const server = createServer(async (req, res) => {
       workspace.changed();
       json(res, state); return;
     }
-    const match = url.pathname.match(/^\/api\/documents\/([^/]+)\/(pdf|export|comments)(?:\/([^/]+))?$/);
+    const match = url.pathname.match(/^\/api\/documents\/([^/]+)\/(pdf|export|comments)(?:\/([^/]+)(?:\/(restore))?)?$/);
     if (!match || !validId(match[1])) { json(res, { error: 'Not found.' }, 404); return; }
-    const [, id, action, commentId] = match;
+    const [, id, action, commentId, commentAction] = match;
     const state = workspace.states.get(id);
     if (!state) { json(res, { error: 'Document not found.' }, 404); return; }
     if (action === 'pdf' && req.method === 'GET') {
@@ -339,14 +339,18 @@ const server = createServer(async (req, res) => {
         if (selection?.targetId && !anchor && getTextTarget(state.artifact, selection.targetId)?.stable !== false) throw new Error('Select the phrase again before commenting.');
         json(res, (await addComment(root, id, { blockId: block.id, text: value.text, quote: selection?.quote ?? block.text, anchor, exactQuote: !!selection?.quote })).filter(comment => comment.status !== 'deleted')); workspace.changed(); return;
       }
-      if (req.method === 'PATCH' && commentId) {
+      if (req.method === 'PATCH' && commentId && !commentAction) {
         const value = await body(req);
         const comments = Object.hasOwn(value, 'text')
           ? await editComment(root, id, commentId, value.text, value.version)
           : await changeComment(root, id, commentId, value.status, value.version);
         json(res, comments.filter(comment => comment.status !== 'deleted')); workspace.changed(); return;
       }
-      if (req.method === 'DELETE' && commentId) {
+      if (req.method === 'POST' && commentId && commentAction === 'restore') {
+        const value = await body(req);
+        json(res, (await restoreComment(root, id, commentId, value.version)).filter(comment => comment.status !== 'deleted')); workspace.changed(); return;
+      }
+      if (req.method === 'DELETE' && commentId && !commentAction) {
         const value = await body(req);
         json(res, (await deleteComment(root, id, commentId, value.version)).filter(comment => comment.status !== 'deleted')); workspace.changed(); return;
       }

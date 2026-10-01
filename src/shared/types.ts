@@ -35,6 +35,6 @@ export interface Comment {
   id: string; blockId: string; text: string; quote: string; status: 'open' | 'resolved' | 'deleted';
   anchor?: TextAnchor;
   createdAt: string; updatedAt: string; version: number;
-  history: { at: string; action: 'created' | 'resolved' | 'reopened' | 'edited' | 'deleted'; previousText?: string }[];
+  history: { at: string; action: 'created' | 'resolved' | 'reopened' | 'edited' | 'deleted' | 'restored'; previousText?: string }[];
 }
 export interface WorkspaceContext { selectedAsset?: SelectedAsset | null; selection?: DocumentSelection | null; editing?: boolean; pendingEdits?: number; draftPreview?: boolean; themeId?: string | null; projectId?: string | null; mediaId?: string | null; documentId: string | null; blockId: string | null; page: number; updatedAt?: string }

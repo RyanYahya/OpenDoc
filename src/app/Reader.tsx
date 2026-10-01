@@ -548,6 +548,13 @@ export function Reader({
       }));
       clearSelection();
       componentTrigger.current?.focus();
+      // Deletion keeps the record, so Undo restores the same comment, anchor, and history.
+      if (action === 'delete') notify.success('Comment deleted', { label: 'Undo', onClick: async () => {
+        ++commentRequest.current;
+        commentAbort.current?.abort();
+        setComments(await api<Comment[]>(`/api/documents/${id}/comments/${comment.id}/restore`, { method: 'POST', body: JSON.stringify({ version: comment.version + 1 }) }));
+        notify.success('Comment restored');
+      } });
     } catch (error) { notify.error((error as Error).message); }
     finally { mutationPending.current = false; setChanging(null); }
   }
