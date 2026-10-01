@@ -744,14 +744,6 @@ nav a.active {
 }
 
 /* Keep the PDF surfaces independent of shared control spacing and hover fills. */
-.ui-button.page-thumb {
-  border: 0;
-  background: transparent;
-  padding: 4px;
-}
-.ui-button.page-thumb:hover {
-  background: var(--control-hover);
-}
 .ui-button.block-target {
   position: absolute;
   border: 1px solid transparent;
