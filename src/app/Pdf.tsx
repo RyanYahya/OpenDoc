@@ -21,6 +21,7 @@ import { mapPdfTextSpans, pdfSpanRangeForSelection, type PdfSpanMapping } from "
 import { loadPdfWithDeadline } from './pdfLoading';
 import { componentName, componentNavigation, isWithin, moveComponentFocus, navigationMove } from './componentNavigation';
 import { useNearViewport } from './nearViewport';
+import { textLang, type Language } from '../shared/language';
 
 let pdfJs: Promise<typeof import('pdfjs-dist')> | undefined;
 function loadPdfJs() {
@@ -158,6 +159,8 @@ type PdfPageProps = {
   label?: string;
   /** Identifies the element that explains keyboard navigation between components. */
   keyboardHelp?: string;
+  /** The document's derived language, for page text without letters of its own. */
+  language?: Language;
 };
 export const PdfPage = memo(function PdfPage({
   pdf,
@@ -177,6 +180,7 @@ export const PdfPage = memo(function PdfPage({
   onNavigate,
   label,
   keyboardHelp,
+  language,
 }: PdfPageProps) {
   const container = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -315,6 +319,16 @@ export const PdfPage = memo(function PdfPage({
       layer?.cancel();
     };
   }, [pdf, number, width, thumbnail, renderPage]);
+
+  // Screen readers voice each line in its own language; lines without letters follow the document.
+  useEffect(() => {
+    if (!textReady || !text.current) return;
+    for (const span of text.current.querySelectorAll<HTMLElement>('[data-pdf-text]')) {
+      const lang = textLang(span.textContent ?? '', language);
+      if (lang) span.lang = lang;
+      else span.removeAttribute('lang');
+    }
+  }, [language, textReady]);
 
   useEffect(() => {
     if (!textReady || !text.current || !container.current) return;

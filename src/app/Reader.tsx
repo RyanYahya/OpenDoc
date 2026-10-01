@@ -19,7 +19,7 @@ import { PageNumberInput } from "./PageNumberInput";
 import { commentDraftKey, componentCommentDraftKey, commentDrafts, type CommentDrafts } from "./commentDrafts";
 import type { DocumentSelection, TextAnchor } from "../shared/selection";
 import { anchorForSelection, getTextTarget, resolveCommentAnchor, selectionReason } from "../shared/anchors";
-import { textLang } from "../shared/language";
+import { textLang, type Language } from "../shared/language";
 import { canCorrectComponent, correctionUnavailableReason, selectedTextTarget } from "./componentCorrection";
 import { useNotificationClearance } from "./notificationClearance";
 import { carryRange, isPhrase, phraseFromText, savedPhrase, type TextRange } from './phraseSelection';
@@ -70,6 +70,7 @@ export function Reader({
   identity,
   options,
   onShowExports,
+  language,
 }: {
   state: DocumentState;
   generation: number;
@@ -77,6 +78,8 @@ export function Reader({
   identity: React.ReactNode;
   options: React.ReactNode;
   onShowExports: () => void;
+  /** The document's derived language, for page text without letters of its own. */
+  language?: Language;
 }) {
   const [responseState, setResponseState] = useState<DocumentState | null>(null);
   const state = responseState && responseState.revision > incomingState.revision ? responseState : incomingState;
@@ -888,6 +891,7 @@ export function Reader({
                     onNavigate={goPage}
                     label={`${pageLabel} ${i + 1} of ${pages.length}`}
                     keyboardHelp="reader-component-keys"
+                    language={language}
                   />
                 </section>
               ))}

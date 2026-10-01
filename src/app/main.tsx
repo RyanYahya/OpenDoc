@@ -237,7 +237,7 @@ function App() {
       {error && <div className="error-banner" role="alert"><span>{error}</span><Button className="text-button" onClick={() => void refresh()}>Try again</Button></div>}
       {tagState.error && current.view !== "document" && current.view !== "assets" && <div className="error-banner" role="alert"><span>{tagState.error}</span><Button className="text-button" onClick={() => void refresh()}>Try again</Button></div>}
       <Suspense fallback={<div className="empty-state" role="status"><div className="loading-mark" /><p>Loading…</p></div>}>
-      {current.view === "document" ? active ? <Reader key={active.id} state={active} generation={generation} connected={connected} onShowExports={() => setExportDocument(active)}
+      {current.view === "document" ? active ? <Reader key={active.id} state={active} generation={generation} connected={connected} language={activeSummary?.language} onShowExports={() => setExportDocument(active)}
         identity={<>
           <IconButton label={`Back to ${backLabel}`} className="reader-back" render={<a href={`#${backHash}`} />} nativeButton={false}><Icon name="left" size={17} /></IconButton>
           <div className="reader-document"><a href={project ? `#project/${project.id}` : "#library"} title={project?.name ?? "Documents"} dir="auto" lang={project && textLang(project.name)}>{project?.name ?? "Documents"}</a><span className="reader-context-separator" aria-hidden="true">/</span><h1 className="reader-document-title" title={documentName(active)} dir="auto" lang={textLang(documentName(active), activeSummary?.language)}>{documentName(active)}</h1><StatusBadge status={itemStatus(tagState.manifest, active.id)} className="reader-status" /></div>
