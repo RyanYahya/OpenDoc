@@ -12,7 +12,7 @@ export const documentLabel = (document: DocumentSummary) => `${documentName(docu
 
 export function DocumentMenuItems({ document, disabled, onAction }: { document: DocumentSummary; disabled?: boolean; onAction: DocumentActionHandler }) {
   return <>
-    <Menu.Item className="ui-menu-item" disabled={disabled} onClick={() => onAction(document, 'exports')}><Icon name="history" size={16} /><span>Previous exports</span></Menu.Item>
+    <Menu.Item className="ui-menu-item" disabled={disabled} onClick={() => onAction(document, 'exports')}><Icon name="archive" size={16} /><span>Previous exports</span></Menu.Item>
     <Menu.Separator className="ui-menu-separator" />
     <Menu.Item className="ui-menu-item" disabled={disabled} onClick={() => onAction(document, 'rename')}><Icon name="edit" size={16} /><span>Rename</span></Menu.Item>
     <Menu.Item className="ui-menu-item" disabled={disabled || !document.projectId} onClick={() => onAction(document, 'duplicate')}><Icon name="copy" size={16} /><span>Duplicate</span></Menu.Item>

@@ -60,7 +60,7 @@ export function ExportHistoryDialog({ document, connected, onClose }: { document
   return <Dialog.Root open={!!document} onOpenChange={open => { if (!open && !working.current) onClose(); }}>
     <Dialog.Portal><Dialog.Backdrop className="ui-dialog-backdrop" /><Dialog.Popup className="help-dialog export-history-dialog">
       <Dialog.Close render={<Button className="icon-button modal-close" aria-label="Close export history" disabled={!!busy} />}><Icon name="close" /></Dialog.Close>
-      <div className="export-history-heading"><span className="export-history-symbol"><Icon name="history" size={22} /></span><div><Dialog.Title>Previous exports</Dialog.Title><Dialog.Description>{document ? documentName(document) : ''}</Dialog.Description></div></div>
+      <div className="export-history-heading"><span className="export-history-symbol"><Icon name="archive" size={22} /></span><div><Dialog.Title>Previous exports</Dialog.Title><Dialog.Description>{document ? documentName(document) : ''}</Dialog.Description></div></div>
       <div className="export-history-summary"><span>{loading ? 'Checking saved files…' : `${entries.length} ${entries.length === 1 ? 'export' : 'exports'} · Newest first`}</span><Button className="text-button" disabled={loading || !!busy || !connected} onClick={() => void refresh()}>Refresh</Button></div>
       {!connected && <p className="field-error" role="status">Reconnect to view and manage exports.</p>}
       {error && <p className="field-error" role="alert">{error}</p>}

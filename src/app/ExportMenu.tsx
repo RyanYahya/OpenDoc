@@ -123,7 +123,7 @@ export function ExportMenu({ state, connected, ready, unsaved, saving, correctio
         <Button className="ui-menu-item" disabled={busy} onClick={() => { setResult(null); setError(''); setNotice(''); setCustomName(null); }}><Icon name="plus" size={16} />Export another copy</Button>
       </div>}
       <div className="ui-menu-separator" />
-      <Button className="ui-menu-item" onClick={() => { showHistory.current = true; setOpen(false); }}><Icon name="history" size={16} />Previous exports</Button>
+      <Button className="ui-menu-item" onClick={() => { showHistory.current = true; setOpen(false); }}><Icon name="archive" size={16} />Previous exports</Button>
     </Popover.Popup></Popover.Positioner></Popover.Portal>
   </Popover.Root>;
 }

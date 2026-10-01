@@ -1,7 +1,7 @@
 import { documentName, documentFormat, formatLabel, pageUnit, type DocumentSummary } from "../shared/types";
-import { DocumentMenu, documentLabel, type DocumentActionHandler } from './DocumentActions';
+import { DocumentMenu, type DocumentActionHandler } from './DocumentActions';
 import { CoverPreview } from "./Pdf";
-import { Button, IconButton } from "./ui";
+import { Button } from "./ui";
 import { Icon } from "./ui/Icon";
 import type { DocumentView } from './DocumentViewControl';
 import { TagSummary } from './Tags';
@@ -54,6 +54,6 @@ export function DocumentCard({
       {/* Same-titled documents and presentations stay distinguishable by sight and by name. */}
       <span className="card-meta"><span id={formatId} className="card-format"><Icon name={presentation ? 'monitor' : 'document'} size={14} />{formatLabel(format)}</span>{view === 'list' && <span id={statusId}>{statusLabel}</span>}</span>
       <TagSummary tags={tags} id={tagsId} className="card-tags" />
-    </Button><IconButton className="document-history-trigger" label={`Previous exports for ${documentLabel(document)}`} disabled={disabled} onClick={() => onAction(document, 'exports')}><Icon name="history" size={14} /></IconButton><DocumentMenu document={document} onAction={onAction} disabled={disabled} /></div>
+    </Button><DocumentMenu document={document} onAction={onAction} disabled={disabled} /></div>
   );
 }

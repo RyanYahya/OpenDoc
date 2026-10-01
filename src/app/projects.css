@@ -55,14 +55,11 @@
 .ui-button.document-menu-trigger:hover, .ui-button.document-menu-trigger[data-popup-open] { color: var(--ink); background: var(--control-hover); }
 .document-menu-positioner { z-index: 60; }
 .ui-button.document-delete-button { background: var(--destructive-fill); border-color: var(--destructive-fill); color: white; }
-.ui-button.document-history-trigger { position: absolute; top: 8px; right: 40px; min-width: 28px; min-height: 28px; padding: 6px; border-radius: 6px; color: var(--muted); background: var(--surface); }
-.ui-button.document-history-trigger:hover { color: var(--ink); background: var(--control-hover); }
-.documents-list .document-card-wrap { padding-right: 84px; }
-.documents-list .document-history-trigger { top: 50%; right: 40px; transform: translateY(-50%); background: transparent; }
+.documents-list .document-card-wrap { padding-right: 44px; }
 .documents-list .document-menu-trigger { top: 50%; right: 0; transform: translateY(-50%); border-color: transparent; background: transparent; box-shadow: none; }
 @media (hover: hover) and (pointer: fine) {
-  .document-card-wrap :is(.document-history-trigger, .document-menu-trigger) { opacity: 0; pointer-events: none; transition: opacity 120ms ease; }
-  .document-card-wrap:is(:hover, :focus-within, :has([data-popup-open])) :is(.document-history-trigger, .document-menu-trigger) { opacity: 1; pointer-events: auto; }
+  .document-card-wrap .document-menu-trigger { opacity: 0; pointer-events: none; transition: opacity 120ms ease; }
+  .document-card-wrap:is(:hover, :focus-within, :has([data-popup-open])) .document-menu-trigger { opacity: 1; pointer-events: auto; }
 }
 .project-documents .documents-list .project-document { grid-template-columns: minmax(0, 1fr); }
 .notification-action { margin-top: 6px; }
