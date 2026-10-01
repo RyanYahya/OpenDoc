@@ -641,6 +641,27 @@ nav a.active {
   background: var(--error-surface);
   color: var(--error-ink);
 }
+.render-banner.glyph-notice {
+  align-items: baseline;
+  border-bottom: 1px solid var(--line);
+  color: var(--notice-ink);
+}
+.glyph-notice > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.glyph-character {
+  font-size: 1.15em;
+}
+.glyph-code {
+  font-size: var(--tag-size);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.glyph-notice .text-button {
+  margin-left: auto;
+  color: inherit;
+}
 .render-banner pre {
   width: 100%;
   white-space: pre-wrap;

@@ -13,7 +13,7 @@ import { readDocumentAssetsAt, resolveThemeAssets } from '../assets/files';
 import type { LayoutInfo, ElementInfo } from '@formepdf/core';
 import type { BlockInfo, DocumentMeta, DocumentProvenance, RenderArtifact, Fragment, DocumentFormat, SlideInfo } from '../shared/types';
 import { RenderFailure } from './render-error';
-import { inspectLayout, assertLayoutSafe, assertSlideLayout } from './preflight';
+import { inspectLayout, assertLayoutSafe, assertSlideLayout, missingGlyphIssues } from './preflight';
 import { inspectPresentationCompatibility } from './pptx-compatibility';
 import { containedFile } from './files';
 import { readProjects } from './projects';
@@ -106,7 +106,7 @@ try {
       return prepared.element;
     }
   `;
-  const result = await renderDocumentSource(source, entry, overrides);
+  const result = await renderDocumentSource(source, entry, overrides, root);
   if (sourceOverrides.some(override => override.file.endsWith('.json')) && !globalState.__opendocTemplateValidated) throw new Error('The document does not declare a data parser for these corrections. Ask your agent to change it.');
   const capture = globalState.__opendocCapture;
   if (!capture?.meta || typeof capture.meta.title !== 'string' || !capture.meta.title.trim()) throw new Error('Export meta with a nonempty title.');
@@ -132,6 +132,10 @@ try {
     const format = manifest.formats && Object.hasOwn(manifest.formats, ownerId) ? manifest.formats[ownerId] : 'document';
     if (capture.format !== format) throw new Error(`This ${format} must use the ${format === 'presentation' ? 'Presentation' : 'Document'} root. Create presentations with --format presentation.`);
   }
+  // The built-in Arabic fallback is real font usage: list it with the document's
+  // assets and re-render when its files change.
+  const assets = [...(capture.assets ?? []), ...(result.scriptFallback?.uses ?? [])];
+  const assetDependencies = [...new Set([...(capture.assetDependencies ?? []), ...(result.scriptFallback?.dependencies ?? [])])].sort();
   const textTargets = capture.textTargets ?? [];
   attachTextLines(result.layout, textTargets);
   const pages = pagesFromLayout(result.layout, capture.blocks);
@@ -142,6 +146,7 @@ try {
   }
   if (capture.format === 'presentation') assertSlideLayout(result.layout, capture.slides, capture.blocks);
   const { issues, outline } = inspectLayout(result.layout, capture.blocks);
+  issues.push(...missingGlyphIssues(result.warnings.filter(message => message.startsWith('Missing glyphs:')), result.layout, capture.blocks));
   if (capture.format === 'presentation') {
     // Standalone titles and low captions are intentional slide compositions.
     for (let index = issues.length - 1; index >= 0; index--) if (issues[index].code === 'stranded-heading') issues.splice(index, 1);
@@ -150,10 +155,10 @@ try {
       issue.message = `Slide ${slide?.id ?? issue.page}: ${issue.message.replace(/page (\d+)/g, 'slide $1').replace('or allow the content to flow onto another page', 'or split it into explicit slides')}`;
     }
   }
-  for (const message of result.warnings) issues.push({ code: message.startsWith('Missing glyphs:') ? 'missing-glyphs' : 'renderer-warning', severity: 'warning', message });
+  for (const message of result.warnings) if (!message.startsWith('Missing glyphs:')) issues.push({ code: 'renderer-warning', severity: 'warning', message });
   assertLayoutSafe(issues);
   if (capture.format === 'presentation') issues.push(...inspectPresentationCompatibility(result.doc, result.layout, capture.slides, capture.blocks));
-  const artifact: RenderArtifact = { meta: capture.meta, format: capture.format, ...(capture.format === 'presentation' ? { slides: capture.slides } : {}), media: capture.media ?? [], assets: capture.assets ?? [], assetBindings: capture.assetBindings, assetDependencies: capture.assetDependencies ?? [], textTargets, blocks: capture.blocks, pages, provenance, issues, outline, hash: createHash('sha256').update(result.pdf).digest('hex'), renderedAt: new Date().toISOString() };
+  const artifact: RenderArtifact = { meta: capture.meta, format: capture.format, ...(capture.format === 'presentation' ? { slides: capture.slides } : {}), media: capture.media ?? [], assets, assetBindings: capture.assetBindings, assetDependencies, textTargets, blocks: capture.blocks, pages, provenance, issues, outline, hash: createHash('sha256').update(result.pdf).digest('hex'), renderedAt: new Date().toISOString() };
   await mkdir(destination, { recursive: true });
   await writeFile(resolve(destination, 'document.pdf'), result.pdf);
   await writeFile(resolve(destination, 'artifact.json'), JSON.stringify(artifact, null, 2));

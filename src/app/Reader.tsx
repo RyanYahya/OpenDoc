@@ -16,6 +16,7 @@ import type { DocumentSelection, TextAnchor } from "../shared/selection";
 import { anchorForSelection, getTextTarget, resolveCommentAnchor, selectionReason } from "../shared/anchors";
 import { canCorrectComponent } from "./componentCorrection";
 import { carryRange, isPhrase, phraseFromText, savedPhrase, type TextRange } from './phraseSelection';
+import { missingGlyphs, pageList } from "./missingGlyphs";
 import { sessionForDocument, sourceIdentity } from './editSession';
 import { readOpenEditor, recoverEditor, type EditorBaseline, type OpenEditorRecord } from './editorRecovery';
 import "./selection.css";
@@ -113,6 +114,7 @@ export function Reader({
   const pages = artifact?.pages ?? [];
   const outline = artifact?.outline ?? [];
   const issues = artifact?.issues ?? [];
+  const glyphs = missingGlyphs(issues);
   const contents = navigationMode === "contents" && outline.length > 0;
   const selectedBlock = getBlock(artifact, selected);
   const editorTarget = editing.target(editor?.selection.targetId);
@@ -697,6 +699,16 @@ export function Reader({
         </div>
       )}
 
+      {glyphs && state.status === "ready" && (
+        <div className="render-banner glyph-notice" role="status">
+          <strong>Some characters can’t be displayed.</strong>
+          <span>
+            {glyphs.characters.length > 0 && <>No font covers {glyphs.characters.map(({ character, code }, index) => <React.Fragment key={code}>{index > 0 && ", "}<bdi className="glyph-character">{character}</bdi> <span className="glyph-code">{code}</span></React.Fragment>)}{glyphs.more > 0 && ` and ${glyphs.more} more`}{glyphs.pages.length > 0 && ` on ${pageList(pageLabel, glyphs.pages)}`}, so {glyphs.characters.length + glyphs.more === 1 ? "it prints" : "they print"} as {glyphs.characters.length + glyphs.more === 1 ? "an empty box" : "empty boxes"}. </>}
+            Add a font that covers these characters, or ask your agent.
+          </span>
+          {glyphs.first && <Button className="text-button" onClick={() => glyphs.first!.blockId ? findBlock(glyphs.first!.blockId) : goPage(glyphs.first!.page!)}>Show {pageLabel.toLowerCase()}{glyphs.first.page ? ` ${glyphs.first.page}` : ""}</Button>}
+        </div>
+      )}
       {issues.length > 0 && state.status === "ready" && (
         <details className="review-issues">
           <summary>{issues.length} {issues.length === 1 ? "layout note" : "layout notes"} to review</summary>

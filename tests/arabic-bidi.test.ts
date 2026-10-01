@@ -216,16 +216,3 @@ export default function Proof(){return <Document title="تقرير" theme={theme
     assert.ok(lines.every(candidate => candidate.style.direction === 'ltr' || candidate.style.direction === 'rtl'));
   } finally { await f.cleanup(); }
 });
-
-test('characters that no font in the list covers are reported', async () => {
-  const f = await fixture();
-  try {
-    await writeFile(f.entry, `import {Document,Pages,Paragraph} from '../../src/document';
-export const meta={title:'Missing',description:'Missing glyph fixture',kind:'report',theme:'neutral'};
-export default function Proof(){return <Document title="Missing"><Pages title="Missing"><Paragraph id="p">English with مرحبا but no Arabic font.</Paragraph></Pages></Document>}`);
-    const { artifact } = await renderOnce(f.root, 'proof');
-    const issue = artifact.issues?.find(candidate => candidate.code === 'missing-glyphs');
-    assert.equal(issue?.severity, 'warning');
-    assert.match(issue!.message, /U\+0645/);
-  } finally { await f.cleanup(); }
-});

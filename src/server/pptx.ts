@@ -14,7 +14,7 @@ export interface PresentationCapture {
 }
 type TextKind = Extract<FormeNode['kind'], { type: 'Text' | 'Heading' }>;
 type Run = { text: string; style: FormeStyle; href?: string };
-type FontFace = { bytes: Buffer; family: string; weight: number; italic: boolean; restrictions: { noEmbedding?: boolean; bitmapOnly?: boolean; viewOnly?: boolean } };
+type FontFace = { bytes: Buffer; family: string; weight: number; italic: boolean; covers: (character: string) => boolean; restrictions: { noEmbedding?: boolean; bitmapOnly?: boolean; viewOnly?: boolean } };
 const PT = 72;
 const key = (location: SourceLocation | undefined, type: string) => `${location?.file ?? ''}:${location?.line ?? 0}:${location?.column ?? 0}:${type}`;
 const hex = (color: Color) => [color.r, color.g, color.b].map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join('').toUpperCase();
@@ -103,7 +103,8 @@ function fontCatalog(doc: FormeDocument) {
     const font = fontkit.create(bytes);
     if (!('familyName' in font)) throw new Error('PowerPoint export requires individual font faces, not a font collection.');
     const restrictions = (font as unknown as { 'OS/2'?: { fsType?: FontFace['restrictions'] } })['OS/2']?.fsType ?? {};
-    fonts.set(`${item.family}:${item.weight ?? 400}:${!!item.italic}`, { bytes, family: font.familyName, weight: item.weight ?? 400, italic: !!item.italic, restrictions });
+    fonts.set(`${item.family}:${item.weight ?? 400}:${!!item.italic}`, { bytes, family: font.familyName, weight: item.weight ?? 400, italic: !!item.italic, restrictions,
+      covers: character => font.hasGlyphForCodePoint(character.codePointAt(0)!) });
   }
   return fonts;
 }
@@ -116,16 +117,41 @@ export async function presentationBytes(capture: PresentationCapture): Promise<U
   const pptx = new TsPptx();
   pptx.defineLayout({ name: 'OPENDOC', width: 960 / PT, height: 540 / PT });
   pptx.layout = 'OPENDOC'; pptx.title = capture.meta.title; pptx.author = capture.meta.author ?? 'OpenDoc';
-  function textStyle(style: ElementStyleInfo): TextPropsOptions {
+  const families = (style: ElementStyleInfo) => style.fontFamily.split(',').map(name => name.trim().replace(/^["']|["']$/g, ''));
+  function face(family: string, style: ElementStyleInfo) {
     // Match Forme 0.20.1 FontRegistry::resolve: exact, snapped, then opposite weight.
     // Choosing the numerically closest face would disagree with the reviewed PDF.
     const weight = style.fontWeight ?? 400, snapped = weight >= 600 ? 700 : 400;
+    for (const candidate of [weight, snapped, snapped === 700 ? 400 : 700]) {
+      const font = fonts.get(`${family}:${candidate}:${style.fontStyle === 'Italic'}`);
+      if (font) return font;
+    }
+    return undefined;
+  }
+  /**
+   * Split text where the PDF draws it from a later family in the fontFamily list, such as
+   * Arabic words from the Arabic fallback inside an English paragraph. Each part names the
+   * font that drew it, so PowerPoint's Latin and complex-script slots match the preview.
+   * Like the engine, spaces, digits, and punctuation stay in the preceding font when it has them.
+   */
+  function fontRuns(text: string, style: ElementStyleInfo): { text: string; fontFamily?: string }[] {
+    const list = families(style).filter(family => face(family, style));
+    if (list.length < 2) return [{ text }];
+    const parts: { text: string; family: string }[] = [];
+    for (const character of text) {
+      const previous = parts.at(-1)?.family;
+      const neutral = !/\p{L}/u.test(character) && previous !== undefined && (/\s/.test(character) || face(previous, style)!.covers(character));
+      const family = neutral ? previous : list.find(candidate => face(candidate, style)!.covers(character)) ?? previous ?? list[0];
+      if (previous === family) parts.at(-1)!.text += character;
+      else parts.push({ text: character, family });
+    }
+    if (parts.every(part => part.family === list[0])) return [{ text }];
+    return parts.map(part => ({ text: part.text, ...(part.family === list[0] ? {} : { fontFamily: part.family }) }));
+  }
+  function textStyle(style: ElementStyleInfo): TextPropsOptions {
     let font: FontFace | undefined;
-    for (const family of style.fontFamily.split(',').map(name => name.trim().replace(/^["']|["']$/g, ''))) {
-      for (const candidate of [weight, snapped, snapped === 700 ? 400 : 700]) {
-        font = fonts.get(`${family}:${candidate}:${style.fontStyle === 'Italic'}`);
-        if (font) break;
-      }
+    for (const family of families(style)) {
+      font = face(family, style);
       if (font) break;
     }
     if (!font) throw new Error(`PowerPoint export needs the exact font face: ${style.fontFamily}, weight ${style.fontWeight}.`);
@@ -184,7 +210,10 @@ export async function presentationBytes(capture: PresentationCapture): Promise<U
         const declared = resolved === 'rtl' || resolved === 'ltr' ? resolved : (source.style as { direction?: unknown } | undefined)?.direction ?? (style as { direction?: unknown }).direction;
         const direction = paragraphDirection(declared, source.kind.runs?.map(run => run.content).join('') ?? source.kind.content);
         const bidi: TextPropsOptions = direction.rtl ? { rtlMode: true, ...(direction.lang ? { lang: direction.lang } : {}) } : {};
-        const rich = runs.map(run => ({ text: run.text, options: { ...textStyle({ ...style, ...run.style } as ElementStyleInfo), ...bidi, ...(run.href ? { hyperlink: { url: run.href } } : {}) } }));
+        const rich = runs.flatMap(run => {
+          const runStyle = { ...style, ...run.style } as ElementStyleInfo;
+          return fontRuns(run.text, runStyle).map(part => ({ text: part.text, options: { ...textStyle(part.fontFamily ? { ...runStyle, fontFamily: part.fontFamily } : runStyle), ...bidi, ...(run.href ? { hyperlink: { url: run.href } } : {}) } }));
+        });
         const align = direction.rtl ? rtlParagraphAlignment(style.textAlign, node, lines) : style.textAlign.toLowerCase() as TextPropsOptions['align'];
         slide.addText(rich, { ...box(node), y: lines[0].y / PT, ...textStyle(style), ...bidi, margin: 0, breakLine: false, paraSpaceAfter: 0, paraSpaceBefore: 0,
           lineSpacing: style.fontSize * style.lineHeight, align, valign: 'top', wrap: false, fit: 'none',
