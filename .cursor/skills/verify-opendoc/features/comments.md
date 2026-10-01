@@ -7,6 +7,8 @@ A user leaves feedback on a specific block, lists it, applies the intended revis
 - `comment-copy` duplicates a ready document into a new id.
 - `comment-add` attaches an open comment to a real block.
 - `comment-list` returns that comment with stable `id` and `blockId`.
+- `comment-phrase` anchors a command-line comment to exact words with `--phrase` (and `--target` for one field).
+- `comment-anchors` reports `anchorStatus` and `targetAvailable` with `list --anchors`; `list --deleted` shows Recently deleted.
 - `comment-resolve` marks the comment resolved and keeps history.
 - `comment-cleanup` deletes the disposable document.
 
@@ -29,6 +31,7 @@ Preconditions:
 - **Wait.** `GET <origin>/api/documents/<copy-id>` until `status` is `ready`. Confirm block `welcome-introduction` exists on the artifact.
 - **Add.** `pnpm comments -- add <copy-id> welcome-introduction "Verification: clarify the opening sentence." --json`. Exit 0. The printed list includes an open comment on `welcome-introduction`.
 - **List.** `pnpm comments -- list <copy-id>` returns JSON containing that `id`, `blockId`, and `status: "open"`.
+- **Phrase.** `pnpm comments -- add <copy-id> welcome-introduction "Verification: phrase." --phrase "<words from that block>" --json` records an `anchor` with that `quote`; `pnpm comments -- list <copy-id> --anchors` reports `anchorStatus: "attached"` for it.
 - **Resolve.** `pnpm comments -- resolve <copy-id> <comment-id> --json`. The comment `status` is `resolved`.
 - **Second view.** `pnpm comments -- list <copy-id>` still contains the resolved comment (history is kept).
 - **Delete the copy.** `DELETE <origin>/api/documents/<copy-id>` with the same write headers, or `pnpm documents -- delete <copy-id> --json`. Status `200` (or exit 0). `GET /api/documents?view=summary` no longer includes `<copy-id>`.
