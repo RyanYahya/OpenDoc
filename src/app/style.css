@@ -391,11 +391,14 @@ nav a.active {
   flex: 1;
 }
 .page-rail {
-  width: 110px;
+  /* Size to the fixed-width thumbnails plus any classic scrollbar, so the rail never scrolls sideways. */
+  width: auto;
+  min-width: 110px;
   flex-shrink: 0;
   background: var(--navigation-surface);
   border-right: 1px solid var(--line);
   overflow: auto;
+  scrollbar-gutter: stable;
   padding: 23px 12px;
 }
 .rail-label {
@@ -665,7 +668,7 @@ nav a.active {
     padding: 7px;
   }
   .page-rail {
-    width: 94px;
+    min-width: 94px;
     padding-left: 8px;
     padding-right: 8px;
   }
