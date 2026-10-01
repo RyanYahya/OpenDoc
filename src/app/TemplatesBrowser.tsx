@@ -10,7 +10,7 @@ import { CreateDocumentDialog } from './CreateDocumentDialog';
 import { GuideDialog } from './GuideDialog';
 import { filtering, ItemFilters, matchesFilters, noFilters, tagText, type TagState, type TagTarget } from './Tags';
 import { emptyTags, itemCustomTags, itemType, typeLabel } from '../shared/tags';
-import { languageLabel } from '../shared/language';
+import { languageLabel, textLang } from '../shared/language';
 import './templates.css';
 
 function TemplatePreview({ item, allPages = false, onReady }: { item: TemplateItem; allPages?: boolean; onReady?: (revision: string, preview: Preview) => void }) {
@@ -99,8 +99,8 @@ export function TemplatesBrowser({ selection, generation, format = 'document', c
           </div>
           <div className="template-options">
             <header className="template-options-heading">
-              <h1 dir="auto">{item.descriptor.name}</h1>
-              <p className="lead template-intro" dir="auto">{item.descriptor.description}</p>
+              <h1 dir="auto" lang={textLang(item.descriptor.name, item.language)}>{item.descriptor.name}</h1>
+              <p className="lead template-intro" dir="auto" lang={textLang(item.descriptor.description, item.language)}>{item.descriptor.description}</p>
             </header>
             <h2>{presentation ? 'The deck structure' : 'The page structure'}</h2>
             <p className="template-format">{item.descriptor.format}</p>
@@ -155,7 +155,7 @@ export function TemplatesBrowser({ selection, generation, format = 'document', c
       <div className={`template-grid${category === 'presentation' ? ' template-grid-presentations' : ''}`}>{visible.map(item => <article className="template-card" key={item.id}>
         <a href={`#templates/${item.id}`} className="template-card-link" aria-labelledby={`template-title-${item.id}`}>
           <div className="template-card-mat" aria-hidden="true"><TemplatePreview item={item} /></div>
-          <h2 id={`template-title-${item.id}`}><bdi>{item.descriptor.name}</bdi><Icon name="arrow" size={17} /></h2>
+          <h2 id={`template-title-${item.id}`}><bdi lang={textLang(item.descriptor.name, item.language)}>{item.descriptor.name}</bdi><Icon name="arrow" size={17} /></h2>
         </a>
         <p className="template-format">{tagging && itemType(tagManifest, 'templates', item.id) && <span className="card-type">{typeLabel(itemType(tagManifest, 'templates', item.id)!)} · </span>}{item.descriptor.format}</p>
         {item.error && <p className="comment-error" role="alert">Preview needs attention. Open the template for details.</p>}

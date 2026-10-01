@@ -20,6 +20,7 @@ import { PageNumberInput } from "./PageNumberInput";
 import { commentDraftKey, componentCommentDraftKey, commentDrafts, type CommentDrafts } from "./commentDrafts";
 import type { DocumentSelection, TextAnchor } from "../shared/selection";
 import { anchorForSelection, getTextTarget, resolveCommentAnchor, selectionReason } from "../shared/anchors";
+import { textLang } from "../shared/language";
 import { canCorrectComponent, correctionUnavailableReason, selectedTextTarget } from "./componentCorrection";
 import { useNotificationClearance } from "./notificationClearance";
 import { carryRange, isPhrase, phraseFromText, savedPhrase, type TextRange } from './phraseSelection';
@@ -813,7 +814,7 @@ export function Reader({
           {contents ? (
             <nav className="document-outline" aria-label={`${formatLabel} contents`}>
               {outline.map((entry, index) => <Button static key={`${entry.id}-${index}`} className={`outline-entry level-${Math.min(entry.level, 3)}`} onClick={() => navigateFromRail(entry.page, entry.id)}>
-                <span dir="auto">{entry.title}</span><span className="outline-page">{entry.page}</span>
+                <span dir="auto" lang={textLang(entry.title)}>{entry.title}</span><span className="outline-page">{entry.page}</span>
               </Button>)}
             </nav>
           ) : pdf && pages.map((_, index) => (
@@ -906,9 +907,9 @@ export function Reader({
           if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); if (!submitting) event.currentTarget.requestSubmit(); }
         }}>
           <div className="text-edit-heading"><div><Icon name="comment" size={15} /><h2 id="correction-title">Add comment</h2><span className="text-edit-kind">{selectedBlock?.kind ?? 'Component'}</span></div><IconButton label="Close comment composer" disabled={submitting} onClick={closeComposer}><Icon name="close" size={15} /></IconButton></div>
-          {commentPhrase ? <p className="comment-phrase" id="comment-phrase">on “<bdi dir="auto">{commentPhrase.quote}</bdi>”</p>
+          {commentPhrase ? <p className="comment-phrase" id="comment-phrase">on “<bdi dir="auto" lang={textLang(commentPhrase.quote)}>{commentPhrase.quote}</bdi>”</p>
             : selectedPhrase && <p className="correction-note comment-phrase-note" id="comment-phrase">This phrase includes unsaved wording, so the comment applies to the whole component.</p>}
-          <textarea ref={commentField} dir="auto" aria-label="Comment" aria-describedby={selectedPhrase ? 'comment-phrase' : undefined} placeholder="Describe the change for your agent…" value={draft} maxLength={8000} readOnly={submitting} onChange={event => setDraft(event.target.value)} />
+          <textarea ref={commentField} dir="auto" lang={textLang(draft)} aria-label="Comment" aria-describedby={selectedPhrase ? 'comment-phrase' : undefined} placeholder="Describe the change for your agent…" value={draft} maxLength={8000} readOnly={submitting} onChange={event => setDraft(event.target.value)} />
           <div className="text-edit-footer"><span>Your agent applies comments</span><Button disabled={submitting} onClick={closeComposer}>Cancel</Button><Button className="add-comment" type="submit" disabled={!draft.trim() || !ready || submitting || !selectedBlock}>{submitting ? 'Adding…' : 'Add comment'}</Button></div>
         </form> : editor && <form key="edit" onSubmit={event => { event.preventDefault(); closeEditor(); }} onKeyDown={event => {
           if (event.nativeEvent.isComposing || composingText.current) return;
@@ -916,7 +917,7 @@ export function Reader({
           if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); closeEditor(); }
         }}>
           <div className="text-edit-heading"><div><Icon name="edit" size={15} /><h2 id="correction-title">{editorWritable ? 'Edit text' : 'Selected text'}</h2><span className="text-edit-kind">{selectedBlock?.kind ?? 'Component'}</span></div><IconButton label="Close text editor" disabled={editPending || !!editError} onClick={closeEditor}><Icon name="close" size={15} /></IconButton></div>
-          <textarea ref={editField} dir="auto" aria-label="Text correction" value={editor.text} readOnly={!editorWritable || editPending || !!editing.savedId} maxLength={8000} onCompositionStart={() => { composingText.current = true; }} onCompositionEnd={event => { composingText.current = false; changeText(event.currentTarget.value); }} onChange={event => { if (composingText.current) { setEditor({ ...editor, text: event.target.value }); rememberOpenEditor(editor.selection.targetId!, event.target.value, editor.baseline); } else changeText(event.target.value); }} />
+          <textarea ref={editField} dir="auto" lang={textLang(editor.text)} aria-label="Text correction" value={editor.text} readOnly={!editorWritable || editPending || !!editing.savedId} maxLength={8000} onCompositionStart={() => { composingText.current = true; }} onCompositionEnd={event => { composingText.current = false; changeText(event.currentTarget.value); }} onChange={event => { if (composingText.current) { setEditor({ ...editor, text: event.target.value }); rememberOpenEditor(editor.selection.targetId!, event.target.value, editor.baseline); } else changeText(event.target.value); }} />
           {editor.linked > 1 && <p className="correction-note">This text appears {editor.linked} times. All occurrences change together.</p>}
           {!editorWritable && <p className="correction-note">{selectionReason(artifact, editor.selection)}</p>}
           {editError && <p className="correction-error" role="alert">{editError} <Button className="text-button" disabled={state.status !== 'ready' || !getTextTarget(state.artifact, editor.selection.targetId)} onClick={resetText}>{editor.selection.targetId && pendingEditorBaseline(editor.selection.targetId) ? 'Reset text' : 'Use latest text'}</Button></p>}

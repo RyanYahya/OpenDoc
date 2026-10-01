@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Comment } from '../shared/types';
+import { textLang } from '../shared/language';
 import { api } from './api';
 import { Button } from './ui';
 import { Icon } from './ui/Icon';
@@ -50,7 +51,7 @@ export function DeletedComments({ documentId, blockId, connected, refreshKey, on
       {visible.map(comment => <li key={comment.id}>
         <div className="deleted-comment-body">
           <span className="comment-location">Deleted <CommentTime value={deletedAt(comment)} /></span>
-          <span className="comment-text" dir="auto">{comment.text}</span>
+          <span className="comment-text" dir="auto" lang={textLang(comment.text)}>{comment.text}</span>
         </div>
         <Button className="deleted-comment-restore" disabled={!connected || !!restoring} onClick={() => void restore(comment)}>{restoring === comment.id ? 'Restoring…' : 'Restore'}</Button>
       </li>)}

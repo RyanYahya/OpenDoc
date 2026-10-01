@@ -69,3 +69,16 @@ export function declaredLanguage(declared: DeclaredLanguage): Language {
   if (!declaresArabic(declared)) return 'english';
   return declared.direction === 'auto' ? 'bilingual' : 'arabic';
 }
+
+/**
+ * The `lang` for a piece of app text, such as a title, name, comment, or entered value: `ar` when
+ * at least half its letters are Arabic script, otherwise undefined so it inherits the page's
+ * English. Pass an item's derived language with its title so a title without letters, such as a
+ * year, takes the item's language; text with letters is judged by its own script, so an English
+ * title of an Arabic document stays English.
+ */
+export function textLang(text: string, language?: Language): 'ar' | undefined {
+  const { arabic, latin } = countScripts(text);
+  if (!arabic && !latin) return language === 'arabic' ? 'ar' : undefined;
+  return arabic >= latin ? 'ar' : undefined;
+}

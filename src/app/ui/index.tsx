@@ -6,14 +6,16 @@ import { Select } from "@base-ui/react/select";
 import { Tooltip } from "@base-ui/react/tooltip";
 import { Toast } from "@base-ui/react/toast";
 import { Icon } from "./Icon";
+import { textLang } from "../../shared/language";
 import "./ui.css";
 
 export { Dialog } from "@base-ui/react/dialog";
 export { Tabs } from "@base-ui/react/tabs";
 
-/** Entered text sets its own direction, so Arabic and mixed text edit correctly in the LTR app. */
+/** Entered text sets its own direction and, when mostly Arabic, its language, so Arabic and mixed text edit and read correctly in the English app. */
 export function Input(props: BaseInput.Props) {
-  return <BaseInput dir="auto" {...props} />;
+  const text = props.value ?? props.defaultValue;
+  return <BaseInput dir="auto" lang={typeof text === "string" ? textLang(text) : undefined} {...props} />;
 }
 
 // Keep the Base UI composition and ref API available to every consumer.
@@ -173,6 +175,7 @@ export function SelectControl({
                     key={item.value}
                     value={item.value}
                     className="ui-select-item"
+                    lang={textLang(item.label)}
                   >
                     <Select.ItemText>{item.label}</Select.ItemText>
                     <Select.ItemIndicator>

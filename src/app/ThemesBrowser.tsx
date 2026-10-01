@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ThemePreview, ThemeSummary } from '../shared/themes';
+import { textLang } from '../shared/language';
 import { emptyThemeFolders, folderCounts, inFolder, themeFolder as folderOf, type ThemeFoldersManifest } from '../shared/theme-folders';
 import { emptyTags, filterKey } from '../shared/tags';
 import { documentName, documentFormat, formatLabel, type DocumentSummary } from '../shared/types';
@@ -116,8 +117,8 @@ type GalleryOrganization = { manifest: ThemeFoldersManifest; tags: Record<string
 function ThemeGallery({ themes, generation, onRefresh, organize }: { themes: ThemeSummary[]; generation: number; onRefresh: () => void; organize?: GalleryOrganization }) {
   return <div className="theme-gallery">{themes.map(theme => <article className="theme-gallery-card" key={theme.id} onDragStart={organize?.folders && !organize.disabled ? event => startThemeDrag(event, theme.id) : undefined}>
     <div className="theme-gallery-preview"><ThemeSpecimen theme={theme} generation={generation} onRefresh={onRefresh} /><ThemePalette theme={theme} compact /><a className="theme-preview-link" href={`#themes/${theme.id}`} aria-label={`Explore ${theme.name}`} />{organize && <ThemeMenu theme={theme} disabled={organize.disabled} folders={organize.folders} tags={organize.tagging} onAction={organize.onAction} />}</div>
-    <h2><a href={`#themes/${theme.id}`}><bdi>{theme.name}</bdi><Icon name="arrow" size={17} /></a></h2>
-    {theme.description && <p className="theme-gallery-description" dir="auto">{theme.description}</p>}
+    <h2><a href={`#themes/${theme.id}`}><bdi lang={textLang(theme.name, theme.language)}>{theme.name}</bdi><Icon name="arrow" size={17} /></a></h2>
+    {theme.description && <p className="theme-gallery-description" dir="auto" lang={textLang(theme.description, theme.language)}>{theme.description}</p>}
     {organize && <ThemeCardMeta theme={theme} manifest={organize.manifest} tags={organize.tags[theme.id] ?? []} showFolder={organize.showFolder} tag={organize.tag} />}
   </article>)}</div>;
 }
@@ -185,7 +186,7 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
       {theme ? <div className="theme-detail-layout">
         <ThemeSpecimen key={theme.id} theme={theme} generation={generation} allPages onRefresh={onRefresh} />
         <aside className="theme-options">
-          <header><h1 dir="auto">{theme.name}</h1><p className="lead" dir="auto">{theme.description}</p></header>
+          <header><h1 dir="auto" lang={textLang(theme.name, theme.language)}>{theme.name}</h1><p className="lead" dir="auto" lang={textLang(theme.description, theme.language)}>{theme.description}</p></header>
           <div className="theme-actions"><Button className="primary" disabled={Boolean(theme.error)} onClick={() => setCreateOpen(true)}>Create with this theme</Button><Button onClick={() => setPromptOpen(true)} aria-describedby="theme-adapt-hint">Adapt this theme</Button><p id="theme-adapt-hint" className="theme-action-hint">Have your coding agent revise this theme or build a new one from it.</p><GuideDialog key={theme.id} kind="theme" id={theme.id} name={theme.name} generation={theme.revision ?? generation} /></div>
           {theme.assetError && <p className="field-error" role="alert">{theme.assetError}</p>}
           <AssetThemeDefaults key={theme.id} themeId={theme.id} generation={generation} connected={connected} />
@@ -196,9 +197,9 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
             {theme.principles.length > 0 && <section><h2>System rules</h2><ul>{theme.principles.map(principle => <li key={principle}>{principle}</li>)}</ul></section>}
             {theme.useFor.length > 0 && <section><h2>Works well for</h2><p>{theme.useFor.join(' · ')}</p></section>}
             {usingDocuments.length > 0 && <section className="theme-used-by"><h2>Documents using {theme.name}</h2>{usingDocuments.map(document => <a key={document.id} href={`#document/${document.id}`}><Icon name={documentFormat(document) === 'presentation' ? 'monitor' : 'document'} size={16} /><span><bdi>{documentName(document)}</bdi><span className="theme-used-format"> · {formatLabel(documentFormat(document))}</span></span><Icon name="arrow" size={15} /></a>)}</section>}
-            {defaultProjects.length > 0 && <section className="theme-used-by"><h2>Project default</h2>{defaultProjects.map(({ project, label }) => <a key={project.id} href={`#project/${project.id}`}><Icon name="folder" size={16} /><span><bdi>{project.name}</bdi><span className="theme-used-format"> · {label}</span></span><Icon name="arrow" size={15} /></a>)}</section>}
+            {defaultProjects.length > 0 && <section className="theme-used-by"><h2>Project default</h2>{defaultProjects.map(({ project, label }) => <a key={project.id} href={`#project/${project.id}`}><Icon name="folder" size={16} /><span><bdi lang={textLang(project.name)}>{project.name}</bdi><span className="theme-used-format"> · {label}</span></span><Icon name="arrow" size={15} /></a>)}</section>}
             {(organizing || tagging) && (themeFolder || themeTags.length > 0) && <section className="theme-organization"><h2>{organizing && tagging ? <>Folder &amp; tags</> : organizing ? 'Folder' : 'Tags'}</h2>
-              <dl>{organizing && <div><dt>Folder</dt><dd>{themeFolder ? <a href={themesHash({ folder: themeFolder.id })} dir="auto">{themeFolder.name}</a> : 'None'}</dd></div>}{tagging && <div><dt>Tags</dt><dd>{themeTags.length ? tagText(themeTags) : 'None'}</dd></div>}</dl>
+              <dl>{organizing && <div><dt>Folder</dt><dd>{themeFolder ? <a href={themesHash({ folder: themeFolder.id })} dir="auto" lang={textLang(themeFolder.name)}>{themeFolder.name}</a> : 'None'}</dd></div>}{tagging && <div><dt>Tags</dt><dd>{themeTags.length ? tagText(themeTags) : 'None'}</dd></div>}</dl>
               <div className="theme-organization-actions">{organizing && <Button className="text-button" data-theme-menu={theme.id} disabled={!connected} onClick={() => setFolderAction({ kind: 'move-theme', theme })}>Move to folder…</Button>}{tagging && <Button className="text-button" data-theme-tags={theme.id} disabled={!connected} onClick={() => editTags(theme, `[data-theme-tags="${theme.id}"]`)}>Edit tags…</Button>}</div>
             </section>}
           </div>
@@ -217,8 +218,8 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
       <ThemeGallery themes={visible} generation={generation} onRefresh={onRefresh} organize={organizing || tagging ? { manifest, tags: cardTags, folders: organizing, tagging, showFolder: organizing && !currentFolder, tag: activeTag, disabled: !connected, onAction: onFolderAction } : undefined} />
       {loaded && themes.length === 0 && <div className="empty-state"><h2>No themes yet</h2><p>Create a print system with your coding agent. Its reviewed PDF will appear here.</p><Button onClick={() => setPromptOpen(true)}>Create theme</Button></div>}
       {loaded && missingFolder && <div className="empty-state"><h2>Folder not found</h2><p>It may have been deleted or renamed in another window. Your themes are still in the library.</p><a href={filterHash({ folder: '' })} className="project-templates-link">Show all themes<Icon name="arrow" size={16} /></a></div>}
-      {loaded && folderEmpty && <div className="empty-state theme-folder-empty"><h2><bdi>{currentFolder!.name}</bdi> is empty</h2><p>Drag a theme card onto the <bdi>{currentFolder!.name}</bdi> button, or choose Move to folder… from a theme’s options menu.</p><a href={filterHash({ folder: '' })} className="project-templates-link">Show all themes<Icon name="arrow" size={16} /></a></div>}
-      {loaded && themes.length > 0 && !missingFolder && !folderEmpty && activeTag && !visible.length && <div className="empty-state"><h2>No themes tagged “{tagLabel}”{currentFolder && <> in <bdi>{currentFolder.name}</bdi></>}</h2><p>{currentFolder ? 'Choose another tag or folder, or clear the tag filter.' : 'Choose another tag, or show every theme.'}</p><Button onClick={() => { location.hash = filterHash({ tag: '' }); }}>Clear tag filter</Button></div>}
+      {loaded && folderEmpty && <div className="empty-state theme-folder-empty"><h2><bdi lang={textLang(currentFolder!.name)}>{currentFolder!.name}</bdi> is empty</h2><p>Drag a theme card onto the <bdi lang={textLang(currentFolder!.name)}>{currentFolder!.name}</bdi> button, or choose Move to folder… from a theme’s options menu.</p><a href={filterHash({ folder: '' })} className="project-templates-link">Show all themes<Icon name="arrow" size={16} /></a></div>}
+      {loaded && themes.length > 0 && !missingFolder && !folderEmpty && activeTag && !visible.length && <div className="empty-state"><h2>No themes tagged “{tagLabel}”{currentFolder && <> in <bdi lang={textLang(currentFolder.name)}>{currentFolder.name}</bdi></>}</h2><p>{currentFolder ? 'Choose another tag or folder, or clear the tag filter.' : 'Choose another tag, or show every theme.'}</p><Button onClick={() => { location.hash = filterHash({ tag: '' }); }}>Clear tag filter</Button></div>}
     </>}
     <ThemePromptDialog open={promptOpen} onOpenChange={setPromptOpen} theme={selection ? theme : undefined} />
     <CreateDocumentDialog open={createOpen} onOpenChange={setCreateOpen} theme={theme} />

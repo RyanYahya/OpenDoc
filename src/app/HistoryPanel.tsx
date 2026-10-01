@@ -5,6 +5,7 @@ import { Icon } from './ui/Icon';
 import { formatFull, formatTime, formatTimeRange, formatWhen } from '../shared/dates';
 import { historyHighlightCss, outlinedChanges } from './historyView';
 import { compactDiff, compacts, diffWords, hasChanges, type DiffChunk } from '../shared/word-diff';
+import { textLang } from '../shared/language';
 import { describeVersions, groupVersions, historyChangeLabels, type VersionRun, type BlockHistory, type HistoryBlockChange, type HistoryComparison, type HistoryList, type HistorySummaryPart, type HistoryVersionSummary, type RestoreResult, type RestoreScope } from '../shared/history';
 import './history.css';
 
@@ -37,12 +38,12 @@ function WordingDiff({ before, after }: { before?: string; after?: string }) {
   const diff = useMemo(() => before !== undefined && after !== undefined ? diffWords(before, after) : null, [before, after]);
   const empty = <em>No text</em>;
   if (!diff) return <dl className="history-diff">
-    {before !== undefined && <div><dt>Then</dt><dd dir="auto">{before || empty}</dd></div>}
-    {after !== undefined && <div><dt>Now</dt><dd dir="auto">{after || empty}</dd></div>}
+    {before !== undefined && <div><dt>Then</dt><dd dir="auto" lang={textLang(before ?? '')}>{before || empty}</dd></div>}
+    {after !== undefined && <div><dt>Now</dt><dd dir="auto" lang={textLang(after ?? '')}>{after || empty}</dd></div>}
   </dl>;
   if (!hasChanges(diff)) return <>
     <p className="history-note">Same wording; only layout or code changed.</p>
-    <dl className="history-diff"><div><dt>Now</dt><dd dir="auto">{after || empty}</dd></div></dl>
+    <dl className="history-diff"><div><dt>Now</dt><dd dir="auto" lang={textLang(after ?? '')}>{after || empty}</dd></div></dl>
   </>;
   // A near-total rewrite reads better as two plain paragraphs than as one long strike-through.
   const marked = diff.kept >= 0.2;
@@ -50,8 +51,8 @@ function WordingDiff({ before, after }: { before?: string; after?: string }) {
   const chunks = long && !full ? compactDiff(diff.chunks, 8) : diff.chunks;
   return <>
     <dl className={`history-diff${marked ? ' marked' : ''}`}>
-      <div><dt>Then</dt><dd dir="auto">{marked ? <Side chunks={chunks} side="before" /> : before || empty}</dd></div>
-      <div><dt>Now</dt><dd dir="auto">{marked ? <Side chunks={chunks} side="after" /> : after || empty}</dd></div>
+      <div><dt>Then</dt><dd dir="auto" lang={textLang(before ?? '')}>{marked ? <Side chunks={chunks} side="before" /> : before || empty}</dd></div>
+      <div><dt>Now</dt><dd dir="auto" lang={textLang(after ?? '')}>{marked ? <Side chunks={chunks} side="after" /> : after || empty}</dd></div>
     </dl>
     {long && <Button className="text-button history-expand" aria-expanded={full} onClick={() => setFull(value => !value)}>{full ? 'Show changes only' : 'Show full text'}</Button>}
   </>;
@@ -227,7 +228,7 @@ export function HistoryPanel({ documentId, target, generation, connected, pageLa
       <div className="history-title">
         <h2 id="history-heading" ref={heading} tabIndex={-1} title={selectedVersion && !blockId ? formatFull(selectedVersion.at) : undefined}>{title}</h2>
         {selectedVersion && !blockId && <p><Origin version={selectedVersion} /><span className="history-title-summary"><Summary parts={describeVersions([selectedVersion])} /></span></p>}
-        {blockId && block && <p><span>{block.kindLabel}</span>{block.name && <span className="history-title-summary">“<bdi>{block.name}</bdi>”</span>}</p>}
+        {blockId && block && <p><span>{block.kindLabel}</span>{block.name && <span className="history-title-summary">“<bdi lang={textLang(block.name)}>{block.name}</bdi>”</span>}</p>}
       </div>
     </div>
     <div className="history-content">
@@ -242,7 +243,7 @@ export function HistoryPanel({ documentId, target, generation, connected, pageLa
       {blockId && block && <>
         <div className="history-block-current">
           <span className="history-meta">Now{block.resolution === 'enclosing' ? `, the ${block.kindLabel.toLowerCase()} containing your selection` : ''}</span>
-          <p dir="auto">{block.current || <em>No text</em>}</p>
+          <p dir="auto" lang={textLang(block.current)}>{block.current || <em>No text</em>}</p>
         </div>
         {block.entries.length ? <ol className="history-entries">{block.entries.map(entry => {
           const scope: RestoreScope = entry.container ? 'section' : 'block';
@@ -281,7 +282,7 @@ export function HistoryPanel({ documentId, target, generation, connected, pageLa
               onPointerEnter={() => setFocused(change)} onPointerLeave={() => setFocused(current => current === change ? null : current)}
               onFocus={() => setFocused(change)} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setFocused(current => current === change ? null : current); }}>
               <div className="history-change-heading">
-                <span className="history-change-name">{change.name ? <>“<bdi>{change.name}</bdi>”</> : change.kindLabel}</span>
+                <span className="history-change-name">{change.name ? <>“<bdi lang={textLang(change.name)}>{change.name}</bdi>”</> : change.kindLabel}</span>
                 <span className="history-change-meta">{change.name ? `${change.kindLabel} · ` : ''}{historyChangeLabels[change.status]}</span>
               </div>
               {change.status === 'contents' ? <p className="history-note">{inside ? `${inside} ${inside === 1 ? 'block' : 'blocks'} inside changed.` : 'Blocks inside it changed.'}</p>

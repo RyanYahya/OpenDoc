@@ -3,6 +3,7 @@ import { Menu } from '@base-ui/react/menu';
 import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
 import type { ThemeSummary } from '../shared/themes';
+import { textLang } from '../shared/language';
 import {
   folderCounts, folderNameProblem, sortedFolders, themeFolder, themeFolderLimits,
   type ThemeFolder, type ThemeFoldersManifest,
@@ -82,7 +83,7 @@ function FolderToggle({ value, name, count, icon, onDropTheme }: { value: string
   const drop = useThemeDrop(onDropTheme);
   return <Toggle value={value} data-folder-filter={value} aria-label={`${name}, ${themeCount(count)}`} title={icon ? name : undefined}
     className={`ui-button theme-folder-toggle${drop.over ? ' is-drop-target' : ''}`} {...drop.handlers}>
-    {icon && <Icon name="folder" size={15} />}<span className="theme-folder-toggle-name" dir="auto">{name}</span><span className="theme-folder-toggle-count" aria-hidden="true">{count}</span>
+    {icon && <Icon name="folder" size={15} />}<span className="theme-folder-toggle-name" dir="auto" lang={textLang(name)}>{name}</span><span className="theme-folder-toggle-count" aria-hidden="true">{count}</span>
   </Toggle>;
 }
 
@@ -94,8 +95,8 @@ function ManageFoldersMenu({ selected, hasFolders, disabled, onAction }: { selec
       <Menu.Item className="ui-menu-item" onClick={() => onAction({ kind: 'create' })}><Icon name="folderPlus" size={16} /><span>New folder…</span></Menu.Item>
       <Menu.Separator className="ui-menu-separator" />
       {selected ? <>
-        <Menu.Item className="ui-menu-item" onClick={() => onAction({ kind: 'rename', folder: selected })}><Icon name="edit" size={16} /><span>Rename <bdi>{selected.name}</bdi>…</span></Menu.Item>
-        <Menu.Item className="ui-menu-item ui-menu-item-danger" onClick={() => onAction({ kind: 'delete', folder: selected })}><Icon name="trash" size={16} /><span>Delete <bdi>{selected.name}</bdi>…</span></Menu.Item>
+        <Menu.Item className="ui-menu-item" onClick={() => onAction({ kind: 'rename', folder: selected })}><Icon name="edit" size={16} /><span>Rename <bdi lang={textLang(selected.name)}>{selected.name}</bdi>…</span></Menu.Item>
+        <Menu.Item className="ui-menu-item ui-menu-item-danger" onClick={() => onAction({ kind: 'delete', folder: selected })}><Icon name="trash" size={16} /><span>Delete <bdi lang={textLang(selected.name)}>{selected.name}</bdi>…</span></Menu.Item>
       </> : <Menu.Group>
         <Menu.GroupLabel className="ui-menu-label theme-manage-hint">Choose a folder to rename or delete it.</Menu.GroupLabel>
         <Menu.Item className="ui-menu-item" disabled><Icon name="edit" size={16} /><span>Rename folder…</span></Menu.Item>
@@ -131,7 +132,7 @@ export function ThemeCardMeta({ theme, manifest, tags, showFolder, tag }: { them
   const folder = showFolder ? themeFolder(manifest, theme.id) : undefined;
   if (!folder && !tags.length) return null;
   return <div className="theme-card-meta">
-    {folder && <a className="theme-card-folder" href={themesHash({ folder: folder.id, tag })}><Icon name="folder" size={15} /><span className="sr-only">Folder: </span><span dir="auto">{folder.name}</span></a>}
+    {folder && <a className="theme-card-folder" href={themesHash({ folder: folder.id, tag })}><Icon name="folder" size={15} /><span className="sr-only">Folder: </span><span dir="auto" lang={textLang(folder.name)}>{folder.name}</span></a>}
     <TagSummary tags={tags} />
   </div>;
 }
@@ -249,7 +250,7 @@ function MoveForm({ theme, manifest, busy, actions, shell, onSubmit }: { theme: 
   const folders = sortedFolders(manifest);
   const items = [{ value: noFolder, label: 'No folder' }, ...folders.map(folder => ({ value: folder.id, label: isolate(folder.name) }))]
     .map(item => item.value === current ? { ...item, label: `${item.label} (current)` } : item);
-  return shell('Move to folder', <bdi>{theme.name}</bdi>,
+  return shell('Move to folder', <bdi lang={textLang(theme.name, theme.language)}>{theme.name}</bdi>,
     <form onSubmit={event => { event.preventDefault(); if (destination !== current) onSubmit(destination === noFolder ? null : destination); }} aria-busy={busy}>
       <div className="create-field"><span>Folder</span><div className="purpose-select" inert={busy || undefined}><SelectControl label="Folder" value={destination} onValueChange={setDestination} items={items} /></div>
         <p className="field-hint">The theme’s files and ID stay the same, so documents using it are unaffected.</p></div>

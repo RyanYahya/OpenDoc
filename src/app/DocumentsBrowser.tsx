@@ -10,6 +10,7 @@ import { SearchField } from './SearchField';
 import { Icon } from './ui/Icon';
 import { detailsText, filtering, ItemFilters, matchesFilters, noFilters, type TagState } from './Tags';
 import { emptyTags, type TagsManifest } from '../shared/tags';
+import { textLang } from '../shared/language';
 import './projects.css';
 
 /** Search also matches the type, status, and custom tags, so typing “Minutes” or a client name finds work. */
@@ -46,7 +47,7 @@ export function DocumentsBrowser({ format = 'document', projects, documents, tag
       const project = projectById.get(document.projectId ?? '');
       return <article className="project-document" key={document.id} role="listitem">
         <DocumentCard document={document} view={view} onAction={onAction} disabled={disabled} onOpen={() => { location.hash = `document/${document.id}`; }} />
-        {project ? <a className="document-project-link" href={`#project/${project.id}`}><Icon name="folder" size={15} /><span dir="auto">{project.name}</span></a>
+        {project ? <a className="document-project-link" href={`#project/${project.id}`}><Icon name="folder" size={15} /><span dir="auto" lang={textLang(project.name)}>{project.name}</span></a>
           : <Button className="text-button document-move" onClick={() => onMove(document)} disabled={!projects.length}>Choose a project</Button>}
       </article>;
     })}</div>
@@ -65,7 +66,7 @@ export function ProjectDocuments({ project, documents, tags, loaded, view, onVie
   const visible = documents.filter(document => (format === 'all' || documentFormat(document) === format)
     && matchesFilters(manifest, 'documents', document, filters) && searchText(document, manifest).includes(query.toLowerCase()));
   return <section className="library-content project-documents">
-    <div className="library-heading"><h1 dir="auto">{project.name}</h1><div className="project-actions">
+    <div className="library-heading"><h1 dir="auto" lang={textLang(project.name)}>{project.name}</h1><div className="project-actions">
       <IconButton label="Project settings" onClick={onSettings}><Icon name="gear" size={18} /></IconButton>
       <Menu.Root><Menu.Trigger render={<Button className="primary project-create-trigger" disabled={!loaded || disabled} />}>
         <Icon name="plus" size={16} /><span>Create</span><Icon name="down" size={14} />

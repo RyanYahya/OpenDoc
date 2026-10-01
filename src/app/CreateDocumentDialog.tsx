@@ -6,6 +6,7 @@ import { createDocumentPrompt, type ProjectThemeChoice } from "./agentPrompts";
 import { projectDefaultTheme, type Project } from "../shared/projects";
 import type { TemplateItem } from "../shared/templates";
 import type { ThemeSummary } from "../shared/themes";
+import { textLang } from "../shared/language";
 
 /** OpenDoc never authors documents itself: this dialog prepares a prompt for the user's own agent. */
 export function CreateDocumentDialog({ open, onOpenChange, project, theme, template, format, themes = [] }: {
@@ -64,7 +65,7 @@ export function CreateDocumentDialog({ open, onOpenChange, project, theme, templ
         </div>}
         <label className="create-field" htmlFor="create-brief">
           <span>Brief <span className="muted">(optional)</span></span>
-          <textarea ref={briefField} id="create-brief" rows={4} maxLength={8000} value={brief} placeholder="Who it’s for, what it should say, and any design preferences." onChange={event => setBrief(event.target.value)} onKeyDown={event => {
+          <textarea ref={briefField} id="create-brief" dir="auto" lang={textLang(brief)} rows={4} maxLength={8000} value={brief} placeholder="Who it’s for, what it should say, and any design preferences." onChange={event => setBrief(event.target.value)} onKeyDown={event => {
             if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && !event.nativeEvent.isComposing) { event.preventDefault(); void copy(); }
           }} />
         </label>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode, type Ref } from 'react';
 import type { Comment } from '../shared/types';
+import { textLang } from '../shared/language';
 import { Button, IconButton } from './ui';
 import { Icon } from './ui/Icon';
 import { CommentHandoff } from './CommentHandoff';
@@ -95,7 +96,7 @@ export function CommentDock({
           if (!connected || busy || !editing.text.trim() || editing.text.trim() === comment.text) return;
           void onSaveEdit(comment);
         }}>
-          <textarea ref={editField} dir="auto" aria-label="Edit comment" value={editing.text} maxLength={8000} readOnly={busy} onChange={event => onEditText(event.target.value)} />
+          <textarea ref={editField} dir="auto" lang={textLang(editing.text)} aria-label="Edit comment" value={editing.text} maxLength={8000} readOnly={busy} onChange={event => onEditText(event.target.value)} />
           <div className="correction-actions">
             <Button disabled={busy} onClick={onCancelEdit}>Cancel</Button>
             <Button className="primary" type="submit" disabled={!connected || busy || !editing.text.trim() || editing.text.trim() === comment.text}>{changing === comment.id ? 'Saving…' : 'Save'}</Button>
@@ -107,8 +108,8 @@ export function CommentDock({
               <span className="comment-status">{comment.status === 'resolved' ? <><Icon name="check" size={11} />Resolved</> : 'Open'}</span>
               <CommentTime value={comment.createdAt} />
             </span>
-            {quote && <span className="comment-quote">on “<bdi dir="auto">{quote}</bdi>”{textChanged && <span className="comment-anchor-changed"><span aria-hidden="true">·</span> Text changed</span>}</span>}
-            <span className="comment-text" dir="auto">{comment.text}</span>
+            {quote && <span className="comment-quote">on “<bdi dir="auto" lang={textLang(quote)}>{quote}</bdi>”{textChanged && <span className="comment-anchor-changed"><span aria-hidden="true">·</span> Text changed</span>}</span>}
+            <span className="comment-text" dir="auto" lang={textLang(comment.text)}>{comment.text}</span>
           </Button>
           <div className="comment-row-actions">
             <IconButton label="Edit comment" disabled={!connected || busy} onClick={() => onEdit(comment)}><Icon name="edit" size={15} /></IconButton>

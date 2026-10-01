@@ -22,6 +22,7 @@ import { emptyProjects, type Project, type ProjectsManifest } from "../shared/pr
 import { emptyThemeFolders, type ThemeFoldersManifest } from "../shared/theme-folders";
 import type { ThemeOrganization } from "./ThemeFolders";
 import { emptyTags, itemStatus, type DocumentStatus, type TagsManifest } from "../shared/tags";
+import { textLang } from "../shared/language";
 import { DetailsDialog, StatusBadge, TagsProvider, type TagState, type TagTarget } from "./Tags";
 import "./style.css";
 
@@ -208,7 +209,7 @@ function App() {
     <main className="main">
       {current.view === "document" && !active && <header className="topbar">
         <IconButton label={`Back to ${backLabel}`} render={<a href={`#${backHash}`} />} nativeButton={false}><Icon name="left" /></IconButton>
-        <div className="breadcrumb"><a href={project ? `#project/${project.id}` : "#library"} title={project?.name ?? "Documents"} dir="auto">{project?.name ?? "Documents"}</a><span>/</span><span>Document</span></div>
+        <div className="breadcrumb"><a href={project ? `#project/${project.id}` : "#library"} title={project?.name ?? "Documents"} dir="auto" lang={project && textLang(project.name)}>{project?.name ?? "Documents"}</a><span>/</span><span>Document</span></div>
       </header>}
       {!connected && <div className="connection-banner" role="status">Connection lost. Reconnecting to OpenDoc. Editing and export will resume when the server returns.</div>}
       {detailError && activeSummary && <div className="error-banner" role="alert"><span>{detailError}</span><Button onClick={() => setDetailAttempt(value => value + 1)}>Try again</Button></div>}
@@ -217,7 +218,7 @@ function App() {
       {current.view === "document" ? active ? <Reader key={active.id} state={active} generation={generation} connected={connected} onShowExports={() => setExportDocument(active)}
         identity={<>
           <IconButton label={`Back to ${backLabel}`} className="reader-back" render={<a href={`#${backHash}`} />} nativeButton={false}><Icon name="left" size={17} /></IconButton>
-          <div className="reader-document"><a href={project ? `#project/${project.id}` : "#library"} title={project?.name ?? "Documents"} dir="auto">{project?.name ?? "Documents"}</a><span className="reader-context-separator" aria-hidden="true">/</span><span className="reader-document-title" title={documentName(active)} dir="auto">{documentName(active)}</span><StatusBadge status={itemStatus(tagState.manifest, active.id)} className="reader-status" /></div>
+          <div className="reader-document"><a href={project ? `#project/${project.id}` : "#library"} title={project?.name ?? "Documents"} dir="auto" lang={project && textLang(project.name)}>{project?.name ?? "Documents"}</a><span className="reader-context-separator" aria-hidden="true">/</span><span className="reader-document-title" title={documentName(active)} dir="auto" lang={textLang(documentName(active), activeSummary?.language)}>{documentName(active)}</span><StatusBadge status={itemStatus(tagState.manifest, active.id)} className="reader-status" /></div>
         </>}
         options={<DocumentMenuItems document={active} onAction={onDocumentAction} disabled={!connected || duplicating} exports={false}>
           <AppearanceSubmenu value={appearance} onChange={changeAppearance} />

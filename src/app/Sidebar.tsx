@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Project } from '../shared/projects';
 import { documentFormat, type DocumentSummary } from '../shared/types';
+import { textLang } from '../shared/language';
 import { Button, Dialog, IconButton } from './ui';
 import { Icon } from './ui/Icon';
 import { AppearanceControl } from './AppearanceControl';
@@ -44,7 +45,7 @@ function SidebarContent({ view, projectId, projects, documents, loaded, connecte
       <div className="sidebar-section-heading"><h2>Projects</h2><IconButton label="Create project" disabled={!loaded || !connected} onClick={onCreateProject}><Icon name="plus" size={17} /></IconButton></div>
       <nav className="project-nav" aria-label="Projects">
         {projects.map(project => <div className={`sidebar-project-row ${project.id === projectId ? 'selected' : ''}`} key={project.id}>
-          <a href={`#project/${project.id}`} onClick={onNavigate} aria-label={project.name} title={project.name} aria-current={view === 'project' && project.id === projectId ? 'page' : undefined}>
+          <a href={`#project/${project.id}`} onClick={onNavigate} aria-label={project.name} lang={textLang(project.name)} title={project.name} aria-current={view === 'project' && project.id === projectId ? 'page' : undefined}>
             <Icon name="folder" size={17} /><span className="project-nav-name" dir="auto">{project.name}</span><span className="nav-count" aria-hidden="true">{documents.filter(document => document.projectId === project.id).length}</span>
           </a>
           <IconButton label={`Settings for ${project.name}`} className="project-settings-shortcut" onClick={() => onProjectSettings(project)}><Icon name="settings" size={16} /></IconButton>

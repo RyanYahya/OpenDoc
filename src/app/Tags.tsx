@@ -4,7 +4,7 @@ import {
   cleanTag, documentStatus, documentStatuses, emptyTags, hasType, itemStatus, itemType, splitTags, standardType, standardTypes, statusLabel, tagCounts, tagKey,
   tagLabel, tagLimits, tagProblem, taggedKinds, typeCounts, typeLabel, type DocumentStatus, type TaggedKind, type TagsManifest,
 } from '../shared/tags';
-import { languageLabel, languages, parseLanguage, type Language } from '../shared/language';
+import { languageLabel, languages, parseLanguage, textLang, type Language } from '../shared/language';
 import type { DocumentSummary } from '../shared/types';
 import { api } from './api';
 import { Button, Dialog, Input, SelectControl } from './ui';
@@ -186,7 +186,7 @@ export function DetailsDialog({ target, manifest, connected, onClose, onChange }
       <Dialog.Popup className="help-dialog create-dialog tag-dialog" initialFocus={input} finalFocus={finalFocus}>
         <Dialog.Close render={<Button className="icon-button modal-close" aria-label="Close" disabled={busy} />}><Icon name="close" /></Dialog.Close>
         <Dialog.Title>{typed ? 'Details' : 'Tags'}</Dialog.Title>
-        <Dialog.Description dir="auto">{current?.name}</Dialog.Description>
+        <Dialog.Description dir="auto" lang={textLang(current?.name ?? '')}>{current?.name}</Dialog.Description>
         {current && <DetailsForm key={shown.opening} target={current} manifest={manifest} busy={busy} connected={connected} input={input} onSubmit={details => void save(details)} />}
         {error && <p className="field-error" role="alert">{error}</p>}
       </Dialog.Popup>
@@ -257,7 +257,7 @@ function DetailsForm({ target, manifest, busy, connected, input, onSubmit }: { t
     </div></div>}
     <div className="create-field">
       <label htmlFor="tag-input">{typed ? 'Custom tags' : 'Tags'}</label>
-      {tags.length > 0 && <ul className="tag-list" aria-label="Current tags">{tags.map(tag => <li key={tag}><span dir="auto">{tag}</span><Button className="icon-button" aria-label={`Remove tag ${tag}`} onClick={() => remove(tag)} disabled={busy}><Icon name="close" size={12} /></Button></li>)}</ul>}
+      {tags.length > 0 && <ul className="tag-list" aria-label="Current tags">{tags.map(tag => <li key={tag}><span dir="auto" lang={textLang(tag)}>{tag}</span><Button className="icon-button" aria-label={`Remove tag ${tag}`} onClick={() => remove(tag)} disabled={busy}><Icon name="close" size={12} /></Button></li>)}</ul>}
       <div className="tag-entry">
         <Input ref={input} id="tag-input" value={draft} onChange={event => { setDraft(event.target.value); setProblem(''); }} onKeyDown={keyDown} disabled={busy} maxLength={tagLimits.tag * 4} autoComplete="off" placeholder={tags.length ? 'Add another tag' : 'Client, programme, or other name'} aria-describedby="tag-hint" aria-invalid={Boolean(problem) || undefined} />
         <Button onClick={() => add(draft.split(','))} disabled={busy || !draft.trim()}>Add</Button>
@@ -266,7 +266,7 @@ function DetailsForm({ target, manifest, busy, connected, input, onSubmit }: { t
     </div>
     {shownSuggestions.length > 0 && <section className="tag-suggestions" aria-labelledby="tag-suggestions-title">
       <h3 id="tag-suggestions-title">In use</h3>
-      <ul>{shownSuggestions.map(tag => <li key={tag}><Button className="tag-choice" onClick={() => add([tag])} disabled={busy}><Icon name="plus" size={13} /><span dir="auto">{tag}</span></Button></li>)}</ul>
+      <ul>{shownSuggestions.map(tag => <li key={tag}><Button className="tag-choice" onClick={() => add([tag])} disabled={busy}><Icon name="plus" size={13} /><span dir="auto" lang={textLang(tag)}>{tag}</span></Button></li>)}</ul>
     </section>}
     {problem && <p className="field-error" role="alert">{problem}</p>}
     <div className="dialog-actions">
