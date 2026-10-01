@@ -58,8 +58,10 @@
 .comment-anchor-changed > span { margin-inline: 4px; color: var(--muted); font-weight: 400; }
 @media (prefers-contrast: more) { .comment-quote { border-inline-start-color: var(--accent-ink); } }
 
-.comment-status { display: inline-flex; align-items: center; gap: 3px; margin-inline-start: auto; color: var(--accent-ink); }
-.comment-card.resolved .comment-status { color: var(--muted); }
+/* A neutral badge, not an accent link: Open reads in ink, Resolved stays muted with its check. */
+.comment-status { display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0; margin-inline-start: auto; min-height: 18px; padding: 0 6px; border-radius: var(--badge-radius); background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); font-size: var(--tag-size); line-height: var(--tag-leading); font-weight: 500; white-space: nowrap; }
+.comment-card.resolved .comment-status { background: transparent; color: var(--muted); }
+@media (forced-colors: active) { .comment-status { border: 1px solid CanvasText; } }
 .comment-card.resolved .comment-text { color: var(--muted); }
 [dir="rtl"] .comment-location .comment-status svg { transform: none; }
 

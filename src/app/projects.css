@@ -44,6 +44,15 @@
   .documents-list .ui-button.document-card { grid-template-columns: 28px minmax(0, 1fr); grid-template-areas: "preview title" "preview meta"; }
   .documents-list .card-meta { align-self: start; }
 }
+/* Narrow screens: search on its own line, then the filters and view toggle share one row. */
+@media (max-width: 700px) {
+  .document-browser-tools { gap: 8px; margin-bottom: 20px; }
+  .document-browser-tools .search-field { flex-basis: 100%; max-width: none; }
+  .document-browser-tools .tag-filter { flex: 0 1 auto; gap: 6px; }
+  .document-browser-tools .tag-filter .ui-select { min-width: 0; }
+  .document-browser-tools .document-view-toggle .ui-button { padding-inline: 8px; }
+  .document-browser-tools .document-view-toggle .ui-button > span { display: none; }
+}
 @media (max-width: 620px) {
   .project-actions { flex-wrap: wrap; }
   .documents-list .project-document { grid-template-columns: minmax(0, 1fr); gap: 0; }
