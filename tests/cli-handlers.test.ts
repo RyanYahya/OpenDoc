@@ -1,9 +1,9 @@
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { relative, resolve } from 'node:path';
 import { createServer, type AddressInfo } from 'node:net';
-import { fixture } from './helpers';
+import { fixture, projectRoot } from './helpers';
 import { runCreateCli } from '../src/server/create-cli';
 import { runProjectsCli } from '../src/server/projects-cli';
 import { runTemplatesCli } from '../src/server/templates-cli';
@@ -51,6 +51,32 @@ test('creation, projects, and comments use the supplied workspace and expose mut
     await runCommentsCli(['reopen', 'cli-document', comment.id, '--json'], f.root);
     assert.equal(json().status, 'open');
     assert.deepEqual((await readComments(f.root, 'cli-document'))[0].history.map(event => event.action), ['created', 'resolved', 'reopened']);
+  } finally { await f.cleanup(); }
+});
+
+test('project theme flags set one format or both, and creation follows the requested format', async t => {
+  const f = await fixture();
+  const json = output(t);
+  const adapterTheme = async (id: string) => (await readFile(resolve(f.root, 'documents', id, 'theme.tsx'), 'utf8')).match(/themes\/([a-z0-9-]+)['"]/)?.[1];
+  try {
+    await cp(resolve(projectRoot, 'templates/pitch-deck'), resolve(f.root, 'templates/pitch-deck'), { recursive: true });
+    await runProjectsCli(['create', 'paired', '--name', 'Paired', '--theme', 'civic-spectrum', '--presentation-theme', 'field-manual', '--json'], f.root);
+    assert.deepEqual(json().themeDefaults, { document: 'civic-spectrum', presentation: 'field-manual' });
+    await runProjectsCli(['update', 'paired', '--document-theme', 'neutral', '--json'], f.root);
+    assert.deepEqual(json().themeDefaults, { document: 'neutral', presentation: 'field-manual' });
+    await runProjectsCli(['list', '--json'], f.root);
+    const listed = json().projects.find((project: { id: string }) => project.id === 'paired');
+    assert.deepEqual(listed, { id: 'paired', name: 'Paired', defaultTheme: 'neutral', defaultPresentationTheme: 'field-manual', themeDefaults: { document: 'neutral', presentation: 'field-manual' } });
+    for (const [id, args] of [['cli-report', []], ['cli-deck', ['--format', 'presentation']], ['cli-pitch', ['--template', 'pitch-deck']], ['cli-override', ['--format', 'presentation', '--theme', 'civic-spectrum']]] as const) {
+      await runCreateCli([id, '--project', 'paired', '--title', id, ...args, '--json'], f.root);
+      json();
+    }
+    assert.deepEqual(await Promise.all(['cli-report', 'cli-deck', 'cli-pitch', 'cli-override'].map(adapterTheme)), ['neutral', 'field-manual', 'field-manual', 'civic-spectrum']);
+    await runProjectsCli(['update', 'paired', '--presentation-theme', 'none', '--json'], f.root);
+    assert.deepEqual(json().themeDefaults, { document: 'neutral', presentation: null });
+    await runProjectsCli(['update', 'paired', '--theme', 'none', '--json'], f.root);
+    assert.deepEqual(json().themeDefaults, { document: null, presentation: null });
+    await assert.rejects(runProjectsCli(['update', 'paired', '--presentation-theme', 'missing'], f.root), /available theme/);
   } finally { await f.cleanup(); }
 });
 

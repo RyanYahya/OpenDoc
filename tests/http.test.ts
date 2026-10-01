@@ -57,6 +57,11 @@ test('local HTTP loop: discovery, watch, errors, exact export, and request bound
     assert.equal((await projectWrite('/api/projects/http-project', 'PATCH', { name: 'Renamed HTTP project' })).status, 200);
     assert.equal((await projectWrite('/api/context', 'POST', { documentId: null, blockId: null, page: 1, projectId: 'http-project' })).status, 200);
     assert.equal(JSON.parse(await readFile(resolve(f.root, '.opendoc/current.json'), 'utf8')).project.name, 'Renamed HTTP project');
+    const paired = await projectWrite('/api/projects/http-project', 'PATCH', { defaultPresentationTheme: 'field-manual' });
+    assert.deepEqual((await paired.json()).defaultPresentationTheme, 'field-manual');
+    assert.equal((await projectWrite('/api/context', 'POST', { documentId: null, blockId: null, page: 1, projectId: 'http-project' })).status, 200);
+    assert.deepEqual(JSON.parse(await readFile(resolve(f.root, '.opendoc/current.json'), 'utf8')).project.themeDefaults, { document: 'civic-spectrum', presentation: 'field-manual' });
+    assert.equal((await projectWrite('/api/projects/http-project', 'PATCH', { defaultPresentationTheme: 'missing' })).status, 400);
     assert.equal((await projectWrite('/api/documents/proof/project', 'PUT', { projectId: 'http-project' })).status, 200);
     assert.equal((await state()).projectId, 'http-project');
     assert.equal((await state()).artifact!.hash, hash);

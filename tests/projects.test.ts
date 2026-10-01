@@ -10,6 +10,7 @@ import { createDocument } from '../src/server/create';
 import { createFromTemplate } from '../src/server/templates';
 import { renderOnce } from '../src/server/render';
 import { fixture, projectRoot, until } from './helpers';
+import { projectThemeDefaults } from '../src/shared/projects';
 const exec = promisify(execFile);
 
 test('project changes recover abandoned incomplete locks and preserve fresh reservations', async () => {
@@ -213,5 +214,67 @@ test('template module placeholders are unambiguous before a document is publishe
       assert.deepEqual(await readdir(resolve(f.root, 'documents')), ['proof']);
       assert.equal(await readFile(resolve(f.root, 'projects.json'), 'utf8'), projects);
     }
+  } finally { await f.cleanup(); }
+});
+
+test('per-format project defaults keep the legacy shared default and store only a differing presentation default', async () => {
+  const f = await fixture();
+  const stored = async () => JSON.parse(await readFile(resolve(f.root, 'projects.json'), 'utf8')).projects[0];
+  try {
+    // An older single default applies to both formats and keeps the older file shape.
+    await updateProject(f.root, 'test-project', { defaultTheme: 'civic-spectrum' });
+    assert.deepEqual(await stored(), { id: 'test-project', name: 'Test project', defaultTheme: 'civic-spectrum' });
+    assert.deepEqual(projectThemeDefaults((await readProjects(f.root)).projects[0]), { document: 'civic-spectrum', presentation: 'civic-spectrum' });
+    // Changing one format pins the other to the default it already had.
+    await updateProject(f.root, 'test-project', { defaultDocumentTheme: 'neutral' });
+    assert.deepEqual(await stored(), { id: 'test-project', name: 'Test project', defaultTheme: 'neutral', defaultPresentationTheme: 'civic-spectrum' });
+    await updateProject(f.root, 'test-project', { defaultPresentationTheme: 'field-manual' });
+    assert.deepEqual(projectThemeDefaults(await stored()), { document: 'neutral', presentation: 'field-manual' });
+    await updateProject(f.root, 'test-project', { defaultPresentationTheme: null });
+    assert.deepEqual(projectThemeDefaults(await stored()), { document: 'neutral', presentation: null }, 'Presentations can have no default while documents keep one.');
+    await updateProject(f.root, 'test-project', { defaultPresentationTheme: 'neutral' });
+    assert.ok(!Object.hasOwn(await stored(), 'defaultPresentationTheme'), 'Matching defaults return to one shared value.');
+    await updateProject(f.root, 'test-project', { defaultPresentationTheme: 'field-manual' });
+    await updateProject(f.root, 'test-project', { defaultTheme: 'civic-spectrum' });
+    assert.deepEqual(await stored(), { id: 'test-project', name: 'Test project', defaultTheme: 'civic-spectrum' }, 'defaultTheme sets both formats.');
+    const created = await createProject(f.root, { id: 'paired', name: 'Paired', defaultDocumentTheme: 'civic-spectrum', defaultPresentationTheme: 'field-manual' });
+    assert.deepEqual(created, { id: 'paired', name: 'Paired', defaultTheme: 'civic-spectrum', defaultPresentationTheme: 'field-manual' });
+    const before = await readFile(resolve(f.root, 'projects.json'), 'utf8');
+    await assert.rejects(updateProject(f.root, 'paired', { defaultPresentationTheme: 'not-installed', name: 'Must not change' }), /available theme/);
+    await assert.rejects(createProject(f.root, { id: 'rejected', name: 'Rejected', defaultDocumentTheme: '../neutral' }), /available theme/);
+    assert.equal(await readFile(resolve(f.root, 'projects.json'), 'utf8'), before);
+    for (const value of ['', 42]) {
+      await writeFile(resolve(f.root, 'projects.json'), JSON.stringify({ version: 1, projects: [{ id: 'test-project', name: 'Test project', defaultTheme: null, defaultPresentationTheme: value }], assignments: {} }));
+      await assert.rejects(readProjects(f.root), /invalid/);
+    }
+  } finally { await f.cleanup(); }
+});
+
+test('creation uses the default for its format; explicit themes win and existing documents keep theirs', { timeout: 30_000 }, async () => {
+  const f = await fixture();
+  const adapterTheme = async (id: string) => (await readFile(resolve(f.root, 'documents', id, 'theme.tsx'), 'utf8')).match(/themes\/([a-z0-9-]+)['"]/)?.[1];
+  try {
+    await cp(resolve(projectRoot, 'templates'), resolve(f.root, 'templates'), { recursive: true });
+    await updateProject(f.root, 'test-project', { defaultDocumentTheme: 'civic-spectrum', defaultPresentationTheme: 'field-manual' });
+    await createDocument(f.root, { projectId: 'test-project', id: 'report', title: 'Report', starter: 'report' });
+    await createDocument(f.root, { projectId: 'test-project', id: 'deck', title: 'Deck', format: 'presentation' });
+    await createFromTemplate(f.root, 'editorial-essay', { projectId: 'test-project', id: 'essay', title: 'Essay' });
+    await createFromTemplate(f.root, 'pitch-deck', { projectId: 'test-project', id: 'pitch', title: 'Pitch' });
+    await createDocument(f.root, { projectId: 'test-project', id: 'deck-override', title: 'Deck override', format: 'presentation', theme: 'neutral' });
+    for (const [id, theme] of [['report', 'civic-spectrum'], ['deck', 'field-manual'], ['essay', 'civic-spectrum'], ['pitch', 'field-manual'], ['deck-override', 'neutral']]) assert.equal(await adapterTheme(id), theme, id);
+    assert.equal((await renderOnce(f.root, 'deck')).artifact.meta.theme, 'field-manual');
+    const deck = await readFile(resolve(f.root, 'documents/deck/index.tsx'), 'utf8');
+    await updateProject(f.root, 'test-project', { defaultPresentationTheme: null });
+    assert.equal(await readFile(resolve(f.root, 'documents/deck/index.tsx'), 'utf8'), deck, 'Changing a default never rebinds existing work.');
+    await createDocument(f.root, { projectId: 'test-project', id: 'neutral-deck', title: 'Neutral deck', format: 'presentation' });
+    assert.equal(await adapterTheme('neutral-deck'), 'neutral', 'No presentation default falls back to Neutral, not the document default.');
+    // A removed presentation default blocks only presentations until it is repaired or overridden.
+    await addLocalTheme(f.root);
+    await updateProject(f.root, 'test-project', { defaultPresentationTheme: 'studio-brand' });
+    await rm(resolve(f.root, 'themes/studio-brand'), { recursive: true });
+    await assert.rejects(createFromTemplate(f.root, 'pitch-deck', { projectId: 'test-project', id: 'blocked', title: 'Blocked' }), /default presentation theme, studio-brand, is not available/);
+    await createDocument(f.root, { projectId: 'test-project', id: 'still-documents', title: 'Still documents' });
+    assert.equal(await adapterTheme('still-documents'), 'civic-spectrum');
+    assert.ok(!(await readdir(resolve(f.root, 'documents'))).includes('blocked'));
   } finally { await f.cleanup(); }
 });

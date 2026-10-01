@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { DOCUMENT_ID_MAX_LENGTH, TITLE_MAX_LENGTH, listStarters, type CreatedDocument, type StarterId, type StarterSummary } from '../shared/starters';
 import { validId } from './render';
 import { requireProject, selectedTheme, withProjects } from './projects';
+import { projectDefaultTheme } from '../shared/projects';
 import { resolveThemeAssets } from '../assets/files';
 import { documentAssetAdapterSource } from '../assets/adapter';
 
@@ -141,9 +142,11 @@ export async function createDocumentFromFiles(root: string, input: { title: stri
 async function createInProject(root: string, values: Awaited<ReturnType<typeof inputValues>>, files: (theme: string | null) => Promise<Record<string, string>>) {
   return withProjects(root, async (manifest, save) => {
     const project = requireProject(manifest, values.projectId);
+    // An explicit theme wins; otherwise this format's project default, then Neutral.
+    const projectTheme = projectDefaultTheme(project, values.format);
     let theme: string | null;
-    try { theme = values.theme ?? await selectedTheme(root, project.defaultTheme ?? 'neutral'); }
-    catch { throw invalid('Choose an available theme.'); }
+    try { theme = values.theme ?? await selectedTheme(root, projectTheme ?? 'neutral'); }
+    catch { throw invalid(projectTheme ? `This project’s default ${values.format} theme, ${projectTheme}, is not available. Choose an available theme, or change the project’s default.` : 'Choose an available theme.'); }
     const contents = await files(theme);
     if (Object.hasOwn(contents, 'assets.json') || Object.hasOwn(contents, 'theme.tsx')) throw invalid('assets.json and theme.tsx are created from the chosen theme. Bind different assets after creation.');
     // Publish the immutable choices and adapter before the entry. Template factories
