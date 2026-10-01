@@ -21,7 +21,7 @@ Choose the smallest contract that fits:
 
 Implement the catalog files and exact starter sentinels specified in Templates. Accept the caller's theme; use `themeType` and `themePage` for supported roles while preserving meaningful structural geometry. New instances must use the generated `theme.tsx` adapter and saved `assets.json` choices.
 
-Write a brief `AGENTS.md` explaining the layout's character, useful defaults, and sensible variations. Design for long titles, optional covers, short content, and flowing prose. Preserve stable block identities. Keep one-document adaptations local; shared options must preserve existing defaults.
+Bind caller-owned text with `TextSlot` (`from` for props, `field` for instance data) and give labels the template writes or computes a stated reason or a `Decoration`, following [editable text in components](../../../docs/THEMES.md#editable-text-in-components). Write a brief `AGENTS.md` explaining the layout's character, useful defaults, and sensible variations. Design for long titles, optional covers, short content, and flowing prose. Preserve stable block identities. Keep one-document adaptations local; shared options must preserve existing defaults.
 
 For visual assets, follow [Media](../../../docs/MEDIA.md) or [Assets](../../../docs/ASSETS.md) as applicable. Use Neutral for the catalog specimen so layouts remain comparable.
 

@@ -12,7 +12,7 @@ import { fontFamilies, languageTag } from '../themes/types';
 import type { BlockInfo, SourceLocation, DocumentFormat, SlideInfo } from '../shared/types';
 import { Page } from './page';
 import { Decoration, TextCapture, TextSlot, type TextSlotProps } from './text-targets';
-export { TextSlot, type TextSlotProps, type TextFieldPath, type TextRecordPath } from './text-targets';
+export { TextSlot, Decoration, type TextSlotProps, type TextFieldPath, type TextRecordPath } from './text-targets';
 
 export type { DocumentMeta } from '../shared/types';
 export type { DocTheme, TextDirection } from '../themes/index';
@@ -138,7 +138,7 @@ export function prepareDocument(input: ReactNode) {
       const props = el.props as TextSlotProps;
       return textCapture.wrap(visit(props.children, parentId, caller, resolving), props, componentOwners.get(el));
     }
-    if (el.type === Decoration) return textCapture.decorate(visit(el.props.children, parentId, caller, resolving));
+    if (el.type === Decoration) return textCapture.decorate(visit(el.props.children, parentId, caller, resolving), el.props.reason);
     const nativeChart = nativeCharts.get(el.type);
     if (nativeChart) throw new Error(`${parentId ? `${parentId}: ` : ''}${nativeChart} is not supported by the current PDF engine with OpenDoc fonts: chart labels are encoded incorrectly. Generate a local chart asset inside Figure and review its labels, units, scale, and legend.`);
     const ownSource = map.get(el);
@@ -420,6 +420,11 @@ export function Pages({ title, children, size, margin, header, footer, pageNumbe
   </Page>;
 }
 
+/** A theme may set eyebrows in capitals; the displayed text then differs from what the document wrote. */
+const capitalsReason = 'The theme sets this label in capitals, so it cannot be edited here. Ask your agent to change it, or comment instead.';
+const eyebrowText = (eyebrow: string) => runtime.theme.design?.title?.uppercaseEyebrow === false
+  ? <TextSlot slot="eyebrow" from="eyebrow">{eyebrow}</TextSlot> : <TextSlot slot="eyebrow" reason={capitalsReason}>{eyebrow.toUpperCase()}</TextSlot>;
+
 export function Cover({ eyebrow, title, subtitle, footer, idPrefix = 'cover' }: {
   eyebrow: string; title: string; subtitle: string; footer: string; idPrefix?: string;
 }) {
@@ -427,7 +432,7 @@ export function Cover({ eyebrow, title, subtitle, footer, idPrefix = 'cover' }: 
   checkId(idPrefix, 'Cover prefix');
   requireText(title, 'Cover title');
   return <Page {...themePage(t, { top: t.margin, left: t.margin, right: t.margin, bottom: t.margin + 36 })} style={{ backgroundColor: t.paper, ...t.design?.page?.style, ...t.design?.cover?.page }}>
-    <Paragraph id={`${idPrefix}-eyebrow`} style={{ ...themeType(t, 'label', { fontSize: 10, letterSpacing: 1.6 }), ...t.design?.title?.eyebrow, ...t.design?.cover?.eyebrow }}>{t.design?.title?.uppercaseEyebrow === false ? <TextSlot slot="eyebrow" from="eyebrow">{eyebrow}</TextSlot> : eyebrow.toUpperCase()}</Paragraph>
+    <Paragraph id={`${idPrefix}-eyebrow`} style={{ ...themeType(t, 'label', { fontSize: 10, letterSpacing: 1.6 }), ...t.design?.title?.eyebrow, ...t.design?.cover?.eyebrow }}>{eyebrowText(eyebrow)}</Paragraph>
     <F.View style={{ marginTop: 72, borderTopWidth: 1, borderColor: t.accent, paddingTop: 26, ...t.design?.cover?.block }}>
       <TextSlot slot="title" from="title"><Heading id={`${idPrefix}-title`} level={1} baseStyle={{ fontSize: 44, lineHeight: 1.1, marginBottom: 26 }} style={t.design?.cover?.title}>{title}</Heading></TextSlot>
       <TextSlot slot="subtitle" from="subtitle"><Paragraph id={`${idPrefix}-subtitle`} style={{ ...themeType(t, 'lead', { fontSize: 16, lineHeight: 1.5, color: t.muted }), ...t.design?.cover?.subtitle }}>{subtitle}</Paragraph></TextSlot>
@@ -464,7 +469,7 @@ export const TitleBlock = block(function TitleBlock({ id, eyebrow, title, subtit
   const t = runtime.theme;
   const titleDesign = t.design?.title;
   return <F.View wrap={false} style={{ marginBottom: 24, paddingBottom: 18, borderBottomWidth: 0.6, borderColor: t.line, ...titleDesign?.block, ...style }}>
-    {eyebrow && <F.Text style={{ ...themeType(t, 'label', { marginBottom: 12 }), ...titleDesign?.eyebrow }}>{titleDesign?.uppercaseEyebrow === false ? <TextSlot slot="eyebrow" from="eyebrow">{eyebrow}</TextSlot> : eyebrow.toUpperCase()}</F.Text>}
+    {eyebrow && <F.Text style={{ ...themeType(t, 'label', { marginBottom: 12 }), ...titleDesign?.eyebrow }}>{eyebrowText(eyebrow)}</F.Text>}
     <TextSlot slot="title" from="title"><Heading id={`${id}-title`} level={1} baseStyle={{ fontSize: 32, marginBottom: 12 }} style={titleDesign?.heading}>{title}</Heading></TextSlot>
     {subtitle && <TextSlot slot="subtitle" from="subtitle"><Paragraph id={`${id}-subtitle`} style={{ ...themeType(t, 'lead', { marginBottom: byline ? 12 : 0 }), ...titleDesign?.subtitle }}>{subtitle}</Paragraph></TextSlot>}
     {byline && <TextSlot slot="byline" from="byline"><Paragraph id={`${id}-byline`} style={{ ...themeType(t, 'small', { fontSize: 9, marginBottom: 0 }), ...titleDesign?.byline }}>{byline}</Paragraph></TextSlot>}
