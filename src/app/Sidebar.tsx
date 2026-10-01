@@ -9,7 +9,7 @@ import { SkillIndex } from './SkillIndex';
 import type { Appearance } from './appearance';
 import './sidebar.css';
 
-const wordmark = new URL('../../assets/brand/wordmark.png', import.meta.url).href;
+const wordmark = new URL('../../assets/brand/wordmark-225.png', import.meta.url).href;
 
 type SidebarProps = {
   view: string;
