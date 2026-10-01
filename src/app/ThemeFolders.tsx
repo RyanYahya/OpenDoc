@@ -1,14 +1,17 @@
-import { useRef, useState, type DragEvent, type FormEvent, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
+import { useRef, useState, type DragEvent, type FormEvent, type ReactNode, type RefObject } from 'react';
 import { Menu } from '@base-ui/react/menu';
 import type { ThemeSummary } from '../shared/themes';
 import {
-  cleanTag, folderAncestors, folderDescendants, folderNameProblem, folderPath, folderPathSeparator, normalizeTags, tagCatalog, tagKey, themeFolderLimits,
+  folderAncestors, folderDescendants, folderNameProblem, folderPath, folderPathSeparator, themeFolderLimits,
   type ThemeFolder, type ThemeFoldersManifest,
 } from '../shared/theme-folders';
 import { api } from './api';
 import { Button, Dialog, Input, SelectControl, useNotifications } from './ui';
 import { Icon } from './ui/Icon';
+import { isolate, TagSummary } from './Tags';
 import './theme-folders.css';
+
+export { isolate };
 
 /** Optional organization from `themes/folders.json`; an unreadable file leaves the flat catalog usable. */
 export type ThemeOrganization = { manifest: ThemeFoldersManifest; error?: string };
@@ -16,6 +19,8 @@ export type ThemeFolderAction =
   | { kind: 'create'; parent: string | null }
   | { kind: 'rename'; folder: ThemeFolder } | { kind: 'move'; folder: ThemeFolder } | { kind: 'delete'; folder: ThemeFolder }
   | { kind: 'move-theme'; theme: ThemeSummary } | { kind: 'tags'; theme: ThemeSummary };
+/** Folder actions handled by ThemeFolderDialog; tags open the shared tag editor. */
+type FolderDialogAction = Exclude<ThemeFolderAction, { kind: 'tags' }>;
 type Mutation = { manifest: ThemeFoldersManifest };
 
 export const themesHeadingId = 'themes-heading';
@@ -27,9 +32,6 @@ export function themesHash({ folder, tag }: { folder?: string | null; tag?: stri
   const query = params.toString();
   return `#themes${query ? `?${query}` : ''}`;
 }
-
-/** Isolates user-named text so an Arabic name beside Latin ones keeps its own direction in labels and paths. */
-export const isolate = (text: string) => `\u2068${text}\u2069`;
 
 export function displayPath(manifest: ThemeFoldersManifest, id: string | null | undefined) {
   return folderPath(manifest, id)?.split(folderPathSeparator).map(isolate).join(' / ') ?? null;
@@ -80,11 +82,12 @@ export function FolderMenu({ folder, disabled, onAction }: { folder: ThemeFolder
   </Menu.Root>;
 }
 
-export function ThemeMenu({ theme, disabled, onAction }: { theme: ThemeSummary; disabled?: boolean; onAction: (action: ThemeFolderAction) => void }) {
+/** Folders and tags are independent: either file can be unreadable without hiding the other. */
+export function ThemeMenu({ theme, disabled, folders = true, tags = true, onAction }: { theme: ThemeSummary; disabled?: boolean; folders?: boolean; tags?: boolean; onAction: (action: ThemeFolderAction) => void }) {
   return <Menu.Root><Menu.Trigger render={<Button className="icon-button theme-card-menu-trigger" aria-label={`Options for ${theme.name}`} data-theme-menu={theme.id} />}><Icon name="more" size={14} /></Menu.Trigger>
     <Menu.Portal><Menu.Positioner sideOffset={5} align="end" className="ui-positioner"><Menu.Popup className="ui-menu-popup">
-      <Menu.Item className="ui-menu-item" disabled={disabled} onClick={() => onAction({ kind: 'move-theme', theme })}><Icon name="folder" size={16} /><span>Move to folder…</span></Menu.Item>
-      <Menu.Item className="ui-menu-item" disabled={disabled} onClick={() => onAction({ kind: 'tags', theme })}><Icon name="tag" size={16} /><span>Edit tags…</span></Menu.Item>
+      {folders && <Menu.Item className="ui-menu-item" disabled={disabled} onClick={() => onAction({ kind: 'move-theme', theme })}><Icon name="folder" size={16} /><span>Move to folder…</span></Menu.Item>}
+      {tags && <Menu.Item className="ui-menu-item" disabled={disabled} onClick={() => onAction({ kind: 'tags', theme })}><Icon name="tag" size={16} /><span>Edit tags…</span></Menu.Item>}
     </Menu.Popup></Menu.Positioner></Menu.Portal>
   </Menu.Root>;
 }
@@ -121,23 +124,14 @@ export function FolderList(props: { folders: ThemeFolder[]; manifest: ThemeFolde
 }
 
 /** Card metadata: the containing folder (when results span folders) and the theme's tags. */
-export function ThemeCardMeta({ theme, manifest, showFolder }: { theme: ThemeSummary; manifest: ThemeFoldersManifest; showFolder: boolean }) {
+export function ThemeCardMeta({ theme, manifest, tags, showFolder }: { theme: ThemeSummary; manifest: ThemeFoldersManifest; tags: readonly string[]; showFolder: boolean }) {
   const folder = manifest.assignments[theme.id];
   const path = showFolder ? displayPath(manifest, folder) : null;
-  const tags = manifest.tags[theme.id] ?? [];
   if (!path && !tags.length) return null;
   return <div className="theme-card-meta">
     {path && <a className="theme-card-folder" href={themesHash({ folder })}><Icon name="folder" size={15} /><span>{path}</span></a>}
-    {tags.length > 0 && <p className="theme-card-tags"><span className="sr-only">Tags: </span>{tags.map(isolate).join(' · ')}</p>}
+    <TagSummary tags={tags} />
   </div>;
-}
-
-export function TagFilter({ manifest, themes, tag, onChange }: { manifest: ThemeFoldersManifest; themes: ThemeSummary[]; tag: string; onChange: (tag: string) => void }) {
-  const tags = tagCatalog(manifest, themes.map(theme => theme.id));
-  if (!tags.length && !tag) return null;
-  const items = [{ value: '', label: 'All tags' }, ...tags.map(item => ({ value: item.key, label: `${item.label} (${item.count})` }))];
-  if (tag && !tags.some(item => item.key === tagKey(tag))) items.push({ value: tagKey(tag), label: `${tag} (0)` });
-  return <div className="theme-tools"><Icon name="tag" size={16} /><SelectControl label="Filter by tag" value={tag ? tagKey(tag) : ''} onValueChange={onChange} items={items} /></div>;
 }
 
 function focusAfterChange(selector: string | null) {
@@ -146,7 +140,7 @@ function focusAfterChange(selector: string | null) {
 
 /** One dialog surface for folder and theme organization, with focus returned to a surviving control. */
 export function ThemeFolderDialog({ action, manifest, themes, connected, onClose, onChange }: {
-  action: ThemeFolderAction | null; manifest: ThemeFoldersManifest; themes: ThemeSummary[]; connected: boolean;
+  action: FolderDialogAction | null; manifest: ThemeFoldersManifest; themes: ThemeSummary[]; connected: boolean;
   onClose: () => void; onChange: (manifest: ThemeFoldersManifest) => void;
 }) {
   // Each opening gets fresh form state, decided during render so the first keystrokes are kept.
@@ -203,10 +197,6 @@ export function ThemeFolderDialog({ action, manifest, themes, connected, onClose
           : api<Mutation>(`/api/themes/${current.theme.id}/folder`, { method: 'PUT', body: JSON.stringify({ folderId: destination }) }),
         (result: Mutation) => notifications.success(`Moved ${subject.name} to ${displayPath(result.manifest, destination) ?? 'Themes'}`),
       )} />;
-  }
-  if (current.kind === 'tags') {
-    return <TagsForm key={opening} theme={current.theme} manifest={manifest} busy={busy} actions={actions} shell={shell}
-      onSubmit={tags => void run(() => api<Mutation>(`/api/themes/${current.theme.id}/tags`, { method: 'PUT', body: JSON.stringify({ tags }) }))} />;
   }
   return <DeleteForm key={opening} folder={current.folder} manifest={manifest} themes={themes} actions={actions} shell={shell}
     onSubmit={() => void run(() => api<Mutation>(`/api/theme-folders/${current.folder.id}`, { method: 'DELETE' }), (result: Mutation & { parent: string | null }) => {
@@ -267,47 +257,6 @@ function DeleteForm({ folder, manifest, themes, actions, shell, onSubmit }: { fo
   return shell(`Delete “${folder.name}”?`,
     contents.empty ? 'This folder is empty. No themes are deleted.' : `Its ${describeContents(contents)} will move to ${destination}. No themes are deleted.`,
     <form onSubmit={event => { event.preventDefault(); onSubmit(); }}>{actions('Delete folder', 'Deleting…', false, true, cancel)}</form>, cancel);
-}
-
-function TagsForm({ theme, manifest, busy, actions, shell, onSubmit }: { theme: ThemeSummary; manifest: ThemeFoldersManifest; busy: boolean; actions: Actions; shell: Shell; onSubmit: (tags: string[]) => void }) {
-  const original = manifest.tags[theme.id] ?? [];
-  const [tags, setTags] = useState(original);
-  const [draft, setDraft] = useState('');
-  const [problem, setProblem] = useState('');
-  const input = useRef<HTMLInputElement>(null);
-  const others = tagCatalog({ ...manifest, tags: Object.fromEntries(Object.entries(manifest.tags).filter(([id]) => id !== theme.id)) }).map(tag => tag.label);
-  const suggestions = others.filter(label => !tags.some(tag => tagKey(tag) === tagKey(label))).slice(0, 12);
-  function combine(values: string[]) {
-    try { const next = normalizeTags([...tags, ...values.filter(value => cleanTag(value))], others); setProblem(''); return next; }
-    catch (error) { setProblem((error as Error).message); return null; }
-  }
-  function add(values: string[]) { const next = combine(values); if (next) { setTags(next); setDraft(''); } }
-  function remove(tag: string) { setTags(tags.filter(item => item !== tag)); setProblem(''); input.current?.focus(); }
-  function keyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if ((event.key === 'Enter' || event.key === ',') && draft.trim()) { event.preventDefault(); add(draft.split(',')); }
-    else if (event.key === 'Backspace' && !draft && tags.length) { event.preventDefault(); setTags(tags.slice(0, -1)); }
-  }
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    const next = draft.trim() ? combine(draft.split(',')) : tags;
-    if (next) onSubmit(next);
-  }
-  const unchanged = !draft.trim() && tags.length === original.length && tags.every((tag, index) => tag === original[index]);
-  return shell('Edit tags', theme.name,
-    <form onSubmit={submit} aria-busy={busy}>
-      <div className="create-field">
-        <label htmlFor="theme-tag-input">Tags</label>
-        {tags.length > 0 && <ul className="theme-tag-list" aria-label="Current tags">{tags.map(tag => <li key={tag}><span dir="auto">{tag}</span><Button className="icon-button" aria-label={`Remove tag ${tag}`} onClick={() => remove(tag)} disabled={busy}><Icon name="close" size={12} /></Button></li>)}</ul>}
-        <div className="theme-tag-entry">
-          <Input ref={input} id="theme-tag-input" value={draft} onChange={event => { setDraft(event.target.value); setProblem(''); }} onKeyDown={keyDown} disabled={busy} maxLength={themeFolderLimits.tag * 4} autoComplete="off" placeholder={tags.length ? 'Add another tag' : 'For example, Reports'} aria-describedby="theme-tag-hint" aria-invalid={Boolean(problem) || undefined} />
-          <Button onClick={() => add(draft.split(','))} disabled={busy || !draft.trim()}>Add</Button>
-        </div>
-        <p className="field-hint" id="theme-tag-hint">Press Enter or type a comma to add. Tags let you filter themes across every folder.</p>
-      </div>
-      {suggestions.length > 0 && <div className="theme-tag-suggestions"><span>Used on other themes</span><ul>{suggestions.map(label => <li key={label}><Button onClick={() => add([label])} disabled={busy} aria-label={`Add tag ${label}`}><Icon name="plus" size={13} />{label}</Button></li>)}</ul></div>}
-      {problem && <p className="field-error" role="alert">{problem}</p>}
-      {actions('Save tags', 'Saving…', unchanged)}
-    </form>, input);
 }
 
 /** Organization mutations that need no confirmation: drag-and-drop moves and deleting an empty folder. */

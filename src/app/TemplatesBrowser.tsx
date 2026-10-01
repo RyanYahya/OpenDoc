@@ -8,6 +8,8 @@ import { Button, Dialog, Input, Tabs } from './ui';
 import { Icon } from './ui/Icon';
 import { CreateDocumentDialog } from './CreateDocumentDialog';
 import { GuideDialog } from './GuideDialog';
+import { filterLabel, matchesTag, TagFilter, TagSummary, tagText, type TagState, type TagTarget } from './Tags';
+import { emptyTags } from '../shared/tags';
 import './templates.css';
 
 function TemplatePreview({ item, allPages = false, onReady }: { item: TemplateItem; allPages?: boolean; onReady?: (revision: string, preview: Preview) => void }) {
@@ -51,7 +53,14 @@ function TemplatePreview({ item, allPages = false, onReady }: { item: TemplateIt
 
 const customPrompt = '$opendoc-create-template';
 
-export function TemplatesBrowser({ selection, generation, format = 'document' }: { selection: string; generation: number; format?: DocumentFormat }) {
+export function TemplatesBrowser({ selection, generation, format = 'document', connected = true, tags, onEditTags }: {
+  selection: string; generation: number; format?: DocumentFormat; connected?: boolean;
+  /** Optional workspace tags, filtered here and edited through the shared tag editor. */
+  tags?: TagState; onEditTags?: (target: TagTarget) => void;
+}) {
+  const [tag, setTag] = useState('');
+  const tagManifest = tags?.manifest ?? emptyTags();
+  const tagging = Boolean(onEditTags) && !tags?.error;
   const [proof, setProof] = useState<{ revision: string; preview: Preview }>();
   const previewReady = useCallback((revision: string, preview: Preview) => setProof({ revision, preview }), []);
   const [items, setItems] = useState<TemplateItem[]>([]);
@@ -100,6 +109,10 @@ export function TemplatesBrowser({ selection, generation, format = 'document' }:
             </Button>
             <CreateDocumentDialog open={createOpen} onOpenChange={setCreateOpen} template={item} />
             <GuideDialog key={item.id} kind="template" id={item.id} name={item.descriptor.name} generation={generation} />
+            {tagging && <section className="tag-details template-tags"><h2>Tags</h2>
+              <p>{tagManifest.templates[item.id]?.length ? tagText(tagManifest.templates[item.id]) : 'No tags yet.'}</p>
+              <div className="tag-details-actions"><Button className="text-button" data-template-tags={item.id} disabled={!connected} onClick={() => onEditTags?.({ kind: 'templates', id: item.id, name: item.descriptor.name, returnFocus: `[data-template-tags="${item.id}"]` })}>Edit tags…</Button></div>
+            </section>}
           </div>
         </div>
       </> : <div className="empty-state"><h1>{loaded ? 'Template not found' : 'Loading template…'}</h1><p>{loaded ? 'It may have been moved or removed from the workspace.' : 'Preparing its PDF preview.'}</p></div>}
@@ -122,24 +135,29 @@ export function TemplatesBrowser({ selection, generation, format = 'document' }:
         </Dialog.Root>
       </div>
       <p className="lead template-intro">Choose a structure for your work. Apply a theme when you make it yours.</p>
+      {tagging && <TagFilter className="template-tag-filter" manifest={tagManifest} kind="templates" ids={items.map(item => item.id)} value={tag} onChange={setTag} />}
       <Tabs.Root value={format} onValueChange={value => { location.hash = value === 'presentation' ? 'templates?format=presentation' : 'templates'; }}>
         <Tabs.List className="ui-tabs" aria-label="Template format">
           <Tabs.Tab className="ui-tab" value="document">Documents</Tabs.Tab>
           <Tabs.Tab className="ui-tab" value="presentation">Presentations</Tabs.Tab>
         </Tabs.List>
         {(['document', 'presentation'] as const).map(category => {
-          const visible = items.filter(item => (item.descriptor.documentFormat ?? 'document') === category);
+          const visible = items.filter(item => (item.descriptor.documentFormat ?? 'document') === category && matchesTag(tagManifest, 'templates', item.id, tagging ? tag : ''));
+          const tagged = tagging && tag ? ` tagged “${filterLabel(tagManifest, tag)}”` : '';
           return <Tabs.Panel key={category} value={category}>
-      <div className="template-gallery-label"><span>{loaded ? `${visible.length} ${visible.length === 1 ? 'template' : 'templates'}` : 'Preparing templates…'}</span><span>Previews use the Neutral theme</span></div>
+      <div className="template-gallery-label"><span>{loaded ? `${visible.length} ${visible.length === 1 ? 'template' : 'templates'}${tagged}` : 'Preparing templates…'}</span><span>Previews use the Neutral theme</span></div>
       <div className={`template-grid${category === 'presentation' ? ' template-grid-presentations' : ''}`}>{visible.map(item => <article className="template-card" key={item.id}>
         <a href={`#templates/${item.id}`} className="template-card-link" aria-labelledby={`template-title-${item.id}`}>
           <div className="template-card-mat" aria-hidden="true"><TemplatePreview item={item} /></div>
           <h2 id={`template-title-${item.id}`}><bdi>{item.descriptor.name}</bdi><Icon name="arrow" size={17} /></h2>
         </a>
         <p className="template-format">{item.descriptor.format}</p>
+        <TagSummary tags={tagManifest.templates[item.id]} className="template-card-tags" />
         {item.error && <p className="comment-error" role="alert">Preview needs attention. Open the template for details.</p>}
       </article>)}</div>
-      {loaded && !visible.length && !loadError && <div className="empty-state"><h2>No {category === 'presentation' ? 'presentation' : 'document'} templates yet</h2><p>Choose Create template to find the skill to use in your coding agent.</p></div>}
+      {loaded && !visible.length && !loadError && (tagged
+        ? <div className="empty-state"><h2>No {category === 'presentation' ? 'presentation' : 'document'} templates{tagged}</h2><p>Choose another tag, or show every template.</p><Button onClick={() => setTag('')}>Clear filter</Button></div>
+        : <div className="empty-state"><h2>No {category === 'presentation' ? 'presentation' : 'document'} templates yet</h2><p>Choose Create template to find the skill to use in your coding agent.</p></div>)}
           </Tabs.Panel>;
         })}
       </Tabs.Root>

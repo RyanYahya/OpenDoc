@@ -4,6 +4,7 @@ import { CoverPreview } from "./Pdf";
 import { Button, IconButton } from "./ui";
 import { Icon } from "./ui/Icon";
 import type { DocumentView } from './DocumentViewControl';
+import { TagSummary } from './Tags';
 
 // Base UI owns the card interaction; PDF.js renders the actual document cover.
 export function DocumentCard({
@@ -12,9 +13,12 @@ export function DocumentCard({
   onOpen,
   onAction,
   disabled,
+  tags,
 }: {
   document: DocumentSummary;
   view?: DocumentView;
+  /** Workspace tags shown as a compact muted line. */
+  tags?: readonly string[];
   onOpen: () => void;
   onAction: DocumentActionHandler;
   disabled?: boolean;
@@ -28,6 +32,7 @@ export function DocumentCard({
   const portrait = cover ? cover.height > cover.width : !presentation;
   const statusId = `document-status-${id}`;
   const formatId = `document-format-${id}`;
+  const tagsId = `document-tags-${id}`;
   const statusLabel = status === 'ready'
     ? `${pageCount} ${pageUnit(format, pageCount)}`
     : status === 'error' ? 'Needs attention' : 'Rendering…';
@@ -37,7 +42,7 @@ export function DocumentCard({
       className={`document-card ${view === 'list' ? 'document-card-list' : ''}`}
       onClick={onOpen}
       aria-labelledby={`${titleId} ${formatId}`}
-      aria-describedby={statusId}
+      aria-describedby={tags?.length ? `${statusId} ${tagsId}` : statusId}
     >
       <div
         className={`card-paper${portrait ? ' card-paper-portrait' : ''}`}
@@ -48,6 +53,7 @@ export function DocumentCard({
       <h2 id={titleId} title={documentName(document)} dir="auto">{documentName(document)}</h2>
       {/* Same-titled documents and presentations stay distinguishable by sight and by name. */}
       <span className="card-meta"><span id={formatId} className="card-format"><Icon name={presentation ? 'monitor' : 'document'} size={14} />{formatLabel(format)}</span>{view === 'list' && <span id={statusId}>{statusLabel}</span>}</span>
+      <TagSummary tags={tags} id={tagsId} className="card-tags" />
     </Button><IconButton className="document-history-trigger" label={`Previous exports for ${documentLabel(document)}`} disabled={disabled} onClick={() => onAction(document, 'exports')}><Icon name="history" size={14} /></IconButton><DocumentMenu document={document} onAction={onAction} disabled={disabled} /></div>
   );
 }

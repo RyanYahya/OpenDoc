@@ -1,0 +1,34 @@
+/* Workspace tags: compact muted summaries, one filter control, and the tag editor. */
+.item-tags { display: block; min-width: 0; color: var(--muted); font-size: 12px; line-height: 1.5; font-weight: 400; overflow-wrap: anywhere; }
+
+.tag-filter { display: flex; align-items: center; gap: 10px; min-width: 0; color: var(--muted); }
+.tag-filter .ui-select { min-width: 160px; max-width: 100%; }
+
+.tag-dialog .field-hint { margin-top: 8px; }
+.tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.tag-list li { display: inline-flex; align-items: center; gap: 2px; min-height: 28px; padding: 0 2px 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: 12.5px; font-weight: 400; }
+.tag-list .ui-button.icon-button { min-width: 24px; min-height: 24px; padding: 5px; border: 0; border-radius: 999px; background: transparent; box-shadow: none; color: var(--muted); }
+.tag-list .ui-button.icon-button:hover { color: var(--ink); background: var(--control-hover); }
+.tag-entry { display: flex; gap: 8px; }
+.tag-entry > input { flex: 1; min-width: 0; min-height: var(--control-hit-size); padding: 5px 10px; border: 1px solid var(--control-line); border-radius: var(--control-radius); background: var(--surface-raised); font-size: var(--body-size); line-height: var(--body-leading); font-weight: 400; }
+
+.tag-suggestions { display: grid; gap: 14px; margin-top: 20px; }
+.help-dialog .tag-suggestions h3 { margin: 0; color: var(--muted); font-size: var(--caption-size); line-height: var(--caption-leading); font-weight: 500; }
+.tag-group-note { font-weight: 400; }
+.tag-suggestions ul { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; padding: 0; list-style: none; }
+.tag-suggestions .ui-button.tag-choice { gap: 4px; min-height: 28px; padding: 3px 10px 3px 8px; border-radius: 999px; font-size: 12.5px; font-weight: 400; }
+.tag-suggestions .ui-button.tag-choice > svg { color: var(--muted); }
+.tag-suggestions .ui-button.tag-choice[aria-pressed="true"] { border-color: var(--accent); background: var(--selected-surface); color: var(--accent-ink); }
+.tag-suggestions .ui-button.tag-choice[aria-pressed="true"] > svg { color: currentColor; }
+
+.tag-details > p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.tag-details .tag-details-actions { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; }
+
+@media (max-width: 620px) {
+  .tag-filter { flex: 1 1 100%; }
+  .tag-filter .ui-select { flex: 1; }
+}
+@media (pointer: coarse) {
+  .tag-list .ui-button.icon-button { min-width: 36px; min-height: 36px; }
+  .tag-suggestions .ui-button.tag-choice { min-height: 36px; }
+}

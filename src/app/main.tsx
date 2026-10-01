@@ -21,6 +21,8 @@ import { documentName, documentFormat, formatLabel, type DocumentFormat, type Do
 import { emptyProjects, type Project, type ProjectsManifest } from "../shared/projects";
 import { emptyThemeFolders, type ThemeFoldersManifest } from "../shared/theme-folders";
 import type { ThemeOrganization } from "./ThemeFolders";
+import { emptyTags, type TagsManifest } from "../shared/tags";
+import { TagEditorDialog, type TagState, type TagTarget } from "./Tags";
 import "./style.css";
 
 function route() {
@@ -51,6 +53,8 @@ function App() {
   const [themes, setThemes] = useState<ThemeSummary[]>([]);
   const [manifest, setManifest] = useState<ProjectsManifest>(emptyProjects);
   const [themeOrganization, setThemeOrganization] = useState<ThemeOrganization>(() => ({ manifest: emptyThemeFolders() }));
+  const [tagState, setTagState] = useState<TagState>(() => ({ manifest: emptyTags() }));
+  const [tagTarget, setTagTarget] = useState<TagTarget | null>(null);
   const [error, setError] = useState("");
   const [connected, setConnected] = useState(true);
   const [help, setHelp] = useState(false);
@@ -74,18 +78,22 @@ function App() {
       do {
         refreshAgain.current = false;
         try {
-          const [next, projects, nextThemes, organization] = await Promise.all([
+          const [next, projects, nextThemes, organization, nextTags] = await Promise.all([
             api<DocumentSummary[]>("/api/documents?view=summary", { signal: requestAbort.current?.signal }),
             api<ProjectsManifest>("/api/projects", { signal: requestAbort.current?.signal }),
             api<ThemeSummary[]>("/api/themes", { signal: requestAbort.current?.signal }),
             // Folders are optional organization; an unreadable file must not hide the workspace.
             api<ThemeFoldersManifest>("/api/theme-folders", { signal: requestAbort.current?.signal })
               .then((value): ThemeOrganization => ({ manifest: value }), (error): ThemeOrganization => ({ manifest: emptyThemeFolders(), error: (error as Error).message })),
+            // Tags only filter; an unreadable tags.json leaves every view usable.
+            api<TagsManifest>("/api/tags", { signal: requestAbort.current?.signal })
+              .then((value): TagState => ({ manifest: value }), (error): TagState => ({ manifest: emptyTags(), error: (error as Error).message })),
           ]);
           if (requestAbort.current?.signal.aborted) return;
           setManifest(projects);
           setThemes(nextThemes);
           setThemeOrganization(organization);
+          setTagState(nextTags);
           setDocuments((previous) => {
             const existing = new Map(previous.map((item) => [item.id, item]));
             const merged = next.map((item) => {
@@ -174,6 +182,7 @@ function App() {
   const onDocumentAction: DocumentActionHandler = (document, action) => {
     if (action === "exports") { setExportDocument(document); return; }
     if (action === "move") { setMoving(document); return; }
+    if (action === "tags") { setTagTarget({ kind: 'documents', id: document.id, name: documentName(document), returnFocus: `[data-document-menu="${document.id}"]` }); return; }
     if (action !== "duplicate") { setDocumentAction({ document, action }); return; }
     if (copying.current || !connected) return;
     copying.current = true; setDuplicating(true);
@@ -194,6 +203,7 @@ function App() {
       {!connected && <div className="connection-banner" role="status">Connection lost. Reconnecting to OpenDoc. Editing and export will resume when the server returns.</div>}
       {detailError && activeSummary && <div className="error-banner" role="alert"><span>{detailError}</span><Button onClick={() => setDetailAttempt(value => value + 1)}>Try again</Button></div>}
       {error && <div className="error-banner" role="alert"><span>{error}</span><Button className="text-button" onClick={() => void refresh()}>Try again</Button></div>}
+      {tagState.error && current.view !== "document" && current.view !== "assets" && <div className="error-banner" role="alert"><span>{tagState.error}</span><Button className="text-button" onClick={() => void refresh()}>Try again</Button></div>}
       {current.view === "document" ? active ? <Reader key={active.id} state={active} generation={generation} connected={connected} onShowExports={() => setExportDocument(active)}
         identity={<>
           <IconButton label={`Back to ${backLabel}`} className="reader-back" render={<a href={`#${backHash}`} />} nativeButton={false}><Icon name="left" size={17} /></IconButton>
@@ -204,17 +214,18 @@ function App() {
           <AppearanceMenuItems value={appearance} onChange={changeAppearance} />
         </>}
       /> : <div className="empty-state"><h1>{loaded ? "Document not found" : error ? "Workspace unavailable" : "Loading document…"}</h1><p>{loaded ? "Its source may have been moved or removed from this workspace." : "Opening your local workspace."}</p><Button onClick={() => go("library")}>Back to documents</Button></div>
-        : current.view === "project" ? project ? <ProjectDocuments key={project.id} project={project} documents={projectDocuments} loaded={loaded} view={documentView} onViewChange={changeDocumentView} onCreate={() => createDocument()} onCreatePresentation={() => createDocument('presentation')} onSettings={() => setProjectDialog({ project })} onAction={onDocumentAction} disabled={!connected || duplicating} /> : <div className="empty-state"><h1>{loaded ? "Project not found" : "Loading project…"}</h1><p>{loaded ? "It may have been removed. Your other projects are still available." : "Opening your local workspace."}</p><Button onClick={() => go("library")}>Back to documents</Button></div>
+        : current.view === "project" ? project ? <ProjectDocuments key={project.id} project={project} documents={projectDocuments} tags={tagState} loaded={loaded} view={documentView} onViewChange={changeDocumentView} onCreate={() => createDocument()} onCreatePresentation={() => createDocument('presentation')} onSettings={() => setProjectDialog({ project })} onAction={onDocumentAction} disabled={!connected || duplicating} /> : <div className="empty-state"><h1>{loaded ? "Project not found" : "Loading project…"}</h1><p>{loaded ? "It may have been removed. Your other projects are still available." : "Opening your local workspace."}</p><Button onClick={() => go("library")}>Back to documents</Button></div>
         : current.view === "assets" ? <AssetsBrowser selection={current.id} generation={generation} documents={documents} themes={themes} connected={connected} />
-        : current.view === "templates" ? <TemplatesBrowser selection={current.id} generation={generation} format={current.templateFormat} />
+        : current.view === "templates" ? <TemplatesBrowser selection={current.id} generation={generation} format={current.templateFormat} connected={connected} tags={tagState} onEditTags={setTagTarget} />
         : current.view === "themes" ? <ThemesBrowser connected={connected} themes={themes} selection={current.id} generation={generation} loaded={loaded} documents={documents} projects={manifest.projects} onRefresh={() => void refresh()}
-          organization={themeOrganization} folder={current.themeFolder} tag={current.themeTag} onOrganizationChange={next => { setThemeOrganization({ manifest: next }); void refresh(); }} /> : <DocumentsBrowser key={current.view} format={current.view === 'presentations' ? 'presentation' : 'document'} projects={manifest.projects} documents={documents.filter(document => documentFormat(document) === (current.view === 'presentations' ? 'presentation' : 'document'))} loaded={loaded} view={documentView} onViewChange={changeDocumentView} onCreate={() => createDocument(current.view === 'presentations' ? 'presentation' : 'document')} onMove={setMoving} onAction={onDocumentAction} disabled={!connected || duplicating} />}
+          organization={themeOrganization} folder={current.themeFolder} tag={current.themeTag} onOrganizationChange={next => { setThemeOrganization({ manifest: next }); void refresh(); }} tags={tagState} onEditTags={setTagTarget} /> : <DocumentsBrowser key={current.view} format={current.view === 'presentations' ? 'presentation' : 'document'} projects={manifest.projects} documents={documents.filter(document => documentFormat(document) === (current.view === 'presentations' ? 'presentation' : 'document'))} tags={tagState} loaded={loaded} view={documentView} onViewChange={changeDocumentView} onCreate={() => createDocument(current.view === 'presentations' ? 'presentation' : 'document')} onMove={setMoving} onAction={onDocumentAction} disabled={!connected || duplicating} />}
     </main>
     <CreateDocumentDialog format={creationFormat} open={help} onOpenChange={setHelp} project={project} />
     <ProjectDialog themes={themes} themeFolders={themeOrganization.manifest} open={Boolean(projectDialog)} project={projectDialog?.project ?? null} documentCount={documents.filter(document => document.projectId === projectDialog?.project?.id).length} connected={connected} onOpenChange={open => { if (!open) setProjectDialog(null); }} onSaved={saved => {
       setManifest(previous => ({ ...previous, projects: previous.projects.some(project => project.id === saved.id) ? previous.projects.map(project => project.id === saved.id ? saved : project) : [...previous.projects, saved] }));
       go(`project/${saved.id}`); void refresh();
     }} onDeleted={() => { setManifest(previous => ({ ...previous, projects: previous.projects.filter(project => project.id !== projectDialog?.project?.id) })); go("library"); void refresh(); }} />
+    <TagEditorDialog target={tagTarget} manifest={tagState.manifest} connected={connected} onClose={() => setTagTarget(null)} onChange={next => { setTagState({ manifest: next }); void refresh(); }} />
     <ExportHistoryDialog document={exportDocument} connected={connected} onClose={() => setExportDocument(null)} />
     <DocumentActionDialog selection={documentAction} connected={connected} onClose={() => setDocumentAction(null)} onRenamed={(id, name) => {
       setDocuments(previous => previous.map(document => document.id === id ? { ...document, name } : document)); void refresh();

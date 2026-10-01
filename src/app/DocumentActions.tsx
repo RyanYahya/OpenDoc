@@ -5,7 +5,7 @@ import { api } from './api';
 import { Button, Dialog, Input } from './ui';
 import { Icon } from './ui/Icon';
 
-export type DocumentAction = 'rename' | 'duplicate' | 'move' | 'delete' | 'exports';
+export type DocumentAction = 'rename' | 'duplicate' | 'move' | 'tags' | 'delete' | 'exports';
 export type DocumentActionHandler = (document: DocumentSummary, action: DocumentAction) => void;
 /** A document and presentation may share a title; their controls still need distinct names. */
 export const documentLabel = (document: DocumentSummary) => `${documentName(document)} (${documentFormat(document)})`;
@@ -17,13 +17,14 @@ export function DocumentMenuItems({ document, disabled, onAction }: { document: 
     <Menu.Item className="ui-menu-item" disabled={disabled} onClick={() => onAction(document, 'rename')}><Icon name="edit" size={16} /><span>Rename</span></Menu.Item>
     <Menu.Item className="ui-menu-item" disabled={disabled || !document.projectId} onClick={() => onAction(document, 'duplicate')}><Icon name="copy" size={16} /><span>Duplicate</span></Menu.Item>
     <Menu.Item className="ui-menu-item" disabled={disabled} onClick={() => onAction(document, 'move')}><Icon name="folder" size={16} /><span>Move to project…</span></Menu.Item>
+    <Menu.Item className="ui-menu-item" disabled={disabled} onClick={() => onAction(document, 'tags')}><Icon name="tag" size={16} /><span>Edit tags…</span></Menu.Item>
     <Menu.Separator className="ui-menu-separator" />
     <Menu.Item className="ui-menu-item ui-menu-item-danger" disabled={disabled} onClick={() => onAction(document, 'delete')}><Icon name="trash" size={16} /><span>Delete</span></Menu.Item>
   </>;
 }
 
 export function DocumentMenu({ document, disabled, onAction }: { document: DocumentSummary; disabled?: boolean; onAction: DocumentActionHandler }) {
-  return <Menu.Root><Menu.Trigger render={<Button className="icon-button document-menu-trigger" aria-label={`Options for ${documentLabel(document)}`} />}><Icon name="more" size={14} /></Menu.Trigger>
+  return <Menu.Root><Menu.Trigger render={<Button className="icon-button document-menu-trigger" aria-label={`Options for ${documentLabel(document)}`} data-document-menu={document.id} />}><Icon name="more" size={14} /></Menu.Trigger>
     <Menu.Portal><Menu.Positioner sideOffset={5} align="end" className="document-menu-positioner"><Menu.Popup className="ui-menu-popup"><DocumentMenuItems document={document} disabled={disabled} onAction={onAction} /></Menu.Popup></Menu.Positioner></Menu.Portal>
   </Menu.Root>;
 }

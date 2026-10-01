@@ -15,6 +15,7 @@ ${edition === 'headless'
   npx opendoc projects              Manage projects and membership
   npx opendoc templates             Inspect, check, and preview templates
   npx opendoc themes                Inspect, check, and preview themes
+  npx opendoc tags                  Tag documents, themes, and templates
   npx opendoc assets                Manage fonts, logos, and bindings
   npx opendoc media                 Manage document-owned media
   npx opendoc comments              Read and resolve feedback
@@ -92,6 +93,7 @@ export async function main(rawArgs = process.argv.slice(2)) {
         case 'projects': await (await import('../server/projects-cli')).runProjectsCli(flags, root); break;
         case 'templates': await (await import('../server/templates-cli')).runTemplatesCli(flags, root); break;
         case 'themes': await (await import('../server/themes-cli')).runThemesCli(flags, root); break;
+        case 'tags': await (await import('../server/tags-cli')).runTagsCli(flags, root); break;
         case 'assets': await (await import('../server/assets-cli')).runAssetsCli(flags, root); break;
         case 'media': await (await import('../server/media-cli')).runMediaCli(flags, root); break;
         case 'comments': await (await import('../server/comments-cli')).runCommentsCli(flags, root, { mode: identity.edition === 'headless' ? 'direct' : 'auto' }); break;

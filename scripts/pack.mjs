@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { excludedFromCopy, forbiddenInPackage } from './package-rules.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const argv = process.argv.slice(2);
@@ -40,9 +41,8 @@ async function copy(relative, destination, selectedEdition) {
     recursive: true,
     filter(source) {
       const name = path.relative(root, source).split(path.sep).join('/');
-      if (name === sourceArchive || name === 'docs/showcase' || name.startsWith('docs/showcase/')) return false;
-      // Theme folders and tags are a workspace's own organization, like project membership.
-      if (name === 'themes/folders.json') return false;
+      // Showcase material and a workspace's own folders, tags, and projects stay out of releases.
+      if (excludedFromCopy(name, sourceArchive)) return false;
       if (selectedEdition === 'headless' && browserFiles.some((entry) => name === entry || name.startsWith(`${entry}/`))) return false;
       return !['.DS_Store', 'node_modules', '.git', '.opendoc', 'output', 'tmp'].includes(path.basename(source));
     },
@@ -161,11 +161,7 @@ for (const selectedEdition of editions) {
     const packed = JSON.parse(await run('npm', ['pack', '--ignore-scripts', '--json', '--pack-destination', output], stage, true))[0];
     const archive = path.join(output, packed.filename);
     const filenames = new Set(packed.files.map(({ path: name }) => name));
-    const forbidden = packed.files.filter(({ path: name }) => /^(?:tests|documents|projects\.json|\.opendoc|\.git|output|tmp)(?:\/|$)/.test(name)
-      || name === 'starter/themes/folders.json'
-      || name === sourceArchive
-      || /^node_modules\/@formepdf\/(?:html|renderer)(?:\/|$)/.test(name)
-      || /^node_modules\/@formepdf\/core\/(?:pkg|pkg-web)(?:\/|$)/.test(name));
+    const forbidden = packed.files.filter(({ path: name }) => forbiddenInPackage(name, sourceArchive));
     if (forbidden.length) throw new Error(`Excluded files entered the package: ${forbidden.map(({ path: name }) => name).join(', ')}`);
     if (packed.bundled.some((name) => name === 'esbuild' || name.startsWith('@esbuild/') || name.startsWith('@napi-rs/') || name.startsWith('@resvg/'))) {
       throw new Error('A platform-specific dependency entered the bundle.');

@@ -1,4 +1,4 @@
-import type { ReactElement, ReactNode } from "react";
+import { Fragment, type ReactElement, type ReactNode } from "react";
 import { Button as BaseButton } from "@base-ui/react/button";
 import { Input as BaseInput } from "@base-ui/react/input";
 import { Toggle } from "@base-ui/react/toggle";
@@ -87,6 +87,17 @@ export function ToggleButton({
   );
 }
 
+type SelectItem = { label: string; value: string; group?: string };
+function itemGroups(items: SelectItem[]) {
+  const groups: { group?: string; items: SelectItem[] }[] = [];
+  for (const item of items) {
+    const last = groups.at(-1);
+    if (last && last.group === item.group) last.items.push(item);
+    else groups.push({ group: item.group, items: [item] });
+  }
+  return groups;
+}
+
 export function SelectControl({
   label,
   disabled,
@@ -98,7 +109,8 @@ export function SelectControl({
   disabled?: boolean;
   value: string;
   onValueChange: (value: string) => void;
-  items: { label: string; value: string }[];
+  /** Consecutive items sharing a `group` are shown under that heading. */
+  items: { label: string; value: string; group?: string }[];
 }) {
   return (
     <Select.Root
@@ -142,18 +154,26 @@ export function SelectControl({
         >
           <Select.Popup className="ui-select-popup">
             <Select.List>
-              {items.map((item) => (
-                <Select.Item
-                  key={item.value}
-                  value={item.value}
-                  className="ui-select-item"
-                >
-                  <Select.ItemText>{item.label}</Select.ItemText>
-                  <Select.ItemIndicator>
-                    <Icon name="check" size={14} />
-                  </Select.ItemIndicator>
-                </Select.Item>
-              ))}
+              {itemGroups(items).map(({ group, items: grouped }, index) => {
+                const options = grouped.map((item) => (
+                  <Select.Item
+                    key={item.value}
+                    value={item.value}
+                    className="ui-select-item"
+                  >
+                    <Select.ItemText>{item.label}</Select.ItemText>
+                    <Select.ItemIndicator>
+                      <Icon name="check" size={14} />
+                    </Select.ItemIndicator>
+                  </Select.Item>
+                ));
+                return group ? (
+                  <Select.Group key={group} className="ui-select-group">
+                    <Select.GroupLabel className="ui-select-group-label">{group}</Select.GroupLabel>
+                    {options}
+                  </Select.Group>
+                ) : <Fragment key={`items-${index}`}>{options}</Fragment>;
+              })}
             </Select.List>
           </Select.Popup>
         </Select.Positioner>

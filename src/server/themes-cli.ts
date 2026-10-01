@@ -6,8 +6,10 @@ import { ThemeCatalog, readTheme, readThemeGuide, themeFile, readThemePaths } fr
 import { captureEntryExportInputs } from './export-inputs';
 import { RenderFailure } from './render-error';
 import { ExportChangedError, publishPDF } from './export-file';
-import { folderDescendants, folderPath, tagKey } from '../shared/theme-folders';
-import { assignThemeFolder, createThemeFolderPath, deleteThemeFolder, readThemeFolders, resolveFolderPath, setThemeTags, themeDirectories, themeFoldersFile, ThemeFoldersError, updateThemeFolder } from './theme-folders';
+import { folderDescendants, folderPath } from '../shared/theme-folders';
+import { hasTags } from '../shared/tags';
+import { assignThemeFolder, createThemeFolderPath, deleteThemeFolder, readThemeFolders, resolveFolderPath, themeDirectories, themeFoldersFile, ThemeFoldersError, updateThemeFolder } from './theme-folders';
+import { changeItemTags, itemTags, readTags } from './tags';
 
 const usage = `Usage: npx opendoc themes list [--folder <path>] [--tag <tag>] | inspect <id> | check <id> | preview <id> [--json]
        npx opendoc themes folders [list]
@@ -17,7 +19,7 @@ const usage = `Usage: npx opendoc themes list [--folder <path>] [--tag <tag>] | 
        npx opendoc themes assign <theme-id> <folder-path|none>
        npx opendoc themes tags <theme-id> [--set "Tag, Tag"] [--add <tag>] [--remove <tag>]`;
 
-/** Folders and tags live in themes/folders.json; they never move theme directories. */
+/** Folders live in themes/folders.json and tags in tags.json; neither moves theme directories. */
 async function runOrganization(command: string, positionals: string[], values: { name?: string; parent?: string; set?: string; add?: string[]; remove?: string[] }, root: string) {
   const [action = 'list', target, extra] = positionals;
   if (command === 'folders') {
@@ -48,16 +50,14 @@ async function runOrganization(command: string, positionals: string[], values: {
     const { manifest } = await assignThemeFolder(root, action, folder?.id ?? null);
     return { id: action, folder: folderPath(manifest, folder?.id) };
   }
+  // Kept for existing scripts; npx opendoc tags covers themes, documents, and templates.
   if (!action || target !== undefined) throw new Error(usage);
-  const current = (await readThemeFolders(root)).tags[action] ?? [];
   if (values.set === undefined && !values.add?.length && !values.remove?.length) {
-    await themeFile(root, action, 'index.ts');
-    return { id: action, tags: current };
+    const { id, tags } = await itemTags(root, 'themes', action);
+    return { id, tags };
   }
-  const removed = new Set((values.remove ?? []).map(tagKey));
-  const base = values.set === undefined ? current : values.set.split(',').filter(tag => tag.trim());
-  const { tags } = await setThemeTags(root, action, [...base, ...(values.add ?? [])].filter(tag => !removed.has(tagKey(tag))));
-  return { id: action, tags };
+  const { id, tags } = await changeItemTags(root, 'themes', action, { set: values.set?.split(',').filter(tag => tag.trim()), add: values.add, remove: values.remove });
+  return { id, tags };
 }
 
 export async function runThemesCli(args: string[], root = process.cwd()): Promise<void> {
@@ -80,19 +80,20 @@ export async function runThemesCli(args: string[], root = process.cwd()): Promis
   const catalog = new ThemeCatalog(root);
   try {
     if (command === 'list') {
-      // Organization is optional: an unreadable folders file must not hide the catalog unless a filter needs it.
-      const manifest = await readThemeFolders(root).catch(error => {
-        if (values.folder !== undefined || values.tag?.length) throw error;
+      // Organization is optional: an unreadable folders or tags file must not hide the catalog unless a filter needs it.
+      const optional = <T,>(read: Promise<T>, needed: boolean) => read.catch(error => {
+        if (needed) throw error;
         console.error(error instanceof Error ? error.message : String(error));
         return undefined;
       });
+      const manifest = await optional(readThemeFolders(root), values.folder !== undefined);
+      const tagged = await optional(readTags(root), Boolean(values.tag?.length));
       // A folder filter includes nested folders; `none` or `/` selects themes at the top level.
       const target = values.folder === undefined || !manifest ? undefined : resolveFolderPath(manifest, values.folder);
       const scope = target ? folderDescendants(manifest!, target.id) : target;
-      const wanted = (values.tag ?? []).map(tagKey);
-      const choices = (await catalog.list()).map(({ id, name, description, error }) => ({ id, name, description, error, folder: manifest ? folderPath(manifest, manifest.assignments[id]) : null, tags: manifest?.tags[id] ?? [] }))
+      const choices = (await catalog.list()).map(({ id, name, description, error }) => ({ id, name, description, error, folder: manifest ? folderPath(manifest, manifest.assignments[id]) : null, tags: tagged?.themes[id] ?? [] }))
         .filter(theme => (scope === undefined || (scope === null ? !theme.folder : scope.has(manifest!.assignments[theme.id] ?? '')))
-          && wanted.every(tag => theme.tags.some(item => tagKey(item) === tag)));
+          && hasTags(theme.tags, values.tag ?? []));
       console.log(JSON.stringify(choices, null, 2));
     }
     else {

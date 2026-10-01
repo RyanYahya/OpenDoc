@@ -6,6 +6,16 @@ import ts from 'typescript';
 import { atomicWrite } from './files';
 import { validId } from './render';
 import { documentDisplayName, ProjectError, requireProject, withProjects } from './projects';
+import { readTagsFile, setItemTags } from './tags';
+
+/** Tags follow a document through duplication and Trash; a tags file problem never blocks either. */
+async function documentTags(root: string, id: string) {
+  return (await readTagsFile(root).catch(() => undefined))?.documents[id];
+}
+async function restoreTags(root: string, id: string, tags: unknown) {
+  if (!Array.isArray(tags) || !tags.length || tags.some(tag => typeof tag !== 'string')) return;
+  await setItemTags(root, 'documents', id, tags).catch(() => {});
+}
 
 async function exists(path: string) {
   return lstat(path).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
@@ -88,12 +98,13 @@ export async function duplicateDocument(root: string, id: string, title: string)
       await save();
       try { await rename(staging, resolve(root, 'documents', copyId)); }
       catch (error) { delete manifest.assignments[copyId]; delete manifest.names[copyId]; if (manifest.formats) delete manifest.formats[copyId]; await save(); throw error; }
+      await restoreTags(root, copyId, await documentTags(root, id));
       return { id: copyId, projectId: project.id, name };
     } finally { await rm(staging, { recursive: true, force: true }); }
   });
 }
 
-interface TrashReceipt { format?: DocumentFormat; id: string; projectId: string | null; name?: string; deletedAt: string }
+interface TrashReceipt { format?: DocumentFormat; id: string; projectId: string | null; name?: string; tags?: string[]; deletedAt: string }
 
 export async function deleteDocument(root: string, id: string) {
   return withProjects(root, async (manifest, save) => {
@@ -101,7 +112,8 @@ export async function deleteDocument(root: string, id: string) {
     const restoreId = randomUUID();
     const trash = resolve(await trashFolder(root), restoreId);
     await mkdir(trash);
-    const receipt: TrashReceipt = { id, format: manifest.formats && Object.hasOwn(manifest.formats, id) ? manifest.formats[id] : 'document', projectId: Object.hasOwn(manifest.assignments, id) ? manifest.assignments[id] : null, name: manifest.names && Object.hasOwn(manifest.names, id) ? manifest.names[id] : undefined, deletedAt: new Date().toISOString() };
+    const tags = await documentTags(root, id);
+    const receipt: TrashReceipt = { id, format: manifest.formats && Object.hasOwn(manifest.formats, id) ? manifest.formats[id] : 'document', projectId: Object.hasOwn(manifest.assignments, id) ? manifest.assignments[id] : null, name: manifest.names && Object.hasOwn(manifest.names, id) ? manifest.names[id] : undefined, ...(tags?.length ? { tags } : {}), deletedAt: new Date().toISOString() };
     await atomicWrite(resolve(trash, 'receipt.json'), JSON.stringify(receipt, null, 2));
     await rename(source, resolve(trash, 'document'));
     delete manifest.assignments[id];
@@ -138,6 +150,7 @@ export async function restoreDocument(root: string, restoreId: string) {
     try { await rename(resolve(trash, 'document'), destination); }
     catch (error) { delete manifest.assignments[receipt.id]; if (manifest.names) delete manifest.names[receipt.id]; if (manifest.formats) delete manifest.formats[receipt.id]; await save(); throw error; }
     await rm(trash, { recursive: true, force: true });
+    await restoreTags(root, receipt.id, receipt.tags);
     return { id: receipt.id, projectId: receipt.projectId, name: receipt.name };
   });
 }

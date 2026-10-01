@@ -5,8 +5,9 @@ output/
 tmp/
 .forme-render-*
 .DS_Store
-# Personal theme folders and tags; the starter library ships without them.
+# Personal theme folders and workspace tags; the starter library ships without them.
 themes/folders.json
+/tags.json
 
 .impeccable/review/
 .playwright-cli/

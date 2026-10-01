@@ -220,6 +220,8 @@
 .ui-menu-check { margin-inline-start: auto; display: flex; }
 .ui-menu-label { margin: 0; padding: var(--menu-item-padding); font-size: var(--menu-font-size); line-height: var(--menu-leading); font-weight: 500; color: var(--muted); }
 .ui-menu-group { margin-top: 4px; }
+.ui-select-group + .ui-select-group, .ui-select-item + .ui-select-group { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--line); }
+.ui-select-group-label { padding: var(--menu-item-padding); font-size: var(--caption-size); line-height: var(--caption-leading); font-weight: 500; color: var(--muted); }
 .ui-menu-separator { height: 1px; background: var(--line); margin: 3px var(--menu-padding); }
 .ui-menu-item-danger, .ui-menu-item-danger > svg { color: var(--destructive); }
 .ui-select-popup[data-starting-style],

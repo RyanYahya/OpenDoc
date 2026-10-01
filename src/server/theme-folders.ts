@@ -1,7 +1,7 @@
 import { lstat, readdir, readFile, realpath } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import {
-  emptyThemeFolders, findFolderByPath, folderDescendants, folderNameProblem, folderPath, normalizeTags, sameFolderName, tagCatalog, themeFolderLimits,
+  emptyThemeFolders, findFolderByPath, folderDescendants, folderNameProblem, folderPath, sameFolderName, themeFolderLimits,
   type ThemeFolder, type ThemeFoldersManifest,
 } from '../shared/theme-folders';
 import { atomicWrite, withLocalLock } from './files';
@@ -25,12 +25,6 @@ function folderName(value: unknown) {
   return name;
 }
 
-function tags(values: unknown, vocabulary: string[] = []) {
-  if (!Array.isArray(values) || values.some(value => typeof value !== 'string')) throw new ThemeFoldersError('Provide tags as a list of short labels.');
-  try { return normalizeTags(values, vocabulary); }
-  catch (error) { throw new ThemeFoldersError((error as Error).message); }
-}
-
 /** Validate the stored shape. Unknown theme IDs are kept until a write prunes removed themes. */
 export function parseThemeFolders(value: unknown): ThemeFoldersManifest {
   const invalid = (reason: string) => new ThemeFoldersError(`${themeFoldersFile} is invalid: ${reason} Ask your agent to repair it; no organization data was replaced.`);
@@ -47,7 +41,7 @@ export function parseThemeFolders(value: unknown): ThemeFoldersManifest {
     try { name = folderName(entry.name); } catch (error) { throw invalid(`folder “${entry.id}”: ${(error as Error).message}`); }
     folders.push({ id: entry.id, name, parent: entry.parent });
   }
-  const manifest: ThemeFoldersManifest = { version: 1, folders, assignments: {}, tags: {} };
+  const manifest: ThemeFoldersManifest = { version: 1, folders, assignments: {} };
   const ids = new Set(folders.map(folder => folder.id));
   for (const folder of folders) {
     if (folder.parent !== null && !ids.has(folder.parent)) throw invalid(`folder “${folder.id}” has a missing parent.`);
@@ -61,14 +55,16 @@ export function parseThemeFolders(value: unknown): ThemeFoldersManifest {
       manifest.assignments[themeId] = folderId;
     }
   }
+  // Legacy tags are carried unchanged until tags.json takes them over; tags.json validates them.
   if (value.tags !== undefined) {
     if (!record(value.tags)) throw invalid('tags must map theme IDs to lists of tags.');
+    const legacy: Record<string, string[]> = {};
     for (const [themeId, list] of Object.entries(value.tags)) {
       if (!validId(themeId)) throw invalid(`“${themeId}” is not a theme ID.`);
-      let normalized: string[];
-      try { normalized = tags(list); } catch (error) { throw invalid(`theme “${themeId}”: ${(error as Error).message}`); }
-      if (normalized.length) manifest.tags[themeId] = normalized;
+      if (!Array.isArray(list) || list.some(tag => typeof tag !== 'string')) throw invalid(`theme “${themeId}” needs a list of tags.`);
+      if (list.length) legacy[themeId] = [...list];
     }
+    if (Object.keys(legacy).length) manifest.tags = legacy;
   }
   return manifest;
 }
@@ -103,7 +99,7 @@ export async function withThemeFolders<T>(root: string, change: (manifest: Theme
     const manifest = await readThemeFolders(workspace);
     return change(manifest, async () => {
       const present = await themeDirectories(workspace);
-      for (const key of ['assignments', 'tags'] as const) for (const id of Object.keys(manifest[key])) if (!present.has(id)) delete manifest[key][id];
+      for (const key of ['assignments', 'tags'] as const) for (const id of Object.keys(manifest[key] ?? {})) if (!present.has(id)) delete manifest[key]![id];
       const { file } = await manifestFile(workspace);
       await atomicWrite(file, `${JSON.stringify(parseThemeFolders(manifest), null, 2)}\n`);
     });
@@ -207,16 +203,12 @@ export async function assignThemeFolder(root: string, themeId: string, folder: u
   });
 }
 
-/** Replace a theme's tags. Matching tags on other themes keep their established capitalization. */
-export async function setThemeTags(root: string, themeId: string, input: unknown) {
-  if (typeof themeId !== 'string' || !validId(themeId)) throw new ThemeFoldersError('Invalid theme ID.');
-  await requireTheme(root, themeId);
+/** Drop legacy theme tags once tags.json holds them. Called inside the tags lock. */
+export async function removeLegacyThemeTags(root: string) {
   return withThemeFolders(root, async (manifest, save) => {
-    const vocabulary = tagCatalog({ ...manifest, tags: Object.fromEntries(Object.entries(manifest.tags).filter(([id]) => id !== themeId)) }).map(tag => tag.label);
-    const next = tags(input, vocabulary);
-    if (next.length) manifest.tags[themeId] = next;
-    else delete manifest.tags[themeId];
-    await save(); return { id: themeId, tags: next, manifest };
+    if (!manifest.tags) return;
+    delete manifest.tags;
+    await save();
   });
 }
 

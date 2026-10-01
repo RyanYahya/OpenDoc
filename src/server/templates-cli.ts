@@ -5,19 +5,30 @@ import { TemplateCatalog, readTemplate, readTemplateGuide, templateFile } from '
 import { captureEntryExportInputs } from './export-inputs';
 import { ExportChangedError, publishPDF } from './export-file';
 import { RenderFailure } from './render-error';
+import { hasTags } from '../shared/tags';
+import { readTags } from './tags';
 
-const usage = 'Usage: npx opendoc templates list [--json]\n       npx opendoc templates inspect <id> | check <id> | preview <id> [--json]\n       Create an instance with npx opendoc create --template <id> --project <project-id> --title "Title".';
+const usage = 'Usage: npx opendoc templates list [--tag <tag>] [--json]\n       npx opendoc templates inspect <id> | check <id> | preview <id> [--json]\n       Create an instance with npx opendoc create --template <id> --project <project-id> --title "Title".';
 
 export async function runTemplatesCli(args: string[], root = process.cwd()): Promise<void> {
   const { values, positionals } = parseArgs({ args: args[0] === '--' ? args.slice(1) : args, allowPositionals: true, options: {
-    json: { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
+    json: { type: 'boolean' }, help: { type: 'boolean', short: 'h' }, tag: { type: 'string', multiple: true },
   } });
   if (values.help) { console.log(values.json ? JSON.stringify({ usage }, null, 2) : usage); return; }
   const [command = 'list', id] = positionals;
+  if (values.tag && command !== 'list') throw new Error(usage);
   if (command === 'list' && positionals.length <= 1) {
+    // Tags are optional: an unreadable tags.json must not hide the catalog unless a filter needs it.
+    const tags = await readTags(root).catch(error => {
+      if (values.tag?.length) throw error;
+      console.error(error instanceof Error ? error.message : String(error));
+      return undefined;
+    });
     const catalog = new TemplateCatalog(root);
     try {
-      console.log(JSON.stringify((await catalog.list()).map(({ id, descriptor, error }) => ({ id, ...descriptor, ...(error ? { error } : {}) })), null, 2));
+      console.log(JSON.stringify((await catalog.list())
+        .map(({ id, descriptor, error }) => ({ id, ...descriptor, tags: tags?.templates[id] ?? [], ...(error ? { error } : {}) }))
+        .filter(item => hasTags(item.tags, values.tag ?? [])), null, 2));
     } finally { await catalog.close(); }
   } else if (command === 'inspect' && id && positionals.length === 2) {
     const descriptor = await readTemplate(root, id);

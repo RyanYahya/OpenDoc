@@ -27,6 +27,7 @@
     "test": "tsx --test tests/*.test.ts",
     "verify": "pnpm check && pnpm build && pnpm test",
     "themes": "tsx src/server/themes-cli.ts",
+    "tags": "tsx src/server/tags-cli.ts",
     "assets": "tsx src/server/assets-cli.ts",
     "package:pack": "node scripts/pack.mjs"
   },

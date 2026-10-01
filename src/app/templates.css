@@ -47,3 +47,7 @@
 .template-grid-presentations .template-card-mat { padding: 20px; }
 .template-grid-presentations .template-preview { aspect-ratio: 16 / 9; min-height: 0; }
 .template-detail-presentation .template-preview { min-height: 0; }
+
+.template-tag-filter { margin-top: 16px; }
+.template-card .template-card-tags { margin-top: 4px; }
+.template-options .template-tags { margin-top: 28px; }
