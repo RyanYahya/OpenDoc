@@ -199,6 +199,23 @@ Environment:
 | `VERIFY_REPO_ROOT` | discovered | Override if the working directory is outside the repo |
 | `VERIFY_STARTUP_TIMEOUT_SECONDS` | `60` | Positive integer deadline for the startup handshake |
 
+## Recent feature checklist
+
+Compact proofs for the RTL, editing, history, and organization features. Mutate only a disposable copy (see the [comments recipe](features/comments.md)) or a throwaway Headless workspace; never Welcome. Focused contracts live in `tests/arabic-bidi.test.ts`, `script-fallback.test.ts`, `phrase-selection.test.ts`, `history-capture.test.ts`, `tags.test.ts`, and `theme-folders.test.ts`.
+
+| Feature | Drive | Proof |
+| --- | --- | --- |
+| RTL/Arabic render | Copy with `<Document direction="rtl" lang="ar">`, a mixed Arabic/English paragraph with a number and brackets, a list, and a table; `pnpm exec tsx src/server/review-cli.ts -- <copy-id> --json` | Page image: letters joined, right start edge, mirrored list markers and columns; extracted text in reading order |
+| RTL PowerPoint | Same content as a presentation; `pnpm exec tsx src/server/export.ts -- <copy-id> --format pptx --json` | `ppt/slides/slide1.xml`: Arabic paragraphs carry `rtl="1"` and `lang="ar-SA"`; runs name one font in `<a:latin>` and `<a:cs>`; alignment matches the PDF lines |
+| Font fallback and missing glyphs | Arabic words in an English copy; then a CJK character in an Arabic paragraph | First: joined Arabic, no `missing-glyphs`. Second: review issue `missing-glyphs` with characters and page, `?` on the page, and the reader's missing-glyph notice |
+| Phrase comments | Drag across words in a paragraph, then in a `DataTable` cell with `rowIds`; button `aria-label="Comment"` | `pnpm comments -- list <copy-id>` shows `anchor.targetId`, `quote`, `prefix`/`suffix`; the phrase is underlined. A table without `rowIds` gives block-level feedback |
+| Double-click edit | Double-click a word in an editable paragraph | Editor (`aria-label="Text correction"`) opens with the word selected; on read-only text the double-click only selects |
+| Editable helper, list, and table text | Edit text passed to a same-file helper, a `List` item, a `DataTable` heading and cell; **Save all** | Each saves at its own call site or record; computed cells, repeated rows without `rowIds`, and theme labels stay read-only with an Edit tooltip reason |
+| History panel | Reader button `aria-label="Version history"`; selection bar `aria-label="History for this block"`; restore a block, then Undo | `GET /api/documents/<copy-id>/history` lists a `Your edit` version after **Save all** and a `Restored` version after the restore; Undo returns the source to its prior text |
+| History capture in Headless | Throwaway Headless workspace: edit a document, `npx opendoc check`, `npx opendoc history list <id> --json`; then `history restore <id> <version> --block <block-id>` | A new `external` (Agent change) version after `check`; restore prints `Undo with:` and that command reverts it |
+| Tags and folders | Throwaway Headless workspace: `npx opendoc tags add document welcome report draft`, then `tags add document welcome final`; `npx opendoc themes folders create Verify/Nested`, `themes assign neutral Verify/Nested` | `tags show document welcome` has `final` and no `draft`; `tags find report --kind document` lists `welcome`; `themes list --folder Verify` returns `neutral`; `themes/neutral/` is unchanged |
+| Comment restore | `pnpm comments -- delete <copy-id> <comment-id> --json`, then `restore` | `list` shows `deleted`, then the same `id`, anchor, and prior status; the panel's **Recently deleted** (`aria-label="Recently deleted comments"`) offers Restore |
+
 ## After a change
 
 Keep the [feature map](features/README.md) honest as routes and CLIs change. Use `/maintain-verification-skill` for that loop.
