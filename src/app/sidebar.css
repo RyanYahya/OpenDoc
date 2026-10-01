@@ -17,7 +17,7 @@
 .workspace-nav a, .sidebar-project-row a { min-height: 32px; padding: 5px 12px; font-size: 12.5px; line-height: 18px; font-weight: 400; color: var(--muted); }
 .workspace-nav a > span:first-of-type { flex: 1; }
 .workspace-nav a.active { color: var(--accent-ink); background: var(--selected-surface); font-weight: 500; }
-.nav-count { font-size: 11px; font-weight: 400; font-variant-numeric: tabular-nums; color: var(--muted); flex-shrink: 0; }
+.nav-count { font-size: var(--tag-size); font-weight: 400; font-variant-numeric: tabular-nums; color: var(--muted); flex-shrink: 0; }
 .sidebar-projects { display: flex; flex-direction: column; flex: 1; min-height: 0; margin-top: 20px; }
 .sidebar-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-left: 12px; margin-bottom: 4px; flex-shrink: 0; }
 .sidebar-section-heading h2 { font-size: var(--label-size); line-height: var(--label-leading); color: var(--muted); font-weight: 500; }
@@ -32,8 +32,8 @@
 .project-nav-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sidebar-project-row .project-settings-shortcut { min-width: 28px; min-height: 28px; width: 28px; height: 28px; margin: 2px; padding: 6px; color: var(--muted); opacity: 0; }
 .sidebar-project-row:hover .project-settings-shortcut, .sidebar-project-row:focus-within .project-settings-shortcut { opacity: 1; }
-.sidebar-empty { color: var(--muted); font-size: 12px; line-height: 1.6; padding: 8px 12px; }
-.sidebar-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 0 0 12px; font-size: 11px; color: var(--muted); flex-shrink: 0; }
+.sidebar-empty { color: var(--muted); font-size: var(--caption-size); line-height: 1.6; padding: 8px 12px; }
+.sidebar-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 0 0 12px; font-size: var(--tag-size); color: var(--muted); flex-shrink: 0; }
 .sidebar-footer-actions { display: flex; align-items: center; gap: 2px; }
 .workspace-status { display: flex; align-items: center; gap: 8px; }
 .status-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--status-ink); flex-shrink: 0; }

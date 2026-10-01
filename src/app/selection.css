@@ -54,7 +54,7 @@
 }
 .correction-editor textarea::selection { background: var(--selection); }
 .correction-note, .correction-error, .correction-conflict {
-  font-size: 12px;
+  font-size: var(--caption-size);
   line-height: 1.5;
   margin: 10px 2px 0;
   color: var(--muted);
@@ -73,7 +73,7 @@
   background: transparent;
   box-shadow: none;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--caption-size);
   font-weight: 500;
 }
 .correction-actions .ui-button:hover { background: var(--control-hover); color: var(--ink); }
@@ -85,8 +85,8 @@
 .correction-actions .ui-button.primary:hover { background: color-mix(in srgb, var(--accent) 20%, var(--popup-surface)); }
 .correction-actions .ui-button.primary:active:not(:disabled) { background: color-mix(in srgb, var(--accent) 26%, var(--popup-surface)); }
 .correction-actions .ui-button:disabled { opacity: 0.55; }
-.correction-actions kbd { font: inherit; font-size: 10px; }
-.anchor-status { display: block; margin-top: 7px; font-size: 11px; font-weight: 600; color: var(--muted); }
+.correction-actions kbd { font: inherit; font-size: var(--tag-size); }
+.anchor-status { display: block; margin-top: 7px; font-size: var(--tag-size); font-weight: 600; color: var(--muted); }
 .selection-outline { position: absolute; border: 1px solid var(--document-accent); border-radius: 2px; background: var(--inspection-selected); pointer-events: none; }
 .ui-button.comment-marker { position: absolute; z-index: 4; width: 22px; height: 22px; min-width: 22px !important; min-height: 22px !important; padding: 4px !important; border: 1px solid var(--paper); border-radius: 50%; color: var(--on-accent); background: var(--comment-marker); }
 .ui-button.comment-marker:hover { background: var(--accent-hover); color: var(--on-accent); }
@@ -121,7 +121,7 @@
   text-align: start;
 }
 .ui-button.comment-jump:hover:not(:disabled) { background: var(--control-hover); }
-.comment-location { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; color: var(--muted); font-size: 10px; line-height: 1.5; font-weight: 500; }
+.comment-location { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; color: var(--muted); font-size: var(--caption-size); line-height: var(--caption-leading); font-weight: 500; }
 .comment-kind { text-transform: capitalize; }
 .comment-location svg { margin-inline-start: 1px; }
 [dir="rtl"] .comment-location svg { transform: rotate(180deg); }

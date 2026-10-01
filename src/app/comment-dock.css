@@ -15,7 +15,7 @@
 }
 .ui-button.comment-dock-trigger:hover { background: var(--control-hover); }
 .ui-button.comment-dock-trigger[aria-expanded="true"] { color: var(--accent-ink); }
-.comment-dock-count { font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; line-height: 1; }
+.comment-dock-count { font-size: var(--caption-size); font-weight: 500; font-variant-numeric: tabular-nums; line-height: 1; }
 
 .correction-editor.comment-dock-panel {
   top: auto;

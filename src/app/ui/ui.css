@@ -1,12 +1,19 @@
 /* Shared interaction tokens. Document themes have their own independent palette. */
 :root {
-  --page-title-size: 18px;
-  --title-size: 14px;
-  --title-leading: 20px;
+  /* Type roles step by about 1.25 so page titles, section titles and body copy read as distinct levels.
+     Caption carries metadata and secondary labels; tag is the floor for compact badges and key hints. */
+  --page-title-size: 20px;
+  --page-title-leading: 26px;
+  --title-size: 16px;
+  --title-leading: 22px;
   --label-size: 13px;
   --label-leading: 18px;
   --body-size: 13px;
   --body-leading: 20px;
+  --caption-size: 12px;
+  --caption-leading: 16px;
+  --tag-size: 11px;
+  --tag-leading: 15px;
   --control-radius: 6px;
   --control-hit-size: 32px;
   --data-row-height: 32px;
@@ -218,7 +225,7 @@
   color: var(--inverse-ink);
   border-radius: 5px;
   padding: 6px 9px;
-  font-size: 11px;
+  font-size: var(--tag-size);
   line-height: 1.4;
   box-shadow: var(--shadow-tooltip);
   transition: opacity var(--motion-quick);

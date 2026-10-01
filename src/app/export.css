@@ -10,7 +10,7 @@
 .export-file { display: flex; align-items: center; gap: 10px; padding-block: 16px 6px; }
 .export-file > div { flex: 1; min-width: 0; }
 .export-file strong { display: block; font-size: var(--label-size); font-weight: 500; overflow-wrap: anywhere; }
-.export-file span { display: block; margin-top: 4px; font-size: 12px; color: var(--muted); }
+.export-file span { display: block; margin-top: 4px; font-size: var(--caption-size); color: var(--muted); }
 .export-status { padding: 10px; margin: 12px 0 0; background: var(--surface-raised); border: 1px solid var(--control-line); border-radius: var(--control-radius); font-size: var(--label-size); line-height: 1.5; }
 .export-status p { margin: 6px 0 10px; }
 .export-dropdown-body > .field-error { color: var(--destructive); }
