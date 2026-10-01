@@ -412,7 +412,7 @@ nav a.active {
   font-size: var(--caption-size);
   line-height: var(--caption-leading);
   letter-spacing: 0.02em;
-  color: var(--muted);
+  color: var(--navigation-muted);
   text-align: center;
   margin-bottom: 21px;
 }
@@ -435,7 +435,7 @@ nav a.active {
   font-size: var(--caption-size);
   line-height: var(--caption-leading);
   font-variant-numeric: tabular-nums;
-  color: var(--muted);
+  color: var(--navigation-muted);
 }
 .page-thumb.active .pdf-page {
   box-shadow:
@@ -1030,7 +1030,7 @@ a {
   text-align: start;
   font-size: var(--caption-size);
   line-height: 1.45;
-  color: var(--muted);
+  color: var(--navigation-muted);
 }
 .ui-button.outline-entry:hover {
   background: var(--control-hover);
@@ -1052,7 +1052,7 @@ a {
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
   font-size: var(--tag-size);
-  color: var(--muted);
+  color: var(--navigation-muted);
 }
 .ui-button.navigation-close {
   display: none;

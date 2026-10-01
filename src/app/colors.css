@@ -8,6 +8,8 @@
   /* The reader sits a step deeper than other surfaces so off-white pages keep a visible edge. */
   --reader-canvas: #e5e5e5;
   --navigation-surface: #e2e2e2;
+  /* Secondary text on the navigation surface: --muted is 4.4:1 there in light, this is 5.0:1. */
+  --navigation-muted: #5e5e5e;
   --surface-hover: #e6e6e6;
   --ink: #262626;
   --muted: #666666;
@@ -79,6 +81,7 @@
   --surface-alt: #121212;
   --reader-canvas: var(--surface-alt);
   --navigation-surface: #282828;
+  --navigation-muted: var(--muted);
   --surface-hover: #303030;
   --ink: #f0f0f0;
   --muted: #a6a6a6;
@@ -128,6 +131,7 @@
   :root {
     --ink: #000000;
     --muted: #222222;
+    --navigation-muted: var(--muted);
     --placeholder: #444444;
     --badge-ink: #0b6427;
     --line: #8c8c8c;
