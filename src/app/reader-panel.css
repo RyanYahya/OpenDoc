@@ -1,6 +1,10 @@
 /* One side panel for comments and history. It docks beside the pages, which move over to make room, and
    becomes a bottom sheet on narrow screens. */
 :root { --reader-panel-width: clamp(320px, 28vw, 400px); }
+/* Tablets and zoomed-in windows: a slimmer panel leaves the pages more of the width. */
+@media (min-width: 621px) and (max-width: 900px) {
+  :root { --reader-panel-width: clamp(272px, 36vw, 320px); }
+}
 
 .reader-panel {
   flex: 0 0 var(--reader-panel-width);
@@ -45,7 +49,7 @@
 @media (min-width: 621px) {
   /* Bottom controls and notices center on, and stay within, the pages beside the docked panel. */
   .reader:has(.reader-panel) { --reader-panel-space: var(--reader-panel-width); }
-  :root:has(.reader-panel) .ui-notifications { right: calc(var(--reader-panel-width) + 24px); }
+  :root:has(.reader-panel) .ui-notifications { right: calc(var(--reader-panel-width) + 24px); width: min(380px, calc(100vw - var(--reader-panel-width) - 48px)); }
 }
 @media (max-width: 620px) {
   .reader-panel {

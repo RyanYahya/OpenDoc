@@ -74,11 +74,18 @@
 .comment-handoff .comment-error { margin: 8px 2px 0; }
 .comment-handoff-prompt { width: 100%; margin: 8px 0 4px; padding: 10px; font-size: 12px; line-height: 1.6; resize: none; }
 
+@media (pointer: coarse) {
+  .ui-button.comment-handoff-copy, .ui-button.comment-dock-trigger { min-height: 40px; }
+}
 @media (max-width: 620px) {
   .ui-button.comment-dock-trigger { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); }
   .comment-dock-panel textarea { font-size: 16px; }
   .ui-button.comment-handoff-copy { min-height: 40px; }
 }
-/* The button stays at the bottom corner of the pages while the side panel is docked beside them. */
+/* The button stays at the bottom corner of the pages while the side panel is docked beside them. On tablets and
+   zoomed-in windows the pages have no spare margin, so the panel's own Comments tab takes its place there. */
 .reader:has(.reader-panel[data-layout="docked"]) .ui-button.comment-dock-trigger { right: calc(var(--reader-panel-width) + 20px); }
+@media (max-width: 900px) {
+  .reader:has(.reader-panel[data-layout="docked"]) .ui-button.comment-dock-trigger { display: none; }
+}
 .reader:has(.reader-panel[data-layout="sheet"]) .ui-button.comment-dock-trigger { display: none; }

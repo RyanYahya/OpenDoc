@@ -45,6 +45,10 @@
 .reader-back:dir(rtl) svg { transform: scaleX(-1); }
 .reader-pagination .page-input { direction: ltr; }
 .reader-pagination:dir(rtl) .ui-button svg { transform: scaleX(-1); }
+@media (pointer: coarse) {
+  .reader-toolbar .reader-actions .icon-button, .reader-pagination .ui-button.icon-button { min-width: 40px; min-height: 40px; }
+  .reader-pagination .page-input input, .reader-toolbar .reader-actions .export-button, .reader-toolbar .reader-reading-trigger { min-height: 40px; }
+}
 @media (max-width: 1100px) {
   .reader .reader-toolbar { gap: 16px; }
   .reader-document a, .reader-context-separator { display: none; }

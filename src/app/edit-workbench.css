@@ -108,6 +108,10 @@
 .edit-session-notice .ui-button { flex-shrink: 0; font-size: var(--caption-size); padding: 6px 9px; min-height: 32px; }
 .reader:has(.reader-bars) .sheets { padding-bottom: 300px; }
 .reader-scroll:focus { outline: none; }
+@media (pointer: coarse) {
+  .selection-bar .ui-button, .save-bar .ui-button, .text-edit-footer .ui-button { min-height: 40px; }
+  .save-bar .ui-button.icon-button, .text-edit-heading .ui-button.icon-button { min-width: 40px; min-height: 40px; }
+}
 @media (max-width: 700px) {
   .reader-bars { left: 12px; right: calc(var(--reader-panel-space, 0px) + 12px); bottom: max(68px, calc(env(safe-area-inset-bottom) + 56px)); width: auto; max-width: none; margin: 0; align-items: stretch; }
   .reader-bars-row { flex-direction: column; align-items: stretch; }

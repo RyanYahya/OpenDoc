@@ -167,7 +167,8 @@
 .history-whole { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
 .history-whole > p { margin: 0 0 8px; color: var(--muted); font-size: var(--caption-size); line-height: 1.55; }
 
-@media (max-width: 620px) {
+/* Phones and touch screens get finger-sized controls. */
+@media (max-width: 620px), (pointer: coarse) {
   .ui-button.history-action, .history-confirm-actions .ui-button, .history-notice-actions .ui-button { min-height: 40px; }
   .history-details .ui-button.icon-button.history-copy { min-width: 40px; min-height: 40px; }
   .history-details summary { padding-block: 10px; }

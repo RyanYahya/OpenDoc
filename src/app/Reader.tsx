@@ -602,7 +602,9 @@ export function Reader({
   }
   function skipToComments() {
     const list = isShowing(panel, 'comments') ? document.querySelector('#reader-panel .comment-dock-panel') : null;
-    (list?.querySelector<HTMLElement>('.comment-dock-content :is(button:not(:disabled), textarea)') ?? list?.querySelector<HTMLElement>('h2') ?? commentsTrigger.current)?.focus();
+    // With History showing, the Comments tab is the way there; the floating button can be hidden beside the panel.
+    const tab = panel.open && !list ? document.querySelector<HTMLElement>('#reader-panel [role="tab"]') : null;
+    (list?.querySelector<HTMLElement>('.comment-dock-content :is(button:not(:disabled), textarea)') ?? list?.querySelector<HTMLElement>('h2') ?? tab ?? commentsTrigger.current)?.focus();
   }
   function navigateFromRail(number: number, block?: string) {
     if (block) scrollToBlock(block);
