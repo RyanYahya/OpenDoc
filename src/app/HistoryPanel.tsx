@@ -224,7 +224,8 @@ export function HistoryPanel({ documentId, target, generation, connected, pageLa
 
   return <section className="history-panel" id="reader-history" aria-labelledby="history-heading" aria-busy={loading || restoring}>
     {highlight && <style>{highlight}</style>}
-    <div className="history-heading">
+    {/* The side panel's tab already names the list, so its heading is only read aloud there. */}
+    <div className={`history-heading${selected || blockId ? '' : ' sr-only'}`}>
       {(selected || blockId) && <IconButton label={blockId ? 'Show document history' : 'All versions'} className="history-back" onClick={() => { if (blockId) onShowDocument(); else setSelected(null); }}><Icon name="left" size={15} /></IconButton>}
       <div className="history-title">
         <h2 id="history-heading" ref={heading} tabIndex={-1} title={selectedVersion && !blockId ? formatFull(selectedVersion.at) : undefined}>{title}</h2>
