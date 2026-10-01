@@ -4,7 +4,7 @@ import { Popover } from '@base-ui/react/popover';
 import { PdfPage } from "./Pdf";
 import { useReaderPreview } from "./useReaderPreview";
 import { useTextEditing } from "./useTextEditing";
-import { CommentDock, CommentsButton } from "./CommentDock";
+import { CommentDock } from "./CommentDock";
 import { DeletedComments } from "./DeletedComments";
 import { ReaderPanel } from "./ReaderPanel";
 import { closePanel, isShowing, loadPanelPreference, panelFromPreference, savePanelPreference, selectTab, showPanel, togglePanel, type PanelState, type PanelTarget } from "./readerPanel";
@@ -189,7 +189,7 @@ export function Reader({
     if (!editor && !composing) return;
     const dismiss = (event: PointerEvent) => {
       const target = event.target instanceof Element ? event.target : null;
-      if (target?.closest('.text-edit-panel, .reader-bars, .reader-panel, .comment-dock-trigger, .component-target, .comment-marker, [aria-controls="reader-panel"]') || mutationPending.current || editPending || editError) return;
+      if (target?.closest('.text-edit-panel, .reader-bars, .reader-panel, .component-target, .comment-marker, [aria-controls="reader-panel"]') || mutationPending.current || editPending || editError) return;
       setEditor(null); forgetOpenEditor();
       clearSelection();
     };
@@ -614,10 +614,9 @@ export function Reader({
     else scroll.current?.focus();
   }
   function skipToComments() {
+    // The open Comments tab, or else the toolbar's Comments button, which opens it.
     const list = isShowing(panel, 'comments') ? document.querySelector('#reader-panel .comment-dock-panel') : null;
-    // With History showing, the Comments tab is the way there; the floating button can be hidden beside the panel.
-    const tab = panel.open && !list ? document.querySelector<HTMLElement>('#reader-panel [role="tab"]') : null;
-    (list?.querySelector<HTMLElement>('.comment-dock-content :is(button:not(:disabled), textarea)') ?? list?.querySelector<HTMLElement>('h2') ?? tab ?? commentsTrigger.current)?.focus();
+    (list?.querySelector<HTMLElement>('.comment-dock-content :is(button:not(:disabled), textarea)') ?? list?.querySelector<HTMLElement>('h2') ?? commentsTrigger.current)?.focus();
   }
   function navigateFromRail(number: number, block?: string) {
     if (block) scrollToBlock(block);
@@ -766,8 +765,11 @@ export function Reader({
           </Popover.Root>
         </div>
         <div className="reader-actions">
-          <IconButton ref={historyTrigger} label="Version history" aria-expanded={isShowing(panel, 'history')} aria-controls="reader-panel" onClick={() => changePanel(togglePanel(panel, 'history'))}><Icon name="history" size={18} /></IconButton>
-          <SkillIndex />
+          <IconButton ref={commentsTrigger} className="reader-panel-toggle reader-comments-toggle" label={unresolvedComments.length ? `Comments, ${unresolvedComments.length} open` : 'Comments'} aria-expanded={isShowing(panel, 'comments')} aria-controls="reader-panel" onClick={() => changePanel(togglePanel(panel, 'comments'))}>
+            <Icon name="comment" size={18} />{unresolvedComments.length > 0 && <span className="reader-comments-count" aria-hidden="true">{unresolvedComments.length > 99 ? '99+' : unresolvedComments.length}</span>}
+          </IconButton>
+          <IconButton ref={historyTrigger} className="reader-panel-toggle" label="Version history" aria-expanded={isShowing(panel, 'history')} aria-controls="reader-panel" onClick={() => changePanel(togglePanel(panel, 'history'))}><Icon name="history" size={18} /></IconButton>
+          <SkillIndex className="reader-skills" />
           <ExportMenu state={state} connected={connected} ready={ready && !!pdf && !readerPreview.loading && artifact?.hash === state.artifact?.hash} unsaved={editing.count} saving={editPending || undoPending} correctionError={editError || editing.error || (editStale ? 'Refresh your draft before saving and exporting.' : '')} canSave={!!editing.count && ready && !editPending && !undoPending && !editStale && !editError && !editing.savedId} onSave={saveAll} onShowExports={onShowExports} />
           <Menu.Root>
             <Menu.Trigger ref={optionsTrigger} render={<IconButton label={`${formatLabel} options`} />}><Icon name="more" size={18} /></Menu.Trigger>
@@ -969,8 +971,6 @@ export function Reader({
           </div>}
         </div>
       </div>}
-      <CommentsButton count={unresolvedComments.length} expanded={isShowing(panel, 'comments')} triggerRef={commentsTrigger}
-        onClick={() => changePanel(togglePanel(panel, 'comments'))} />
     </div>
   );
 }

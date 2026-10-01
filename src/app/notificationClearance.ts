@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
 /** Floating controls along the reader's bottom edge that notifications must not cover. */
-const bottomControls = '.reader-bars, .comment-dock-trigger, .text-edit-panel[data-placement="sheet"], .reader-panel[data-layout="sheet"]';
+const bottomControls = '.reader-bars, .text-edit-panel[data-placement="sheet"], .reader-panel[data-layout="sheet"]';
 type Box = { top: number; bottom: number; left: number; right: number };
 
 /**
@@ -14,8 +14,8 @@ export function notificationClearance(viewportHeight: number, band: Pick<Box, 'l
 }
 
 /**
- * Keep notifications above the selection and save bars, bottom sheets, and the comments button while they are
- * shown. `layout` changes when a control appears or disappears; size changes are observed.
+ * Keep notifications above the selection and save bars and bottom sheets while they are shown. `layout`
+ * changes when a control appears or disappears; size changes are observed.
  */
 export function useNotificationClearance(layout: readonly unknown[]) {
   useEffect(() => {

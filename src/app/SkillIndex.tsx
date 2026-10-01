@@ -9,10 +9,10 @@ const skills = skillIndex(import.meta.glob<string>('../../.agents/skills/opendoc
   query: '?raw', import: 'default', eager: true,
 }));
 
-export function SkillIndex() {
+export function SkillIndex({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
   return <Tooltip.Root open={open} onOpenChange={setOpen}>
-    <Tooltip.Trigger render={<Button className="icon-button" aria-label="OpenDoc skills" onClick={() => setOpen(true)} />}>
+    <Tooltip.Trigger render={<Button className={className ? `icon-button ${className}` : 'icon-button'} aria-label="OpenDoc skills" onClick={() => setOpen(true)} />}>
       <Icon name="book" size={17} />
     </Tooltip.Trigger>
     <Tooltip.Portal>

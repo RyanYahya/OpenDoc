@@ -220,7 +220,7 @@ Compact proofs for the RTL, editing, history, and organization features. Mutate 
 | Projects and per-format defaults | `npx opendoc projects create <id> --document-theme <a> --presentation-theme <b>`, then create a document and a presentation ([recipe](features/projects.md)) | `themeDefaults` reports both; each `theme.tsx` imports its format's default; `projects delete` refuses a non-empty project |
 | Assets and media | Import a copied bundled OFL face, bind it, review; import a media image ([recipe](features/assets-media.md)) | A stale `--expected-revision` is refused; `assets.json` pins the revision; `media check` reports freshness |
 | Update and Headless init | `init --json` in an empty folder, then `update --check --json` ([init](features/headless-init.md), [update](features/update.md)) | Ten skill stubs and `edition: "headless"`; the check changes no files |
-| Comment restore | `pnpm comments -- delete <copy-id> <comment-id> --json`, then `restore` | `list` shows `deleted`, then the same `id`, anchor, and prior status; the panel's **Recently deleted** (`aria-label="Recently deleted comments"`) offers Restore |
+| Comment restore | `pnpm comments -- delete <copy-id> <comment-id> --json`, then `restore` | `list` shows `deleted`, then the same `id`, anchor, and prior status; the Comments panel (toolbar button named `Comments`, or `Comments, <n> open` while any are open) offers Restore under **Recently deleted** (`aria-label="Recently deleted comments"`) |
 
 ## After a change
 

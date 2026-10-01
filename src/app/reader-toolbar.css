@@ -34,6 +34,31 @@
 .reader-toolbar .reader-actions .export-button { margin: 0; min-height: var(--control-hit-size); padding: 6px 10px; font-size: var(--label-size); line-height: var(--label-leading); font-weight: 500; white-space: nowrap; }
 .reader-toolbar .reader-actions .icon-button, .reader-toolbar .reader-actions .tool-button { min-height: var(--control-hit-size); min-width: var(--control-hit-size); }
 .reader-toolbar .reader-actions .tool-button > span { display: inline; }
+/* Comments and History open the side panel's tabs and stay marked while their tab is showing. */
+.reader-toolbar .reader-actions .ui-button.reader-panel-toggle[aria-expanded="true"] { background: var(--selected-surface); color: var(--accent-ink); }
+/* The open-comment count sits on the icon's corner, cut out from it by the button's own surface; none shows at zero. */
+.reader-toolbar .reader-actions .ui-button.reader-comments-toggle { position: relative; --count-cutout: var(--popup-surface); }
+.reader-toolbar .reader-actions .ui-button.reader-comments-toggle:hover { --count-cutout: var(--control-hover); }
+.reader-toolbar .reader-actions .ui-button.reader-comments-toggle[aria-expanded="true"] { --count-cutout: var(--selected-surface); }
+.reader-comments-count {
+  position: absolute;
+  inset-block-start: 1px;
+  inset-inline-end: 0;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: 0 0 0 2px var(--count-cutout);
+  font-size: var(--tag-size);
+  line-height: 16px;
+  font-weight: 600;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+@media (forced-colors: active) { .reader-comments-count { forced-color-adjust: none; background: Highlight; color: HighlightText; box-shadow: none; } }
 .reader-toolbar .reader-actions .undo-edit { max-width: none; padding: 6px; }
 .reader-compact-controls { display: none; }
 .reader-mobile-action { display: none; }
@@ -52,7 +77,6 @@
 @media (max-width: 1100px) {
   .reader .reader-toolbar { gap: 16px; }
   .reader-document a, .reader-context-separator { display: none; }
-  .reader-toolbar .reader-actions .tool-button > .reader-comments-label { display: none; }
 }
 @media (max-width: 850px) {
   .reader .reader-toolbar { display: flex; min-height: 60px; padding: 10px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left)); gap: 12px; }
@@ -65,7 +89,8 @@
   .reader-identity { gap: 2px; }
   .reader-toolbar .reader-back { min-width: 32px; min-height: 40px; }
   .reader-toolbar .reader-actions { gap: 2px; }
-  .reader-toolbar .reader-comments-action, .reader-toolbar .reader-actions .undo-edit { display: none; }
+  /* Phones keep the document title readable beside Comments; the library sidebar still has the skills reference. */
+  .reader-toolbar .reader-actions .undo-edit, .reader-toolbar .reader-skills { display: none; }
   .reader-toolbar .reader-actions .export-button { min-width: var(--control-hit-size); min-height: 40px; padding: 8px; }
   .reader-toolbar .reader-actions .export-button > span { display: none; }
   .reader-toolbar .reader-actions .icon-button, .reader-toolbar .reader-reading-trigger { min-height: 40px; }

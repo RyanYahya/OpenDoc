@@ -124,7 +124,7 @@ export default function Welcome() {
       <NeutralColumns left={<>
         <Section id="welcome-review" title="Read, notice, revise" lead="Review the PDF as your reader will encounter it." style={{ marginTop: -20 }}>
           <Paragraph id="welcome-reader-tools">Use page thumbnails, the outline, and zoom. Select text or a component to inspect it. Check the argument, the figures, and the final page; accurate facts and useful sources still need your judgment.</Paragraph>
-          <Paragraph id="welcome-comments">Choose Edit or Comment from the selection controls. Make several wording corrections, use Undo or Redo, then Save all. The bottom-right comments button opens saved feedback.</Paragraph>
+          <Paragraph id="welcome-comments">Choose Edit or Comment from the selection controls. Make several wording corrections, use Undo or Redo, then Save all. The Comments button in the toolbar opens saved feedback.</Paragraph>
         </Section>
       </>} right={<>
         <Heading id="welcome-practice-heading" level={2} style={{ marginTop: 0 }}>Try a small correction</Heading>

@@ -68,7 +68,7 @@
   left: 0;
   right: var(--reader-panel-space, 0px);
   width: fit-content;
-  max-width: calc(100vw - var(--reader-panel-space, 0px) - 208px);
+  max-width: calc(100vw - var(--reader-panel-space, 0px) - 48px);
   margin-inline: auto;
   display: flex;
   flex-direction: column;
@@ -113,7 +113,7 @@
   .save-bar .ui-button.icon-button, .text-edit-heading .ui-button.icon-button { min-width: 40px; min-height: 40px; }
 }
 @media (max-width: 700px) {
-  .reader-bars { left: 12px; right: calc(var(--reader-panel-space, 0px) + 12px); bottom: max(68px, calc(env(safe-area-inset-bottom) + 56px)); width: auto; max-width: none; margin: 0; align-items: stretch; }
+  .reader-bars { left: 12px; right: calc(var(--reader-panel-space, 0px) + 12px); bottom: max(12px, env(safe-area-inset-bottom)); width: auto; max-width: none; margin: 0; align-items: stretch; }
   .reader-bars-row { flex-direction: column; align-items: stretch; }
   .selection-bar { padding: 4px; }
   .selection-bar .ui-button { flex: 1; }

@@ -1,21 +1,3 @@
-.ui-button.comment-dock-trigger {
-  position: fixed;
-  z-index: 34;
-  right: 20px;
-  bottom: max(20px, env(safe-area-inset-bottom));
-  min-width: 62px;
-  min-height: var(--control-hit-size);
-  gap: 8px;
-  padding: 7px 10px;
-  border: 1px solid var(--line);
-  border-radius: var(--control-radius);
-  background: var(--popup-surface);
-  color: var(--ink);
-  box-shadow: var(--shadow-tooltip);
-}
-.ui-button.comment-dock-trigger:hover { background: var(--control-hover); }
-.ui-button.comment-dock-trigger[aria-expanded="true"] { color: var(--accent-ink); }
-.comment-dock-count { font-size: var(--caption-size); font-weight: 500; font-variant-numeric: tabular-nums; line-height: 1; }
 .comment-dock-panel .comment-time { margin-inline-start: auto; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .comment-dock-panel .comment-status + .comment-time { margin-inline-start: 0; }
 
@@ -75,17 +57,9 @@
 .comment-handoff-prompt { width: 100%; margin: 8px 0 4px; padding: 10px; font-size: 12px; line-height: 1.6; resize: none; }
 
 @media (pointer: coarse) {
-  .ui-button.comment-handoff-copy, .ui-button.comment-dock-trigger { min-height: 40px; }
+  .ui-button.comment-handoff-copy { min-height: 40px; }
 }
 @media (max-width: 620px) {
-  .ui-button.comment-dock-trigger { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); }
   .comment-dock-panel textarea { font-size: 16px; }
   .ui-button.comment-handoff-copy { min-height: 40px; }
 }
-/* The button stays at the bottom corner of the pages while the side panel is docked beside them. On tablets and
-   zoomed-in windows the pages have no spare margin, so the panel's own Comments tab takes its place there. */
-.reader:has(.reader-panel[data-layout="docked"]) .ui-button.comment-dock-trigger { right: calc(var(--reader-panel-width) + 20px); }
-@media (max-width: 900px) {
-  .reader:has(.reader-panel[data-layout="docked"]) .ui-button.comment-dock-trigger { display: none; }
-}
-.reader:has(.reader-panel[data-layout="sheet"]) .ui-button.comment-dock-trigger { display: none; }

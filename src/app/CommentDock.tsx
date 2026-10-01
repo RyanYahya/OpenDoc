@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode, type Ref } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import type { Comment } from '../shared/types';
 import { textLang } from '../shared/language';
 import { Button, IconButton } from './ui';
@@ -42,13 +42,6 @@ export interface CommentDockProps {
   onClose: () => void;
   /** Extra content after the list, such as recently deleted comments. */
   footer?: ReactNode;
-}
-
-/** The floating button that opens the side panel's Comments tab, with the open-comment count. */
-export function CommentsButton({ count, expanded, onClick, triggerRef }: { count: number; expanded: boolean; onClick: () => void; triggerRef?: Ref<HTMLButtonElement> }) {
-  return <Button static ref={triggerRef} className="comment-dock-trigger" aria-label={`Comments, ${count} open`} aria-controls="reader-panel" aria-expanded={expanded} onClick={onClick}>
-    <Icon name="comment" size={17} /><span className="comment-dock-count" aria-hidden="true">{count}</span>
-  </Button>;
 }
 
 /** The Comments tab of the side panel. The reader owns selection, drafts, and writes; this list only presents them. */
