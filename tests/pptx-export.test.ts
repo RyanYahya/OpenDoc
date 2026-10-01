@@ -78,6 +78,12 @@ test('PowerPoint uses the exact captured preview, native rich text, images, and 
     assert.match(paragraphOf(rtlSlide, 'Microsoft Office'), /<a:rPr lang="ar-SA" altLang="en-US"/);
     assert.match(paragraphOf(rtlSlide, 'التجريبي'), /<a:latin typeface="[^"]+"[^>]*\/><a:cs typeface="[^"]+"\/>/);
     assert.doesNotMatch(paragraphOf(rtlSlide, 'italic'), /rtl="1"|ar-SA/, 'LTR paragraphs keep their existing output');
+    // The engine reports the alignment it applied to each line; the deck follows it.
+    (titleLine.style as { textAlign: string }).textAlign = 'Right';
+    assert.match(paragraphOf(xml(await readZip(await presentationBytes(rtl)), 'ppt/slides/slide1.xml'), 'التجريبي'), /<a:pPr rtl="1"\s+algn="r"/, 'A line aligned right maps to right alignment.');
+    // Without a resolved line direction (older layouts), the reviewed geometry decides.
+    (titleLine.style as { textAlign: string }).textAlign = 'Left';
+    withDirection(titleLine); withDirection(titleBox);
     titleLine.x = titleBox.x + titleBox.width - titleLine.width;
     assert.match(paragraphOf(xml(await readZip(await presentationBytes(rtl)), 'ppt/slides/slide1.xml'), 'التجريبي'), /<a:pPr rtl="1"\s+algn="r"/, 'Flush-right RTL lines map to right alignment.');
     const declared = paragraphOf(xml(rtlParts, 'ppt/slides/slide2.xml'), 'The final slide.');
@@ -191,6 +197,58 @@ test('paragraph direction follows an explicit style, then the first strong chara
   assert.equal(rtlParagraphAlignment('Left', box, [{ x: 50, width: 180 }]), 'right', 'a full line is aligned to the start edge');
   assert.equal(rtlParagraphAlignment('Center', box, [{ x: 90, width: 100 }]), 'center');
   assert.equal(rtlParagraphAlignment('Right', box, [{ x: 130, width: 100 }]), 'right');
+});
+
+test('PowerPoint paragraph alignment matches the PDF for either direction in either deck direction', async () => {
+  const f = await presentationFixture();
+  // Each paragraph's expected PowerPoint direction and physical alignment, as the PDF draws it.
+  const cases: Record<'rtl' | 'ltr', [id: string, style: string, text: string, rtl: boolean, align: 'l' | 'r' | 'ctr'][]> = {
+    rtl: [
+      ['arabic', '', 'مرحبا بكم في العرض', true, 'r'],
+      ['english-ltr', "direction:'ltr'", 'An English paragraph inside.', false, 'l'],
+      ['english-auto', "direction:'auto'", 'An automatic English paragraph.', false, 'l'],
+      ['english-inherited', '', 'English inheriting the deck direction.', true, 'r'],
+      ['english-left', "direction:'ltr',textAlign:'left'", 'Explicitly left.', false, 'l'],
+      ['english-right', "direction:'ltr',textAlign:'right'", 'Explicitly right.', false, 'r'],
+      ['english-center', "direction:'ltr',textAlign:'center'", 'Explicitly centered.', false, 'ctr'],
+      ['arabic-left', "textAlign:'left'", 'فقرة إلى اليسار', true, 'l'],
+      ['arabic-center', "textAlign:'center'", 'فقرة في الوسط', true, 'ctr'],
+    ],
+    ltr: [
+      ['english', '', 'An English paragraph.', false, 'l'],
+      ['arabic-rtl', "direction:'rtl'", 'فقرة عربية من اليمين', true, 'r'],
+      ['arabic-auto', "direction:'auto'", 'فقرة عربية تلقائية', true, 'r'],
+      ['arabic-left', "direction:'rtl',textAlign:'left'", 'فقرة إلى اليسار', true, 'l'],
+      ['arabic-center', "direction:'rtl',textAlign:'center'", 'فقرة في الوسط', true, 'ctr'],
+      ['english-right', "textAlign:'right'", 'Explicitly right.', false, 'r'],
+    ],
+  };
+  try {
+    for (const [direction, paragraphs] of Object.entries(cases)) {
+      await writeFile(f.entry, `import {Presentation,Slide,Paragraph} from '../../src/document';
+export const meta={title:'Alignment',description:'Synthetic alignment test',theme:'neutral'};
+export default function Proof(){return <Presentation title={meta.title} direction="${direction}"><Slide id="only">
+${paragraphs.map(([id, style, text]) => `<Paragraph id="${id}" style={{${style}}}>${text}</Paragraph>`).join('\n')}
+</Slide></Presentation>}`);
+      const render = await renderOnce(f.root, 'proof');
+      const capture: PresentationCapture = JSON.parse(await readFile(resolve(render.directory, 'presentation.json'), 'utf8'));
+      const slide = xml(await readZip(await readPresentationBytes(render.directory, render.artifact.hash)), 'ppt/slides/slide1.xml');
+      const lineOf = (node: ElementInfo, text: string): [ElementInfo, ElementInfo] | undefined => {
+        const line = node.children.find(child => child.nodeType === 'TextLine' && child.textContent === text);
+        return line ? [node, line] : node.children.map(child => lineOf(child, text)).find(Boolean);
+      };
+      for (const [id, , text, rtl, align] of paragraphs) {
+        const label = `${direction} deck, ${id}`;
+        const shape = slide.split('<p:sp>').find(part => part.includes(`name="${id}"`));
+        assert.ok(shape, `${label}: exported as its own text box`);
+        assert.match(shape, new RegExp(`<a:pPr ${rtl ? 'rtl="1"\\s+' : ''}algn="${align}"`), `${label}: PowerPoint direction and alignment`);
+        // The expectation is the PDF's own geometry: the reviewed line sits at that edge.
+        const [box, line] = capture.layout.pages[0].elements.map(element => lineOf(element, text)).find(Boolean)!;
+        const offset = { l: line.x - box.x, r: box.x + box.width - line.x - line.width, ctr: Math.abs(line.x - box.x - (box.x + box.width - line.x - line.width)) }[align];
+        assert.ok(offset < 0.5, `${label}: the PDF line is drawn ${align}`);
+      }
+    }
+  } finally { await f.cleanup(); }
 });
 
 test('PPTX receipts preserve recovery, format identity, collisions, delete/Undo, and stale publication', async () => {

@@ -96,6 +96,22 @@ export function rtlParagraphAlignment(textAlign: string, node: Pick<ElementInfo,
   return flushLeft && !flushRight ? 'left' : 'right';
 }
 
+type Alignment = 'left' | 'right' | 'center' | 'justify';
+/**
+ * The alignment the reviewed PDF applied to a paragraph. A text container reports its
+ * authored or inherited `textAlign`, which can be another paragraph's start edge: an
+ * English paragraph in a right-to-left deck inherits right while its lines start at the
+ * left. The engine reports each TextLine's resolved direction and the alignment it
+ * actually applied, so follow the lines. Layouts without a line direction (older engines)
+ * fall back to the container value, inferring a right-to-left start edge from geometry.
+ */
+export function paragraphAlignment(rtl: boolean, node: Pick<ElementInfo, 'x' | 'width' | 'style'>, lines: Pick<ElementInfo, 'x' | 'width' | 'style'>[]): Alignment {
+  const line = lines[0]?.style as { direction?: unknown; textAlign?: unknown } | undefined;
+  const applied = typeof line?.textAlign === 'string' ? line.textAlign.toLowerCase() : '';
+  if ((line?.direction === 'ltr' || line?.direction === 'rtl') && ['left', 'right', 'center', 'justify'].includes(applied)) return applied as Alignment;
+  return rtl ? rtlParagraphAlignment(node.style.textAlign, node, lines) : node.style.textAlign.toLowerCase() as Alignment;
+}
+
 function fontCatalog(doc: FormeDocument) {
   const fonts = new Map<string, FontFace>();
   for (const item of doc.fonts ?? []) {
@@ -214,7 +230,7 @@ export async function presentationBytes(capture: PresentationCapture): Promise<U
           const runStyle = { ...style, ...run.style } as ElementStyleInfo;
           return fontRuns(run.text, runStyle).map(part => ({ text: part.text, options: { ...textStyle(part.fontFamily ? { ...runStyle, fontFamily: part.fontFamily } : runStyle), ...bidi, ...(run.href ? { hyperlink: { url: run.href } } : {}) } }));
         });
-        const align = direction.rtl ? rtlParagraphAlignment(style.textAlign, node, lines) : style.textAlign.toLowerCase() as TextPropsOptions['align'];
+        const align = paragraphAlignment(direction.rtl, node, lines);
         slide.addText(rich, { ...box(node), y: lines[0].y / PT, ...textStyle(style), ...bidi, margin: 0, breakLine: false, paraSpaceAfter: 0, paraSpaceBefore: 0,
           lineSpacing: style.fontSize * style.lineHeight, align, valign: 'top', wrap: false, fit: 'none',
           objectName: node.sourceLocation?.file?.replace('opendoc:block:', '') ?? 'text' });
