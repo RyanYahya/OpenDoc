@@ -3,7 +3,7 @@ import { resolve, dirname, relative, sep } from 'node:path';
 import { readFileSync, realpathSync } from 'node:fs';
 import { createTextSourceResolver, createJsonTextSourceResolver, type TextSourceResolver } from './text-source';
 import { attachTextLines } from './text-layout';
-import type { TextGlobals } from '../document/text-targets';
+import type { TextFileOwner, TextGlobals } from '../document/text-targets';
 import type { TextTarget } from '../shared/selection';
 import { createHash } from 'node:crypto';
 import { renderDocumentSource } from './render-source';
@@ -46,6 +46,23 @@ globalState.__opendocResolveTextSource = ([location, ...callers], slot, childInd
   const foreign = callers.findIndex(frame => frame.file !== location.file);
   const owners = foreign < 0 ? callers : callers.slice(0, foreign);
   return originalBinding(resolver.resolveAt(location.line, location.column, slot, childIndex, { owners, text, path }), overrides.get(absolute));
+};
+// Text placed by themes, templates, and other workspace files outside the document is never
+// resolved; name that file so its read-only reason is specific. OpenDoc's own runtime is neither.
+const runtimeDirectory = realpathSync(runtimeSource('.')), workspaceRoot = realpathSync(root);
+const textFiles = new Map<string, TextFileOwner | undefined>();
+globalState.__opendocTextFileOwner = ([location]) => {
+  if (!location) return undefined;
+  if (!textFiles.has(location.file)) {
+    let owner: TextFileOwner | undefined;
+    try {
+      const absolute = realpathSync(resolve(root, location.file)), path = relative(workspaceRoot, absolute);
+      if (absolute.startsWith(documentDirectory + sep)) owner = { kind: 'document' };
+      else if (!path.startsWith('..') && !absolute.startsWith(runtimeDirectory + sep) && !path.split(sep).includes('node_modules')) owner = { kind: 'shared', file: path.split(sep).join('/') };
+    } catch { owner = undefined; }
+    textFiles.set(location.file, owner);
+  }
+  return textFiles.get(location.file);
 };
 globalState.__opendocResolveTextField = field => {
   const absolute = globalState.__opendocDataFile && documentFile(globalState.__opendocDataFile);

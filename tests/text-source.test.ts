@@ -316,3 +316,38 @@ export default () => <List id="rows" items={rows.map(row => ({ id: row.id, child
   assert.equal(createTextSourceResolver('documents/proof/index.tsx', foreign).resolveAt(before.split('\n').length, before.length - before.lastIndexOf('\n'), 'items', 0, { text: 'Alpha', path: [{ id: 'a' }, 'children'] }), undefined,
     "Another component's items may be used as logic, so its records stay read-only.");
 });
+
+test('DataTable column labels resolve by column ID, else only when their wording identifies one column', () => {
+  const head = `import { DataTable } from 'opendoc';\n`;
+  const table = (body: string) => {
+    const source = head + body, parsed = createTextSourceResolver('documents/proof/index.tsx', source);
+    return (id: string | undefined, text: string) => {
+      const before = source.slice(0, source.indexOf('<DataTable'));
+      return parsed.resolveAt(before.split('\n').length, before.length - before.lastIndexOf('\n'), 'columns', 0, { text, path: [{ id }, 'label'] });
+    };
+  };
+  const rows = `rows={[['a', 'b']]}`;
+  const plain = table(`export default () => <DataTable id="t" columns={[{ label: 'Item', width: 2 }, { label: 'Value', align: 'right' }]} ${rows}/>;`);
+  assert.deepEqual([plain(undefined, 'Item')?.value, plain(undefined, 'Value')?.value], ['Item', 'Value']);
+  assert.equal(plain(undefined, 'Other'), undefined, 'The rendered text must match the authored value.');
+  const keyed = table(`export default () => <DataTable id="t" columns={[{ id: 'low', label: 'Same' }, { id: 'high', label: 'Same' }]} ${rows}/>;`);
+  assert.notEqual(keyed('low', 'Same')!.start, keyed('high', 'Same')!.start, 'Column IDs separate equal wording.');
+  assert.equal(table(`export default () => <DataTable id="t" columns={[{ label: 'Same' }, { label: 'Same' }]} ${rows}/>;`)(undefined, 'Same'), undefined,
+    'Equal wording without column IDs is ambiguous and stays read-only.');
+  assert.equal(table(`const columns = [{ label: 'Item' }, { label: 'Value' }];\nexport default () => <DataTable id="t" columns={columns} ${rows}/>;`)(undefined, 'Value')?.value, 'Value');
+  const mapped = table(`const fields = [{ key: 'item', title: 'Item' }, { key: 'value', title: 'Value' }];\nexport default () => <DataTable id="t" columns={fields.map(field => ({ id: field.key, label: field.title }))} ${rows}/>;`);
+  assert.equal(mapped('value', 'Value')?.value, 'Value', 'Mapped columns save to their own literal.');
+  assert.match(replaceSourceValue(head + `const fields = [{ key: 'item', title: 'Item' }, { key: 'value', title: 'Value' }];\nexport default () => <DataTable id="t" columns={fields.map(field => ({ id: field.key, label: field.title }))} ${rows}/>;`, mapped('value', 'Value')!, 'Amount'),
+    /\{ key: 'value', title: "Amount" \}/);
+
+  for (const body of [
+    `const code = 'USD';\nexport default () => <DataTable id="t" columns={[{ label: \`Amount (\${code})\` }]} ${rows}/>;`,
+    `const columns = [{ label: 'Item' }];\nexport default () => <DataTable id="t" columns={columns} ${rows}/>;\nexport const first = columns[0].label.toUpperCase();`,
+    `export default () => <DataTable id="t" {...rest} columns={[{ label: 'Item' }]} ${rows}/>;`,
+    `const fields = [{ title: 'Item' }];\nexport default () => <DataTable id="t" columns={fields.map(field => ({ id: field.title, label: field.title }))} ${rows}/>;`,
+  ]) assert.equal(table(body)(undefined, 'Item'), undefined, body);
+  const foreign = `import { DataTable } from './mine';\nconst columns = [{ label: 'Item' }];\nexport default () => <DataTable id="t" columns={columns} ${rows}/>;`;
+  const before = foreign.slice(0, foreign.indexOf('<DataTable'));
+  assert.equal(createTextSourceResolver('documents/proof/index.tsx', foreign).resolveAt(before.split('\n').length, before.length - before.lastIndexOf('\n'), 'columns', 0, { text: 'Item', path: [{}, 'label'] }), undefined,
+    "Another component's columns may be used as logic, so their labels stay read-only.");
+});

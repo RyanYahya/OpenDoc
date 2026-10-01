@@ -12,7 +12,7 @@ import { fontFamilies, languageTag } from '../themes/types';
 import type { BlockInfo, SourceLocation, DocumentFormat, SlideInfo } from '../shared/types';
 import { Page } from './page';
 import { Decoration, TextCapture, TextSlot, type TextSlotProps } from './text-targets';
-export { TextSlot, type TextSlotProps, type TextFieldPath } from './text-targets';
+export { TextSlot, type TextSlotProps, type TextFieldPath, type TextRecordPath } from './text-targets';
 
 export type { DocumentMeta } from '../shared/types';
 export type { DocTheme, TextDirection } from '../themes/index';
@@ -561,7 +561,10 @@ export const Figure = block(function Figure({ id, children, caption, sourceNote,
   </F.View>;
 }, 'figure');
 
-export type TableColumn = { label: string; width?: number; align?: 'left' | 'center' | 'right' };
+/** `id` gives a column a stable identity, so its heading keeps its own text target and saves to its own record. */
+export type TableColumn = { id?: string; label: string; width?: number; align?: 'left' | 'center' | 'right' };
+const columnLabelReason = "This column heading is produced by the document's code, or repeats another column's wording, so it cannot be traced to one written value. Ask your agent to change it, or comment instead.";
+const tableCellReason = "This table cell is not linked to a value that can be edited here. Ask your agent to change it, or comment instead.";
 export const DataTable = block(function DataTable({ id, columns, rows, rowIds, caption, sourceNote, emptyMessage = 'No records to display.', style }: {
   id: string; columns: TableColumn[]; rows: (string | number | ReactElement<TextSlotProps>)[][]; rowIds?: string[]; caption?: string; sourceNote?: string; emptyMessage?: string; style?: F.Style;
 }) {
@@ -571,9 +574,12 @@ export const DataTable = block(function DataTable({ id, columns, rows, rowIds, c
   const total = columns.reduce((sum, c) => sum + (c.width ?? 1), 0);
   if (columns.some(c => !Number.isFinite(c.width ?? 1) || (c.width ?? 1) <= 0) || !Number.isFinite(total)) throw new Error('Table columns need positive finite widths.');
   for (const column of columns) {
+    if (column.id !== undefined) checkId(column.id, `Table ${id} column`);
     requireText(column.label, `Table ${id} column label`);
     if (column.align !== undefined && !['left', 'center', 'right'].includes(column.align)) throw new Error(`Table ${id} column alignment must be left, center, or right.`);
   }
+  const columnIds = columns.flatMap(column => column.id === undefined ? [] : [column.id]);
+  if (new Set(columnIds).size !== columnIds.length) throw new Error(`Table ${id} column ids must be unique.`);
   if (!Array.isArray(rows) || rows.some(row => !Array.isArray(row) || row.length !== columns.length)) throw new Error('Every table row must match the number of columns.');
   rows.forEach((row, r) => row.forEach((value, c) => {
     if ((typeof value !== 'string' && typeof value !== 'number' && !(isValidElement(value) && value.type === TextSlot)) || (typeof value === 'number' && !Number.isFinite(value))) throw new Error(`Table ${id} row ${r + 1}, column ${c + 1} must be text or a finite number.`);
@@ -587,10 +593,11 @@ export const DataTable = block(function DataTable({ id, columns, rows, rowIds, c
   const noteStyle = themeType(t, 'caption');
   const design = t.design?.table;
   const alternate = design?.alternate === false ? '#ffffff' : design?.alternate ?? t.paper;
+  // Each heading belongs to its record in the caller's columns, found by column id or else by its wording.
   return <F.Table columns={columns.map(c => ({ width: { fraction: (c.width ?? 1) / total } }))} style={{ marginTop: 8, marginBottom: 16, ...design?.block, ...style }}>
     {caption && <F.Row header><F.Cell colSpan={columns.length} style={{ paddingBottom: 8 }}><F.Text style={{ ...noteStyle, color: t.ink, fontWeight: 600 }}>{numberedCaption(id, caption)}</F.Text></F.Cell></F.Row>}
-    <F.Row header style={{ backgroundColor: t.accent, ...design?.header }}>{columns.map((col, i) => <F.Cell key={i} style={{ padding: 9, ...design?.cell, ...design?.header }}><F.Text style={{ fontFamily: tableFont, fontSize: 9, color: '#ffffff', fontWeight: 600, ...design?.headerText, textAlign: alignments[i] }}>{col.label}</F.Text></F.Cell>)}</F.Row>
-    {rows.length ? rows.map((row, i) => <F.Row key={rowIds?.[i] ?? i} style={{ backgroundColor: i % 2 === 0 ? alternate : '#ffffff' }}>{row.map((cell, j) => <F.Cell key={j} style={{ padding: 9, borderBottomWidth: 0.4, borderColor: t.line, ...design?.cell }}><F.Text style={{ fontFamily: tableFont, fontSize: 10, ...design?.text, textAlign: alignments[j] }}>{isValidElement(cell) ? cell : <TextSlot slot={`row-${rowIds?.[i] ?? i}-column-${j}`} stable={false}>{typeof cell === 'number' ? String(cell) : cell}</TextSlot>}</F.Text></F.Cell>)}</F.Row>) : <F.Row><F.Cell colSpan={columns.length} style={{ padding: 12, backgroundColor: t.paper }}><F.Text style={noteStyle}>{emptyMessage}</F.Text></F.Cell></F.Row>}
+    <F.Row header style={{ backgroundColor: t.accent, ...design?.header }}>{columns.map((col, i) => <F.Cell key={col.id ?? i} style={{ padding: 9, ...design?.cell, ...design?.header }}><F.Text style={{ fontFamily: tableFont, fontSize: 9, color: '#ffffff', fontWeight: 600, ...design?.headerText, textAlign: alignments[i] }}><TextSlot slot={`column-${col.id ?? i}`} stable={col.id !== undefined} from="columns" path={[{ id: col.id }, 'label']} readOnlyReason={columnLabelReason}>{col.label}</TextSlot></F.Text></F.Cell>)}</F.Row>
+    {rows.length ? rows.map((row, i) => <F.Row key={rowIds?.[i] ?? i} style={{ backgroundColor: i % 2 === 0 ? alternate : '#ffffff' }}>{row.map((cell, j) => <F.Cell key={j} style={{ padding: 9, borderBottomWidth: 0.4, borderColor: t.line, ...design?.cell }}><F.Text style={{ fontFamily: tableFont, fontSize: 10, ...design?.text, textAlign: alignments[j] }}>{isValidElement(cell) ? cell : <TextSlot slot={`row-${rowIds?.[i] ?? i}-column-${j}`} stable={false} readOnlyReason={tableCellReason}>{typeof cell === 'number' ? String(cell) : cell}</TextSlot>}</F.Text></F.Cell>)}</F.Row>) : <F.Row><F.Cell colSpan={columns.length} style={{ padding: 12, backgroundColor: t.paper }}><F.Text style={noteStyle}>{emptyMessage}</F.Text></F.Cell></F.Row>}
     {sourceNote && <F.Row><F.Cell colSpan={columns.length} style={{ paddingTop: 8 }}><F.Text style={noteStyle}><TextSlot slot="sourceNote" from="sourceNote">{sourceNote}</TextSlot></F.Text></F.Cell></F.Row>}
   </F.Table>;
 }, 'table');

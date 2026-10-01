@@ -156,7 +156,7 @@ Use `Section` for ordinary prose sections. Its lead is deliberately limited to 7
 
 ## Tables, figures, lists, and code
 
-`DataTable` takes `columns` and `rows`. Columns have `label`, optional positive `width` weights, and optional `align: 'left' | 'center' | 'right'`. Numeric columns align right automatically. Cells are strings, finite numbers, or transparent text bindings; every row must match the columns. Optional `rowIds` preserve cell targets when records reorder. Optional `caption` and `sourceNote` explain the table. The caption and column headings repeat on continued pages. An empty table displays `emptyMessage` instead of pretending to contain observations.
+`DataTable` takes `columns` and `rows`. Columns have `label`, optional positive `width` weights, optional `align: 'left' | 'center' | 'right'`, and an optional stable `id`. Numeric columns align right automatically. Write column labels as literals in `columns`, a local constant array, or a `.map` over one, so each heading stays editable in the browser; an `id` keeps a heading's identity when columns reorder and separates columns with equal wording (see [Selection](SELECTION.md#binding-reusable-content)). Cells are strings, finite numbers, or transparent text bindings; every row must match the columns. Optional `rowIds` preserve cell targets when records reorder. Optional `caption` and `sourceNote` explain the table. The caption and column headings repeat on continued pages. An empty table displays `emptyMessage` instead of pretending to contain observations.
 
 ```tsx
 <DataTable id="measurements" caption="Illustrative measurements"

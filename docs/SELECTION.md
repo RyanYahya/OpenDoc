@@ -46,6 +46,12 @@ const steps = [{ id: 'draft', text: 'Draft the plan' }, { id: 'review', text: 'R
 
 Bullets and numbers are generated markers, never text of their own: selecting one selects its item, and Edit opens the item's text. An item whose text is computed, imported, also used as an ID or in logic, or repeated within a mapped array stays read-only, and the Edit tooltip says so.
 
+`DataTable` column headings work the same way, each saving to its own column record. A column with an `id` is found by it; without one, a heading is editable when its wording identifies one column, so two columns labeled alike need IDs to be editable:
+
+```tsx
+<DataTable id="costs" columns={[{ id: 'item', label: 'Item', width: 2 }, { id: 'cost', label: 'Cost' }]} rows={rows} />
+```
+
 Text stays read-only, with a reason in the Edit tooltip, when its value is computed or transformed, imported from another file, forwarded with a spread, reaches a component or helper that is also used another way, or is also used as an ID, key, link, lookup, comparison, or other logic. A presence check such as `{dates && …}` and reading `.length` are allowed. Keep IDs as separate props instead of deriving them from visible text.
 
 Shared components in other files, such as templates, declare a caller-owned prop with the transparent `TextSlot` helper:
@@ -74,7 +80,7 @@ For a validated data template, bind a string in the instance's `provenance.dataF
 </Paragraph>)}
 ```
 
-A component that displays records from a caller-owned prop names the record and field with `path`, as `List` does: `<TextSlot slot="children" from="items" path={[{ id: item.id }, 'children']}>{item.children}</TextSlot>`. An optional `readOnlyReason` replaces the general Edit tooltip when the slot's text cannot be traced to one written value.
+A component that displays records from a caller-owned prop names the record and field with `path`, as `List` does: `<TextSlot slot="children" from="items" path={[{ id: item.id }, 'children']}>{item.children}</TextSlot>`. For records without IDs, `{}` stands for any record: the text is editable only when its wording identifies one written value. An optional `readOnlyReason` replaces the general Edit tooltip when the slot's text cannot be traced to one written value. Text placed by a theme, template, or other shared file is never edited from a document; its tooltip names that file.
 
 Slots and record IDs must remain stable through edits and reordering. TextSlot adds no PDF node, style, or text. Bind the original string, not a formatted or computed representation. Data corrections run the existing template parser before saving; import `bindTemplate` from `opendoc/template` for template instances, or `validateTemplateInput` from the same module to wrap an existing parser for optional data components.
 

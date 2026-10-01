@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { renderOnce } from '../src/server/render';
 import { TextEditService } from '../src/server/edits';
 import { canCorrectComponent } from '../src/app/componentCorrection';
@@ -203,5 +204,46 @@ function shout(text: string) { return text.toUpperCase(); }`));
     assert.equal(await readFile(f.entry, 'utf8'), afterLiteral.replace(`text: 'Mapped alpha'`, `text: "Revised alpha"`));
     const final = (await renderOnce(f.root, 'proof')).artifact.textTargets!;
     assert.deepEqual(['plain-one', 'plain-two', 'mapped-alpha'].map(id => final.find(value => value.blockId === id)!.text), ['First item', 'Second item', 'Revised alpha']);
+  } finally { await f.cleanup(); }
+});
+
+test('DataTable column headings save to their own column records, and unbound headings say why', async () => {
+  const f = await fixture();
+  try {
+    await writeFile(resolve(f.root, 'themes/shared-table.tsx'), `import { DataTable } from '../src/document';
+export function SharedTable() { return <DataTable id="shared" columns={[{ label: 'Shared heading' }]} rows={[['Cell']]}/>; }`);
+    await writeFile(f.entry, document(`<DataTable id="plain" columns={[{ label: 'Item', width: 2 }, { label: 'Value' }]} rows={[['First', 1]]}/>
+      <DataTable id="keyed" columns={[{ id: 'low', label: 'Bound' }, { id: 'high', label: 'Bound' }]} rows={[['a', 'b']]}/>
+      <DataTable id="same" columns={[{ label: 'Twice' }, { label: 'Twice' }]} rows={[['a', 'b']]}/>
+      <DataTable id="computed" columns={[{ label: shout('loud') }]} rows={[['a']]}/>
+      <SharedTable/>`, `import { SharedTable } from '../../themes/shared-table';
+function shout(text: string) { return text.toUpperCase(); }`));
+    const artifact = (await renderOnce(f.root, 'proof')).artifact;
+    const targets = artifact.textTargets!;
+    const heading = (blockId: string, slot: string) => targets.find(value => value.blockId === blockId && value.slot === slot)!;
+    for (const [blockId, slot] of [['plain', 'column-0'], ['plain', 'column-1'], ['keyed', 'column-low'], ['keyed', 'column-high']]) {
+      assert.ok(canCorrectComponent(heading(blockId, slot)), `${blockId} ${slot}`);
+      assert.ok(heading(blockId, slot).lines.length, `${blockId} ${slot} keeps its PDF geometry`);
+    }
+    assert.equal(heading('plain', 'column-0').stable, false, 'A heading without a column ID has a positional identity');
+    assert.equal(heading('keyed', 'column-low').stable, true, 'A column ID gives its heading a durable identity');
+    assert.notEqual(heading('keyed', 'column-low').runs[0].source!.start, heading('keyed', 'column-high').runs[0].source!.start, 'Equal wording stays separate by column ID');
+    for (const [blockId, slot] of [['same', 'column-0'], ['same', 'column-1'], ['computed', 'column-0']]) {
+      assert.equal(canCorrectComponent(heading(blockId, slot)), false, `${blockId} ${slot}`);
+      assert.match(heading(blockId, slot).reason!, /column heading is produced by the document's code, or repeats another column's wording/);
+    }
+    assert.match(heading('shared', 'column-0').reason!, /placed by themes\/shared-table\.tsx/, 'An imported heading names the file that holds it');
+    assert.match(heading('plain', 'row-0-column-0').reason!, /table cell is not linked/, 'Plain cells keep their documented read-only behavior');
+
+    const service = new TextEditService(f.root);
+    const before = await readFile(f.entry, 'utf8');
+    const value = heading('plain', 'column-1');
+    await service.apply('proof', { targetId: value.id, start: 0, end: value.text.length, replacement: 'Amount', revision: 1, hash: artifact.hash }, { id: 'proof', status: 'ready', revision: 1, artifact });
+    const saved = await readFile(f.entry, 'utf8');
+    assert.equal(saved, before.replace(`{ label: 'Value' }`, `{ label: "Amount" }`));
+    const next = (await renderOnce(f.root, 'proof')).artifact;
+    const high = next.textTargets!.find(target => target.blockId === 'keyed' && target.slot === 'column-high')!;
+    await service.apply('proof', { targetId: high.id, start: 0, end: high.text.length, replacement: 'Raised', revision: 2, hash: next.hash }, { id: 'proof', status: 'ready', revision: 2, artifact: next });
+    assert.equal(await readFile(f.entry, 'utf8'), saved.replace(`{ id: 'high', label: 'Bound' }`, `{ id: 'high', label: "Raised" }`));
   } finally { await f.cleanup(); }
 });

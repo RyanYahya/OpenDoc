@@ -38,8 +38,11 @@ export interface TextSourceContext {
   owners?: { line: number; column: number }[];
   /** The rendered text. It selects within a closed set of authored values; it never searches the file. */
   text?: string;
-  /** Within the slot's prop: record IDs and property names, such as a List item's `[{ id }, 'children']`. */
-  path?: (string | { id: string })[];
+  /**
+   * Within the slot's prop: record IDs and property names, such as a List item's `[{ id }, 'children']`.
+   * A record without an `id` stands for any element, which the rendered text must then identify.
+   */
+  path?: (string | { id?: string })[];
 }
 
 export interface TextSourceResolver {
@@ -338,10 +341,11 @@ export function createTextSourceResolver(file: string, source: string): TextSour
   /**
    * The elements of an array that can be the record with this ID. A record whose `id` is a
    * literal is kept only when it matches; any other element may still be it, so the rendered
-   * text must then identify one value among them.
+   * text must then identify one value among them. Without an ID every element remains.
    */
-  function record(container: Flow, id: string, seen: Seen): Flow {
+  function record(container: Flow, id: string | undefined, seen: Seen): Flow {
     const items = elements(container, seen);
+    if (id === undefined) return items;
     return { values: items.values.filter(({ node }) => { const own = ts.isObjectLiteralExpression(node) ? literalId(node) : undefined; return own === undefined || own === id; }), complete: items.complete };
   }
   function literalId(node: ts.ObjectLiteralExpression): string | undefined {
@@ -381,46 +385,58 @@ export function createTextSourceResolver(file: string, source: string): TextSour
   }
 
   const textProps = new Set(['children', 'title', 'subtitle', 'eyebrow', 'byline', 'caption', 'lead', 'body', 'footer', 'description', 'author', 'label']);
+  /** Runtime props holding records, and the one field of each record that is displayed text. */
+  const runtimeRecords: Record<string, Record<string, string>> = { List: { items: 'children' }, DataTable: { columns: 'label' } };
   const protectedTokens = new Set<ts.Node>();
   function outerExpression(node: ts.Node) {
     while ((ts.isParenthesizedExpression(node.parent) || ts.isAsExpression(node.parent) || ts.isTypeAssertionExpression(node.parent) || ts.isNonNullExpression(node.parent) || ts.isSatisfiesExpression(node.parent)) && node.parent.expression === node) node = node.parent;
     return node;
   }
-  /** A List from the document runtime, which displays each record's children and uses its id only as identity. */
-  function runtimeList(opening: Opening): boolean {
+  /** The runtime component a JSX element names, when it is imported from OpenDoc. */
+  function runtimeComponent(opening: Opening): string | undefined {
     const declaration = tagSymbol(opening)?.declarations?.[0];
-    if (!declaration || !ts.isImportSpecifier(declaration) || (declaration.propertyName ?? declaration.name).text !== 'List') return false;
+    if (!declaration || !ts.isImportSpecifier(declaration)) return undefined;
     const module = declaration.parent.parent.parent.moduleSpecifier;
-    return ts.isStringLiteral(module) && (module.text === 'opendoc' || /(^|\/)src\/document(\/index(\.tsx)?)?$/.test(module.text));
+    const runtime = ts.isStringLiteral(module) && (module.text === 'opendoc' || /(^|\/)src\/document(\/index(\.tsx)?)?$/.test(module.text));
+    return runtime ? (declaration.propertyName ?? declaration.name).text : undefined;
   }
-  /** An expression passed as a runtime List's items, directly or through a const used only that way. */
-  function listItems(input: ts.Node): boolean {
+  /**
+   * The record field a runtime array prop displays, such as `[{ id, children }]` passed as a
+   * List's items. The id identifies the record and the other fields are layout; neither is text.
+   */
+  function recordField(input: ts.Node): string | undefined {
     const node = outerExpression(input), parent = node.parent;
     if (ts.isJsxExpression(parent) && parent.expression === node && ts.isJsxAttribute(parent.parent)) {
-      return parent.parent.name.getText(tree) === 'items' && runtimeList(parent.parent.parent.parent as Opening);
+      const component = runtimeComponent(parent.parent.parent.parent as Opening), name = parent.parent.name.getText(tree);
+      const props = component && Object.hasOwn(runtimeRecords, component) ? runtimeRecords[component] : undefined;
+      return props && Object.hasOwn(props, name) ? props[name] : undefined;
     }
     if (ts.isVariableDeclaration(parent) && parent.initializer === node && ts.isIdentifier(parent.name) && ts.isVariableDeclarationList(parent.parent) && parent.parent.flags & ts.NodeFlags.Const) {
+      // A const used only as one kind of runtime records.
       const symbol = checker.getSymbolAtLocation(parent.name);
-      const uses = symbol ? (references.get(symbol) ?? []).filter(use => use !== parent.name) : [];
-      return uses.length > 0 && uses.every(use => listItems(use));
+      const fields = new Set(symbol ? (references.get(symbol) ?? []).filter(use => use !== parent.name).map(use => recordField(use)) : []);
+      const [field] = fields;
+      return fields.size === 1 ? field : undefined;
     }
-    return false;
+    return undefined;
   }
-  /** A record literal of a runtime List: an element of its items array, or returned by the callback that maps them. */
-  function listRecord(object: ts.Node): boolean {
+  /** For a record literal of a runtime array prop: an element of the array, or returned by the callback that maps it. */
+  function recordOf(object: ts.Node): string | undefined {
     const node = outerExpression(object), parent = node.parent;
-    if (ts.isArrayLiteralExpression(parent)) return listItems(parent);
+    if (ts.isArrayLiteralExpression(parent)) return recordField(parent);
     const fn = ts.isArrowFunction(parent) && parent.body === node ? parent
       : ts.isReturnStatement(parent) ? ts.findAncestor(parent, ts.isFunctionLike) : undefined;
-    if (!fn || !(ts.isArrowFunction(fn) || ts.isFunctionExpression(fn))) return false;
+    if (!fn || !(ts.isArrowFunction(fn) || ts.isFunctionExpression(fn))) return undefined;
     const call = outerExpression(fn).parent;
-    return mapCallback(call) === fn && listItems(call);
+    return mapCallback(call) === fn ? recordField(call) : undefined;
   }
   function textConsumer(input: ts.Expression): boolean {
     const node = outerExpression(input), parent = node.parent;
-    // A List record's children are displayed text; its id stays structural.
-    if (((ts.isPropertyAssignment(parent) && parent.initializer === node) || (ts.isShorthandPropertyAssignment(parent) && parent.name === node))
-      && propertyName(parent.name) === 'children' && listRecord(parent.parent)) return true;
+    // A List record's children and a DataTable column's label are displayed text; ids stay structural.
+    if (((ts.isPropertyAssignment(parent) && parent.initializer === node) || (ts.isShorthandPropertyAssignment(parent) && parent.name === node))) {
+      const field = recordOf(parent.parent);
+      if (field !== undefined && propertyName(parent.name) === field) return true;
+    }
     if (ts.isVariableDeclaration(parent)) {
       // A direct const alias or destructuring is checked at all of its own uses below.
       if (parent.initializer !== node) return false;
@@ -428,7 +444,7 @@ export function createTextSourceResolver(file: string, source: string): TextSour
     }
     if (ts.isJsxExpression(parent) && parent.expression === node) {
       // A local component's props are checked where its body uses them.
-      return ts.isJsxAttribute(parent.parent) ? component(parent.parent.parent.parent) || textProps.has(parent.parent.name.getText(tree)) || listItems(node)
+      return ts.isJsxAttribute(parent.parent) ? component(parent.parent.parent.parent) || textProps.has(parent.parent.name.getText(tree)) || recordField(node) !== undefined
         : ts.isJsxElement(parent.parent) || ts.isJsxFragment(parent.parent);
     }
     // `{value && <Paragraph>{value}</Paragraph>}` only tests whether optional text is present.
@@ -530,7 +546,7 @@ export function createTextSourceResolver(file: string, source: string): TextSour
   }
 
   /** A value inside a prop, such as one List record's children: a string, or one child of a JSX fragment. */
-  function nested(opening: Opening, slot: string, path: (string | { id: string })[], childIndex: number, scope?: Scope, text?: string): TextSourceValue | undefined {
+  function nested(opening: Opening, slot: string, path: (string | { id?: string })[], childIndex: number, scope?: Scope, text?: string): TextSourceValue | undefined {
     if (opening.attributes.properties.some(ts.isJsxSpreadAttribute)) return undefined;
     const matches = opening.attributes.properties.filter(item => ts.isJsxAttribute(item) && item.name.getText(tree) === slot);
     if (matches.length !== 1 || !ts.isJsxAttribute(matches[0])) return undefined;
@@ -538,7 +554,7 @@ export function createTextSourceResolver(file: string, source: string): TextSour
     let current = attributeFlow(matches[0], scope, seen);
     for (const part of path) {
       if (typeof part === 'string') current = member(current, part, seen);
-      else if (part && typeof part.id === 'string') current = record(current, part.id, seen);
+      else if (part && typeof part === 'object' && (part.id === undefined || typeof part.id === 'string')) current = record(current, part.id, seen);
       else return undefined;
     }
     // A fragment's children render as the slot's children; React drops the same whitespace rows.

@@ -1,16 +1,21 @@
 import React, { createElement, isValidElement, type ReactElement, type ReactNode } from 'react';
 import * as F from '@formepdf/react';
 import type { SourceLocation } from '../shared/types';
-import { generatedTextReason, type TextRun, type TextSourceValue, type TextTarget } from '../shared/selection';
+import { generatedTextReason, sharedTextReason, type TextRun, type TextSourceValue, type TextTarget } from '../shared/selection';
 
 export type TextFieldPath = (string | { id: string })[];
+/** Like a field path; a record without an `id` stands for any record, which the displayed text must then identify. */
+export type TextRecordPath = (string | { id?: string })[];
 export interface TextSlotProps {
   /** Stable content name, independent of pagination and array order. */
   slot: string;
   /** A literal prop on the calling component. */
   from?: string;
-  /** Within the `from` prop: record IDs and property names, as for `field`, such as `[{ id: item.id }, 'children']`. */
-  path?: TextFieldPath;
+  /**
+   * Within the `from` prop: record IDs and property names, as for `field`, such as `[{ id: item.id }, 'children']`.
+   * For records without IDs, `{}` stands for any record; the text binds only when its wording identifies one value.
+   */
+  path?: TextRecordPath;
   /** A string in the instance's provenance.dataFile; arrays use record IDs. */
   field?: TextFieldPath;
   /** Internal offset when a native block groups its authored children. */
@@ -34,18 +39,30 @@ export function TextSlot({ children }: TextSlotProps) { return <>{children}</>; 
 export function Decoration({ children }: { children?: ReactNode }) { return <>{children}</>; }
 
 /** `frames` starts at the rendered element, then each component instance that created the previous frame. */
-export type TextResolution = (frames: SourceLocation[], slot: string, childIndex?: number, text?: string, path?: TextFieldPath) => TextSourceValue | undefined;
+export type TextResolution = (frames: SourceLocation[], slot: string, childIndex?: number, text?: string, path?: TextRecordPath) => TextSourceValue | undefined;
 export type TextGlobals = typeof globalThis & {
   __opendocResolveTextSource?: TextResolution;
   __opendocResolveTextField?: (field: TextFieldPath) => TextSourceValue | undefined;
+  /** Who wrote the first frame: the document, or a shared workspace file such as a theme; undefined for OpenDoc itself. */
+  __opendocTextFileOwner?: (frames: SourceLocation[]) => TextFileOwner | undefined;
 };
-type Binding = { slot?: string; source?: TextSourceValue; origin?: SourceLocation[]; from?: string; path?: TextFieldPath; childIndex?: number; stable?: boolean; protected?: boolean; reason?: string; readOnlyReason?: string; decoration?: boolean };
+export type TextFileOwner = { kind: 'document' } | { kind: 'shared'; file: string };
+type Binding = { slot?: string; source?: TextSourceValue; origin?: SourceLocation[]; from?: string; path?: TextRecordPath; childIndex?: number; stable?: boolean; protected?: boolean; reason?: string; readOnlyReason?: string; decoration?: boolean };
 const textTypes = new Set<unknown>([F.Text, F.H1, F.H2, F.H3, F.H4, F.H5, F.H6]);
 
 function rawText(node: ReactNode): string {
   if (typeof node === 'string' || typeof node === 'number') return String(node);
   if (Array.isArray(node)) return node.map(rawText).join('');
   return isValidElement<{ children?: ReactNode }>(node) ? rawText(node.props.children) : '';
+}
+
+function sharedReason(frames: SourceLocation[] | undefined) {
+  const owner = frames?.length ? (globalThis as TextGlobals).__opendocTextFileOwner?.(frames) : undefined;
+  return owner?.kind === 'shared' ? sharedTextReason(owner.file) : undefined;
+}
+/** An inner slot names its own content; without its own explanation it keeps the enclosing one. */
+function merged(inherited: Binding | undefined, own: Binding): Binding {
+  return { ...inherited, ...own, readOnlyReason: own.readOnlyReason ?? inherited?.readOnlyReason };
 }
 
 /** Capture authored leaves before Forme flattens inline runs into text lines. */
@@ -65,8 +82,13 @@ export class TextCapture {
     const globals = globalThis as TextGlobals;
     const source = props.field ? globals.__opendocResolveTextField?.(props.field)
       : props.from && props.from !== 'children' && caller?.length ? globals.__opendocResolveTextSource?.(caller, props.from, undefined, rawText(children), props.path) : undefined;
+    // A caller in a theme, template, or other shared file is never resolved, so say where the text
+    // comes from. A document caller explains its own failure; OpenDoc's forwarding slots defer to
+    // the slot around them.
+    const owner = !props.field && caller?.length ? globals.__opendocTextFileOwner?.(caller) : undefined;
+    const readOnlyReason = owner?.kind === 'shared' ? sharedTextReason(owner.file) : owner?.kind === 'document' ? props.readOnlyReason ?? generatedTextReason : props.readOnlyReason;
     const marker = createElement(React.Fragment, {}, children);
-    this.bindings.set(marker, { slot: props.slot, source, origin: caller, from: props.from, path: props.path, childIndex: props.childIndex, stable: props.stable, reason: props.reason, protected: !!props.reason, readOnlyReason: props.readOnlyReason });
+    this.bindings.set(marker, { slot: props.slot, source, origin: caller, from: props.from, path: props.path, childIndex: props.childIndex, stable: props.stable, reason: props.reason, protected: !!props.reason, readOnlyReason });
     return marker;
   }
   decorate(children: ReactNode): ReactElement {
@@ -86,27 +108,27 @@ export class TextCapture {
     const used = new Set<string>();
     const identities = new Map<TextTarget, { named: boolean; key: string }>();
     const globals = globalThis as TextGlobals;
-    const resolve = (frames: SourceLocation[] | undefined, slot: string, childIndex: number, text: string, path?: TextFieldPath) => frames?.length ? globals.__opendocResolveTextSource?.(frames, slot, childIndex, text, path) : undefined;
+    const resolve = (frames: SourceLocation[] | undefined, slot: string, childIndex: number, text: string, path?: TextRecordPath) => frames?.length ? globals.__opendocResolveTextSource?.(frames, slot, childIndex, text, path) : undefined;
     const containsProtected = (node: ReactNode): boolean => {
       if (Array.isArray(node)) return node.some(containsProtected);
       if (!isValidElement<{ children?: ReactNode }>(node)) return false;
       return !!this.bindings.get(node)?.protected || containsProtected(node.props.children);
     };
 
-    const gather = (node: ReactNode, runs: TextRun[], buffer: { text: string }, inherited?: Binding, source?: TextSourceValue) => {
+    const gather = (node: ReactNode, runs: TextRun[], buffer: { text: string }, inherited?: Binding, source?: TextSourceValue, writer?: SourceLocation[]) => {
       if (typeof node === 'string' || typeof node === 'number') {
         const text = String(node); if (!text) return;
         const candidate = inherited?.source ?? source;
         const writable = !inherited?.protected && candidate?.value === text ? candidate : undefined;
         const start = buffer.text.length; buffer.text += text;
         runs.push({ start, end: buffer.text.length, ...(writable ? { source: writable } : {}),
-          ...(!writable ? { protected: !!inherited?.protected, reason: inherited?.reason ?? inherited?.readOnlyReason ?? generatedTextReason } : {}) });
+          ...(!writable ? { protected: !!inherited?.protected, reason: inherited?.reason ?? inherited?.readOnlyReason ?? sharedReason(writer) ?? generatedTextReason } : {}) });
         return;
       }
       if (Array.isArray(node)) { node.forEach(child => gather(child, runs, buffer, inherited)); return; }
       if (!isValidElement<{ children?: ReactNode }>(node)) return;
       const own = this.bindings.get(node);
-      const binding = inherited?.protected ? inherited : own ? { ...inherited, ...own } : inherited;
+      const binding = inherited?.protected ? inherited : own ? merged(inherited, own) : inherited;
       // A bound scalar may be wrapped by transparent/formatting elements. Keep
       // it one writable run only when all rendered content is that exact scalar.
       if (binding?.source && !binding.protected && !containsProtected(node.props.children) && rawText(node.props.children) === binding.source.value) {
@@ -118,7 +140,7 @@ export class TextCapture {
       const from = own?.from ?? 'children';
       const children = Array.isArray(node.props.children) ? node.props.children : [node.props.children];
       children.forEach((child, index) => gather(child, runs, buffer, binding,
-        typeof child === 'string' || typeof child === 'number' ? resolve(origin, from, index + (own?.childIndex ?? 0), String(child), own?.path) : undefined));
+        typeof child === 'string' || typeof child === 'number' ? resolve(origin, from, index + (own?.childIndex ?? 0), String(child), own?.path) : undefined, origin));
     };
     const descendantSlot = (node: ReactNode): Binding | undefined => {
       if (Array.isArray(node)) {
@@ -135,7 +157,7 @@ export class TextCapture {
       const location = this.sourceMap.get(node);
       const id = location?.file.startsWith('opendoc:block:') ? location.file.slice(14) : blockId;
       const own = this.bindings.get(node);
-      const binding = inherited?.protected ? inherited : own ? { ...inherited, ...own } : inherited;
+      const binding = inherited?.protected ? inherited : own ? merged(inherited, own) : inherited;
       if (node.type === React.Fragment) return clean(node.props.children, id, withinText, binding);
       const textRoot = !withinText && textTypes.has(node.type);
       let target: TextTarget | undefined;
