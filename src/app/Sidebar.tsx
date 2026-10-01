@@ -59,7 +59,7 @@ function SidebarContent({ view, projectId, projects, documents, loaded, connecte
 export function Sidebar(props: SidebarProps) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
-    const wide = window.matchMedia('(min-width: 761px)');
+    const wide = window.matchMedia('(min-width: 851px)');
     const closeOnWide = () => { if (wide.matches) setOpen(false); };
     wide.addEventListener('change', closeOnWide);
     return () => wide.removeEventListener('change', closeOnWide);
