@@ -181,9 +181,6 @@
 .history-whole { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
 .history-whole > p { margin: 0 0 8px; color: var(--muted); font-size: var(--caption-size); line-height: 1.55; }
 
-@media (max-width: 700px) {
-  .edit-session-bar { grid-template-columns: auto minmax(0, 1fr) 64px; }
-}
 @media (max-width: 620px) {
   .history-panel {
     top: auto;

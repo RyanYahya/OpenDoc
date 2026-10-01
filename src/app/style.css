@@ -820,6 +820,10 @@ nav a.active {
     min-height: 40px;
     min-width: 40px;
   }
+  /* Keyboard shortcut hints are noise on touch screens. */
+  kbd {
+    display: none;
+  }
 }
 @media (max-width: 620px) {
   .library-tools {

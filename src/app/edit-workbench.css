@@ -82,7 +82,8 @@
 .reader:has(.edit-workbench) .comment-dock-panel { bottom: max(86px, calc(env(safe-area-inset-bottom) + 66px)); }
 @media (max-width: 700px) {
   .edit-workbench { left: 12px; right: 12px; bottom: max(68px, calc(env(safe-area-inset-bottom) + 56px)); transform: none; width: auto; max-width: none; }
-  .edit-session-bar { display: grid; grid-template-columns: 64px minmax(0, 1fr) 64px; grid-template-rows: 36px 36px; gap: 4px; padding: 6px; }
+  /* The first column sizes to its three selection actions, so they never run into the status. */
+  .edit-session-bar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: 36px 36px; gap: 4px; padding: 6px; }
   .selection-actions { grid-column: 1; grid-row: 1; padding: 0; border: 0; }
   .edit-session-status { grid-column: 2; grid-row: 1; padding: 0 4px; font-size: var(--tag-size); }
   .edit-history { grid-column: 3; grid-row: 1; border: 0; padding-inline: 0; }
