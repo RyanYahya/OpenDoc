@@ -70,9 +70,10 @@ For review-only requests, report findings without editing. When the user wants f
 
 ```sh
 npx opendoc comments add <document-id> <block-id> "Finding and suggested fix"
+npx opendoc comments add <document-id> <block-id> "Finding and suggested fix" --phrase "exact words"
 ```
 
-Leave these comments open for the user or [opendoc-apply-comments](../opendoc-apply-comments/SKILL.md). When revision is in scope, fix material defects, re-export every requested format from the same final source, and inspect changed pages/slides and adjacent breaks. Repeat broader checks only when the change affects them. Shared themes/templates need representative short and long cases and affected-instance checks.
+`--phrase` anchors the finding to those words, such as one sentence or table cell; add `--target <field-id>` when the words appear in more than one text field of the block. Leave these comments open for the user or [opendoc-apply-comments](../opendoc-apply-comments/SKILL.md). When revision is in scope, fix material defects, re-export every requested format from the same final source, and inspect changed pages/slides and adjacent breaks. Repeat broader checks only when the change affects them. Shared themes/templates need representative short and long cases and affected-instance checks.
 
 Return verified changes to the calling workflow, which owns feedback resolution. Preserve IDs and comment history during revisions.
 

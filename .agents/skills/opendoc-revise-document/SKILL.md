@@ -40,7 +40,7 @@ Load only the branch needed:
 
 ## 3. Check and review
 
-Run `npx opendoc check`; without a running service it records this round of edits as an Agent version. Then run `npx opendoc review <document-id> --json` and complete [opendoc-review-document](../opendoc-review-document/SKILL.md). Inspect changed pages and their neighbors (`changes.changedPages`); a translation, conversion, or theme switch changes every page, so inspect them all, including the right-to-left checks. Leave open comments to [opendoc-apply-comments](../opendoc-apply-comments/SKILL.md); do not resolve them as a side effect.
+Run `npx opendoc check`; without a running service it records this round of edits as an Agent version. Then run `npx opendoc review <document-id> --json` and complete [opendoc-review-document](../opendoc-review-document/SKILL.md). Inspect changed pages and their neighbors (`changes.changedPages`); a translation, conversion, or theme switch changes every page, so inspect them all, including the right-to-left checks. `npx opendoc comments list <document-id> --anchors` shows open comments whose passages changed or disappeared; report them and leave them to [opendoc-apply-comments](../opendoc-apply-comments/SKILL.md), never resolving them as a side effect.
 
 **Ready:** the current source renders and every affected page has been inspected, with material defects fixed.
 
