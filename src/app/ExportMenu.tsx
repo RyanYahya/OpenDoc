@@ -21,7 +21,9 @@ export function ExportMenu({ state, connected, ready, unsaved, saving, correctio
 }) {
   const [open, setOpen] = useState(false);
   const [format, setFormat] = useState<ExportFormat>(() => remembered(state.id)?.format ?? 'pdf');
-  const [filename, setFilename] = useState(() => suggestedExportName(documentName(state), format));
+  // Follow the title, which can arrive after the reader opens, until the name is edited.
+  const [customName, setCustomName] = useState<string | null>(null);
+  const filename = customName ?? suggestedExportName(documentName(state), format);
   const [attempt, setAttempt] = useState<Attempt | null>(() => remembered(state.id));
   const [result, setResult] = useState<SavedExport | null>(null);
   const [busy, setBusy] = useState(false);
@@ -83,7 +85,7 @@ export function ExportMenu({ state, connected, ready, unsaved, saving, correctio
   }
   return <Popover.Root open={open} onOpenChange={next => {
     setOpen(next);
-    if (!next && result && !working.current) { setResult(null); setError(''); setNotice(''); setFilename(suggestedExportName(documentName(state), format)); }
+    if (!next && result && !working.current) { setResult(null); setError(''); setNotice(''); setCustomName(null); }
   }} onOpenChangeComplete={next => {
     // Let the dropdown restore focus to Export before the history dialog opens.
     if (!next && showHistory.current) { showHistory.current = false; onShowExports(); }
@@ -101,8 +103,8 @@ export function ExportMenu({ state, connected, ready, unsaved, saving, correctio
       {result ? <>
         <div className="export-file" role="status"><Icon name="document" size={24} /><div><strong>{result.filename}</strong><span>{new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(result.bytes / 1024)} KB · {activeFormat.toUpperCase()}</span></div><Icon name="check" size={18} /></div>
       </> : <>
-        {documentFormat(state) === 'presentation' && !attempt && <div className="create-field export-format"><span>Format</span><SelectControl label="Export format" value={format} disabled={busy} items={[{ value: 'pdf', label: 'PDF' }, { value: 'pptx', label: 'PowerPoint (.pptx)' }]} onValueChange={value => { const next = value as ExportFormat; setFormat(next); setFilename(name => name.trim() ? name.replace(/\.(pdf|pptx)$/i, '') + exportInfo(next).extension : suggestedExportName(documentName(state), next)); setError(''); }} /></div>}
-        <label className="create-field export-filename" htmlFor="export-filename"><span>Filename</span><Input ref={input} id="export-filename" value={attempt?.filename ?? filename} onChange={event => { setFilename(event.target.value); setError(''); }} disabled={busy || !!attempt} maxLength={120} autoComplete="off" /></label>
+        {documentFormat(state) === 'presentation' && !attempt && <div className="create-field export-format"><span>Format</span><SelectControl label="Export format" value={format} disabled={busy} items={[{ value: 'pdf', label: 'PDF' }, { value: 'pptx', label: 'PowerPoint (.pptx)' }]} onValueChange={value => { const next = value as ExportFormat; setFormat(next); setCustomName(name => name?.trim() ? name.replace(/\.(pdf|pptx)$/i, '') + exportInfo(next).extension : null); setError(''); }} /></div>}
+        <label className="create-field export-filename" htmlFor="export-filename"><span>Filename</span><Input ref={input} id="export-filename" value={attempt?.filename ?? filename} onChange={event => { setCustomName(event.target.value); setError(''); }} disabled={busy || !!attempt} maxLength={120} autoComplete="off" /></label>
         {attempt && !busy && <p className="export-status" role="status">An export is awaiting confirmation. Check it to recover the saved file or finish the same request.</p>}
         {!attempt && (unsaved > 0 || correctionError || saving) && <div className="export-status" role="status"><strong>{saving ? 'Saving your changes…' : 'Save your corrections first'}</strong><p>{correctionError || 'Save your changes and review the updated PDF before exporting.'}</p>{unsaved > 0 && <Button disabled={!canSave || saving} onClick={() => void saveChanges()}>Save changes first</Button>}</div>}
         {!attempt && !unsaved && !saving && !correctionError && !ready && <p className="export-status" role="status">{!connected ? 'Reconnect to the local workspace before exporting.' : state.status === 'error' ? 'Fix the document’s render error before exporting.' : 'Waiting for the current PDF preview…'}</p>}
@@ -118,7 +120,7 @@ export function ExportMenu({ state, connected, ready, unsaved, saving, correctio
         <a className="ui-menu-item" href={`/api/exports/${result.id}/download`} download={result.filename} onClick={() => setNotice('Download requested. Your browser handles where the copy is saved.')}><Icon name="download" size={16} />Download a copy</a>
         {canCopy && <Button className="ui-menu-item" onClick={() => void copy()} disabled={busy || !connected} focusableWhenDisabled={copying}><Icon name="copy" size={16} />Copy to clipboard</Button>}
         {activeFormat === 'pdf' && <a className="ui-menu-item" href={`/api/exports/${result.id}/open`} target="_blank" rel="noreferrer"><Icon name="arrow" size={16} />Open PDF to print</a>}
-        <Button className="ui-menu-item" disabled={busy} onClick={() => { setResult(null); setError(''); setNotice(''); setFilename(suggestedExportName(documentName(state), format)); }}><Icon name="plus" size={16} />Export another copy</Button>
+        <Button className="ui-menu-item" disabled={busy} onClick={() => { setResult(null); setError(''); setNotice(''); setCustomName(null); }}><Icon name="plus" size={16} />Export another copy</Button>
       </div>}
       <div className="ui-menu-separator" />
       <Button className="ui-menu-item" onClick={() => { showHistory.current = true; setOpen(false); }}><Icon name="history" size={16} />Previous exports</Button>
