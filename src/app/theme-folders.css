@@ -9,6 +9,10 @@
 .theme-folder-toggle-count { color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
 .ui-button.theme-folder-toggle[data-pressed] { border-color: var(--accent); background: var(--selected-surface); color: var(--accent-ink); }
 .ui-button.theme-folder-toggle[data-pressed] > svg, .ui-button.theme-folder-toggle[data-pressed] .theme-folder-toggle-count { color: currentColor; }
+@media (forced-colors: active) {
+  .ui-button.theme-folder-toggle[data-pressed], .ui-button.theme-folder-toggle[data-pressed] * { color: HighlightText; }
+  .ui-button.theme-folder-toggle[data-pressed] { forced-color-adjust: none; background: Highlight; }
+}
 .ui-button.theme-manage-folders { gap: 6px; }
 .ui-button.theme-manage-folders[data-popup-open] { background: var(--control-hover); color: var(--ink); }
 .theme-manage-hint { max-width: 240px; font-weight: 400; }

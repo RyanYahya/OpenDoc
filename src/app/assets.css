@@ -7,6 +7,7 @@
 .assets-tabs a:hover::after { background: var(--line-strong); }
 .assets-tabs a[aria-current] { color: var(--ink); }
 .assets-tabs a[aria-current]::after { background: var(--ink); }
+@media (forced-colors: active) { .assets-tabs a[aria-current]::after { background: Highlight; } }
 .assets-tabs a:focus-visible { outline-offset: -3px; border-radius: 4px; }
 .assets-content > .materials-content { padding: 0; max-width: none; }
 .asset-collection-toolbar { display: flex; gap: 14px; justify-content: space-between; align-items: center; margin-bottom: 24px; }
@@ -54,6 +55,11 @@
 .asset-variation-choice.ui-button { display: flex; width: 100%; text-align: left; align-items: center; gap: 14px; padding: 9px; border: 1px solid transparent; border-radius: 7px; background: transparent; white-space: normal; }
 .asset-variation-choice.ui-button:hover { background: var(--surface); }
 .asset-variation-choice.selected { border-color: var(--line); background: var(--surface); }
+/* Forced colors drop fills and paint every border, so the chosen artwork uses the system selection colors. */
+@media (forced-colors: active) {
+  .asset-variation-choice.ui-button.selected, .asset-variation-choice.ui-button.selected * { color: HighlightText; }
+  .asset-variation-choice.ui-button.selected { forced-color-adjust: none; background: Highlight; }
+}
 .asset-variation-choice > span:nth-child(2) { display: flex; flex: 1; flex-direction: column; min-width: 0; gap: 5px; overflow-wrap: anywhere; }
 .asset-variation-choice strong { font-weight: 500; font-size: 14px; }
 .asset-variation-choice small { color: var(--muted); font-size: var(--caption-size); }

@@ -448,6 +448,13 @@ nav a.active {
 .page-thumb:hover {
   background: var(--control-hover);
 }
+@media (forced-colors: active) {
+  /* Forced colors drop box shadows; the current page keeps a system-colored frame. */
+  .page-thumb.active .pdf-page {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}
 .reader-scroll {
   --sheet-gutter: 40px;
   flex: 1;
@@ -581,6 +588,15 @@ nav a.active {
 }
 .ui-button.block-target:active {
   background: transparent;
+}
+@media (forced-colors: active) {
+  /* Forced colors paint transparent borders, which would box every component; only the selected one is framed. */
+  .ui-button.block-target:not(.selected) {
+    border-style: none;
+  }
+  .block-target.selected {
+    border: 2px solid Highlight !important;
+  }
 }
 .block-label {
   position: absolute;

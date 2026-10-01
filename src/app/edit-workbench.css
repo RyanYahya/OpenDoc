@@ -87,6 +87,10 @@
 .selection-bar .ui-button:hover:not([data-disabled]) { background: var(--control-hover); }
 .selection-bar .ui-button[aria-pressed="true"], .selection-bar .ui-button[aria-pressed="true"] > svg { color: var(--accent-ink); }
 .selection-bar .ui-button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+@media (forced-colors: active) {
+  .selection-bar .ui-button[aria-pressed="true"], .selection-bar .ui-button[aria-pressed="true"] > svg { color: HighlightText; }
+  .selection-bar .ui-button[aria-pressed="true"], .selection-bar .ui-button[aria-pressed="true"]:hover:not([data-disabled]) { forced-color-adjust: none; background: Highlight; }
+}
 .save-bar { gap: 6px; padding-inline-start: 12px; }
 .edit-session-status { min-width: 9.5em; display: flex; align-items: center; gap: 7px; font-size: var(--caption-size); flex: 1; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .edit-session-status > svg { flex-shrink: 0; color: var(--muted); }

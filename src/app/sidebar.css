@@ -58,3 +58,10 @@
 @media (prefers-reduced-motion: reduce) {
   .sidebar-drawer { transition: none; }
 }
+/* Forced colors drop fills, so the current view and project use the system selection colors,
+   without the Canvas text backplate that would hide HighlightText. */
+@media (forced-colors: active) {
+  .workspace-nav a.active, .sidebar-project-row.selected a,
+  .workspace-nav a.active *, .sidebar-project-row.selected a * { color: HighlightText; }
+  .workspace-nav a.active, .sidebar-project-row.selected a { forced-color-adjust: none; background: Highlight; }
+}
