@@ -11,6 +11,7 @@ import { renderEntry, validId } from './render';
 import { bindingDependencies, readAssetRevision, readThemeAssetDefaults, resolveThemeAssets } from '../assets/files';
 import { documentDependencies, includesDependency, type DocumentDependencies, isRenderRuntimePath, isManagedAssetPath } from './dependencies';
 import { authoringResolutionPlugin } from './source-overrides';
+import { themeLanguage } from './language';
 
 export async function themeFile(root: string, id: string, name: 'index.ts' | 'design.md' | 'preview.tsx' | 'components.tsx') {
   if (typeof id !== 'string' || !validId(id)) throw new Error('Invalid theme ID.');
@@ -54,7 +55,7 @@ export async function readThemePaths(root: string, id: string): Promise<ReturnTy
   return { ...themePaths(id), components: `themes/${id}/components.tsx` };
 }
 function summarize(theme: DocTheme): ThemeSummary {
-  return { id: theme.id, name: theme.name, description: theme.description, body: theme.body, heading: theme.heading, pageSize: theme.pageSize, useFor: theme.useFor ?? [], principles: theme.principles ?? [], palette: theme.palette ?? [], geometry: theme.geometry ?? [] };
+  return { id: theme.id, name: theme.name, description: theme.description, body: theme.body, heading: theme.heading, pageSize: theme.pageSize, useFor: theme.useFor ?? [], principles: theme.principles ?? [], palette: theme.palette ?? [], geometry: theme.geometry ?? [], language: themeLanguage(theme) };
 }
 async function summarizeWithAssets(root: string, theme: DocTheme): Promise<ThemeSummary> {
   const summary = summarize(theme);

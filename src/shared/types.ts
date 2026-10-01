@@ -1,6 +1,7 @@
 import type { MediaUse } from './media';
 import type { AssetUse, DocumentAssets, SelectedAsset } from './assets';
 import type { DocumentSelection, ManualEditSummary, TextAnchor, TextTarget } from './selection';
+import type { Language } from './language';
 /** Optional descriptive label chosen by the author, not a document taxonomy. */
 export type DocumentKind = string;
 export type DocumentFormat = 'document' | 'presentation';
@@ -14,7 +15,9 @@ export interface PageInfo { width: number; height: number; fragments: Fragment[]
 export interface DocumentProvenance { entry: string; template?: string; dataFile?: string }
 export interface ReviewIssue { code: string; severity: 'error' | 'warning'; message: string; page?: number; blockId?: string; source?: SourceLocation; bounds?: Bounds; parentBounds?: Bounds; clippingBounds?: Bounds; relatedBlockId?: string; format?: 'pptx'; characters?: string[] }
 export interface OutlineEntry { id: string; title: string; level: number; page: number }
-export interface RenderArtifact { format?: DocumentFormat; slides?: SlideInfo[]; textTargets?: TextTarget[]; media?: MediaUse[]; assets?: AssetUse[]; assetBindings?: DocumentAssets; assetDependencies?: string[]; meta: DocumentMeta; blocks: Record<string, BlockInfo>; pages: PageInfo[]; hash: string; renderedAt: string; provenance?: DocumentProvenance; issues?: ReviewIssue[]; outline?: OutlineEntry[] }
+export interface RenderArtifact { format?: DocumentFormat; slides?: SlideInfo[]; textTargets?: TextTarget[]; media?: MediaUse[]; assets?: AssetUse[]; assetBindings?: DocumentAssets; assetDependencies?: string[]; meta: DocumentMeta; blocks: Record<string, BlockInfo>; pages: PageInfo[]; hash: string; renderedAt: string; provenance?: DocumentProvenance; issues?: ReviewIssue[]; outline?: OutlineEntry[];
+  /** The language and base direction the Document declared, used to derive its language facet. */
+  lang?: string; direction?: 'ltr' | 'rtl' | 'auto' }
 export interface TextEditPreview { artifact: RenderArtifact; pdfUrl: string }
 /** JSON restores a plain object, so valid IDs such as "constructor" need an own-property lookup. */
 export function getBlock(artifact: RenderArtifact | null | undefined, id: string | null | undefined): BlockInfo | undefined {
@@ -24,7 +27,8 @@ export function getBlock(artifact: RenderArtifact | null | undefined, id: string
 export interface DocumentState { format?: DocumentFormat; id: string; name?: string; projectId?: string | null; status: 'rendering' | 'ready' | 'error'; error?: string; revision: number; artifact?: RenderArtifact; manualEdit?: ManualEditSummary }
 /** Browsing needs metadata and paper sizes, not text targets or layout fragments. */
 export type ArtifactSummary = Pick<RenderArtifact, 'meta' | 'hash' | 'renderedAt' | 'format'> & { pages: Pick<PageInfo, 'width' | 'height'>[] };
-export type DocumentSummary = Omit<DocumentState, 'artifact'> & { artifact?: ArtifactSummary };
+/** `language` is derived by the server from the render or source; it is never stored. */
+export type DocumentSummary = Omit<DocumentState, 'artifact'> & { artifact?: ArtifactSummary; language?: Language };
 export function summarizeDocument(state: DocumentState): DocumentSummary {
   const { artifact, ...summary } = state;
   return { ...summary, ...(artifact ? { artifact: { format: artifact.format, meta: artifact.meta, hash: artifact.hash, renderedAt: artifact.renderedAt, pages: artifact.pages.map(({ width, height }) => ({ width, height })) } } : {}) };
