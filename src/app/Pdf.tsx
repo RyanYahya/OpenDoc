@@ -10,12 +10,14 @@ import {
   useState,
   type CSSProperties,
   type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from "react";
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask, TextLayer } from "pdfjs-dist";
 import worker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { getBlock, type Fragment, type ArtifactSummary, type RenderArtifact } from "../shared/types";
-import type { DocumentSelection } from "../shared/selection";
+import type { DocumentSelection, TextTarget } from "../shared/selection";
+import { nearestBox, phraseSelection, wordRange, type TextRange } from './phraseSelection';
 import { mapPdfTextSpans, pdfSpanRangeForSelection, type PdfSpanMapping } from "./pdfSelection";
 import { loadPdfWithDeadline } from './pdfLoading';
 import { componentName, componentNavigation, isWithin, moveComponentFocus, navigationMove } from './componentNavigation';
@@ -49,6 +51,8 @@ function rangeWithinSpan(element: HTMLElement, start: number, end: number): Rang
   }
   return null;
 }
+
+type Rect = { left: number; top: number; width: number; height: number };
 
 type CachedPdf = {
   loading: Promise<PDFDocumentLoadingTask>;
@@ -183,9 +187,13 @@ type PdfPageProps = {
   selected?: string | null;
   selection?: DocumentSelection | null;
   commented?: Set<string>;
+  /** Open phrase comments, highlighted where their text appears on this page. */
+  commentPhrases?: DocumentSelection[];
   onSelect?: (id: string, page: number) => void;
   onComment?: (id: string, page: number) => void;
   onTextClick?: (selection: DocumentSelection, rect: { left: number; top: number; width: number; height: number }) => void;
+  /** A mouse or pen drag across words selects that phrase within one text component. */
+  onPhraseSelect?: (selection: DocumentSelection) => void;
   onNavigate?: (page: number) => void;
   /** Names the page for assistive technology, such as "Page 2 of 8". */
   label?: string;
@@ -201,9 +209,11 @@ export const PdfPage = memo(function PdfPage({
   selected,
   selection,
   commented,
+  commentPhrases,
   onSelect,
   onComment,
   onTextClick,
+  onPhraseSelect,
   onNavigate,
   label,
   keyboardHelp,
@@ -237,17 +247,20 @@ export const PdfPage = memo(function PdfPage({
   const [error, setError] = useState("");
   const [rendered, setRendered] = useState(false);
   const [textReady, setTextReady] = useState(false);
-  const [highlightState, setHighlightState] = useState<{ key: string; rects: { left: number; top: number; width: number; height: number }[] }>({ key: '', rects: [] });
+  const [highlightState, setHighlightState] = useState<{ key: string; rects: Rect[]; comments: Rect[] }>({ key: '', rects: [], comments: [] });
   const geometry =
     artifact?.pages[number - 1] ??
     (pageSize?.pdf === pdf && pageSize.number === number ? pageSize : null);
   const scale = width / (geometry?.width ?? 595.28);
   const height = scale * (geometry?.height ?? 841.89);
-  const highlightKey = JSON.stringify([artifact?.hash, selection?.renderHash, selection?.blockId, selection?.targetId, selection?.start, selection?.end, width, number]);
+  const highlightKey = JSON.stringify([artifact?.hash, selection?.renderHash, selection?.blockId, selection?.targetId, selection?.start, selection?.end, width, number,
+    commentPhrases?.map(phrase => [phrase.targetId, phrase.start, phrase.end])]);
   const preciseTarget = selection?.targetId && Number.isInteger(selection.start) && Number.isInteger(selection.end) && selection.end! > selection.start!
     ? artifact?.textTargets?.find(target => target.id === selection.targetId && target.blockId === selection.blockId) : undefined;
   const fullTargetSelection = !!preciseTarget && selection?.start === 0 && selection?.end === preciseTarget.text.length;
-  const phraseHighlights = !fullTargetSelection && textReady && highlightState.key === highlightKey ? highlightState.rects : [];
+  const highlightsCurrent = textReady && highlightState.key === highlightKey;
+  const phraseHighlights = !fullTargetSelection && highlightsCurrent ? highlightState.rects : [];
+  const commentHighlights = highlightsCurrent ? highlightState.comments : [];
   const phraseOnPage = preciseTarget?.lines.some(line => line.page === number && line.end > selection!.start! && line.start < selection!.end!);
   const showBlockSelection = !preciseTarget || (!fullTargetSelection && phraseOnPage && !phraseHighlights.length);
   useEffect(() => {
@@ -358,22 +371,84 @@ export const PdfPage = memo(function PdfPage({
   }, [artifact, number, scale, textReady]);
 
   useEffect(() => {
-    const rects: { left: number; top: number; width: number; height: number }[] = [];
-    if (textReady && text.current && container.current && selection?.targetId
-      && (!selection.renderHash || selection.renderHash === artifact?.hash)) {
-      const pageRect = container.current.getBoundingClientRect();
-      for (const span of text.current.querySelectorAll<HTMLElement>('[data-pdf-text]')) {
-        const offsets = pdfSpanRangeForSelection(spanMappings.get(span), selection);
-        const range = offsets && rangeWithinSpan(span, offsets.start, offsets.end);
-        if (!range) continue;
-        for (const rect of range.getClientRects()) {
-          if (rect.width <= 0 || rect.height <= 0) continue;
-          rects.push({ left: rect.left - pageRect.left, top: rect.top - pageRect.top, width: rect.width, height: rect.height });
-        }
-      }
-    }
-    setHighlightState({ key: highlightKey, rects });
-  }, [artifact, highlightKey, selection, textReady]);
+    const layer = text.current, page = container.current;
+    if (!textReady || !layer || !page) { setHighlightState({ key: highlightKey, rects: [], comments: [] }); return; }
+    const pageRect = page.getBoundingClientRect();
+    const spans = Array.from(layer.querySelectorAll<HTMLElement>('[data-pdf-text]'));
+    const rectsFor = (range: DocumentSelection) => spans.flatMap(span => {
+      const offsets = pdfSpanRangeForSelection(spanMappings.get(span), range);
+      const selected = offsets && rangeWithinSpan(span, offsets.start, offsets.end);
+      return selected ? Array.from(selected.getClientRects()).flatMap(rect => rect.width > 0 && rect.height > 0
+        ? [{ left: rect.left - pageRect.left, top: rect.top - pageRect.top, width: rect.width, height: rect.height }] : []) : [];
+    });
+    const current = selection?.targetId && (!selection.renderHash || selection.renderHash === artifact?.hash);
+    setHighlightState({ key: highlightKey, rects: current ? rectsFor(selection) : [], comments: (commentPhrases ?? []).flatMap(rectsFor) });
+  }, [artifact, highlightKey, selection, commentPhrases, textReady]);
+
+  /** The logical text range of the character nearest a point, within one text component. */
+  function textAt(targetId: string, x: number, y: number): TextRange | undefined {
+    const spans = Array.from(text.current?.querySelectorAll<HTMLElement>('[data-pdf-text]') ?? []).flatMap(span => {
+      const mapping = spanMappings.get(span);
+      return mapping?.targetId === targetId ? [{ span, mapping }] : [];
+    });
+    const nearest = spans[nearestBox(spans.map(({ span }) => span.getBoundingClientRect()), x, y)];
+    if (!nearest) return undefined;
+    const { span, mapping } = nearest;
+    const index = nearestBox(mapping.starts.map((start, offset) => mapping.synthetic?.[offset] || mapping.ends[offset] <= start
+      ? null : rangeWithinSpan(span, offset, offset + 1)?.getBoundingClientRect()), x, y);
+    return index < 0 ? undefined : { start: mapping.starts[index], end: mapping.ends[index] };
+  }
+
+  function wholeText(target: TextTarget): DocumentSelection {
+    return { blockId: target.blockId, targetId: target.id, start: 0, end: target.text.length, quote: target.text, page: number, renderHash: artifact?.hash };
+  }
+
+  // Native selection stays off on the page, where it would fight component
+  // clicks. A drag instead chooses whole words within the pressed component.
+  function startPhrase(event: ReactPointerEvent<HTMLElement>, target: TextTarget) {
+    if (!onPhraseSelect || event.button !== 0 || event.pointerType === 'touch') return;
+    const element = event.currentTarget;
+    const origin = { x: event.clientX, y: event.clientY };
+    let anchor: TextRange | undefined, chosen = '', frame = 0, point = origin, dragging = false;
+    const selectWhole = () => {
+      const { left, top, width, height } = element.getBoundingClientRect();
+      onTextClick?.(wholeText(target), { left, top, width, height });
+    };
+    const update = () => {
+      frame = 0;
+      anchor ??= textAt(target.id, origin.x, origin.y);
+      const focus = anchor && textAt(target.id, point.x, point.y);
+      if (!anchor || !focus) return;
+      const range = wordRange(target.text, Math.min(anchor.start, focus.start), Math.max(anchor.end, focus.end));
+      const phrase = phraseSelection(target, range, number, artifact?.hash);
+      const key = phrase ? `${phrase.start}:${phrase.end}` : range ? 'whole' : '';
+      if (!key || key === chosen) return;
+      chosen = key;
+      if (phrase) onPhraseSelect(phrase);
+      else selectWhole();
+    };
+    const move = (next: PointerEvent) => {
+      if (next.pointerId !== event.pointerId) return;
+      // Matches the page's click threshold, which suppresses the click after a drag.
+      if (!dragging && Math.hypot(next.clientX - origin.x, next.clientY - origin.y) <= 4) return;
+      dragging = true;
+      point = { x: next.clientX, y: next.clientY };
+      frame ||= requestAnimationFrame(update);
+    };
+    const finish = (next: PointerEvent) => {
+      if (next.pointerId !== event.pointerId) return;
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', finish);
+      if (!dragging) return;
+      if (frame) { cancelAnimationFrame(frame); update(); }
+      // A drag over text the page cannot map still selects its component.
+      if (!chosen && next.type === 'pointerup') selectWhole();
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', finish);
+  }
 
   async function followDestination(dest: unknown) {
     try {
@@ -537,6 +612,7 @@ export const PdfPage = memo(function PdfPage({
             })}
           </div>
           <InspectionLayer key={`${artifact?.hash}:${width}`}>
+            {commentHighlights.map((rect, index) => <div key={`comment-${index}`} className="comment-phrase-highlight" aria-hidden="true" style={rect} />)}
             {phraseHighlights.map((rect, index) => <div key={index} className="text-selection-highlight" aria-hidden="true" style={{ ...rect, pointerEvents: 'none' }} />)}
             {fragments.map(fragment => {
               const block = getBlock(artifact, fragment.id);
@@ -553,11 +629,10 @@ export const PdfPage = memo(function PdfPage({
               return <Button static key={item.target.id} className={`block-target component-target text-component ${fullSelected ? 'selected' : ''}`}
                 data-text-target={item.target.id} style={rectStyle(item)} {...componentFocus(`text:${item.target.id}`)}
                 aria-label={names.get(`text:${item.target.id}`)}
+                onPointerDown={event => startPhrase(event, item.target)}
                 onClick={event => {
                   const rect = event.currentTarget.getBoundingClientRect();
-                  onTextClick?.({ blockId: item.target.blockId, targetId: item.target.id, start: 0, end: item.target.text.length,
-                    quote: item.target.text, page: number, renderHash: artifact?.hash },
-                    { left: rect.left, top: rect.top, width: rect.width, height: rect.height });
+                  onTextClick?.(wholeText(item.target), { left: rect.left, top: rect.top, width: rect.width, height: rect.height });
                 }}>
                 <span className="block-label" aria-hidden="true">{block?.kind ?? 'Text'}</span>
               </Button>;

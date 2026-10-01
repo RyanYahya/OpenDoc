@@ -23,6 +23,21 @@
 .text-edit-heading h2 { font-size: var(--caption-size); font-weight: 500; margin: 0; color: var(--ink); }
 .text-edit-kind { padding-inline-start: 8px; border-inline-start: 1px solid var(--line); font-size: var(--tag-size); text-transform: capitalize; }
 .text-edit-heading .ui-button.icon-button { min-width: 28px; min-height: 28px; padding: 5px; border-radius: 6px; color: var(--muted); }
+.comment-phrase {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  margin: 0 0 8px 3px;
+  padding-inline-start: 8px;
+  border-inline-start: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  color: var(--muted);
+  font-size: var(--caption-size);
+  line-height: var(--caption-leading);
+  overflow-wrap: anywhere;
+}
+.text-edit-panel .comment-phrase-note { margin: 0 0 8px 3px; }
+@media (prefers-contrast: more) { .comment-phrase { border-inline-start-color: var(--accent-ink); } }
 .text-edit-panel textarea {
   display: block;
   width: 100%;

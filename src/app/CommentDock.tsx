@@ -11,6 +11,10 @@ export interface CommentDockItem {
   page?: number;
   kind: string;
   canJump: boolean;
+  /** The phrase a phrase comment is about. */
+  quote?: string;
+  /** The phrase's wording changed and it could not be located again. */
+  textChanged?: boolean;
 }
 
 export interface CommentDockProps {
@@ -85,7 +89,7 @@ export function CommentDock({
       </div>
       <div className="comment-dock-content">
         {error && <p className="comment-error" role="alert">{error}</p>}
-        {items.length ? items.map(({ comment, page, kind, canJump }) => <article className={`comment-card ${comment.status}`} key={comment.id}>
+        {items.length ? items.map(({ comment, page, kind, canJump, quote, textChanged }) => <article className={`comment-card ${comment.status}`} key={comment.id}>
           {editing?.id === comment.id ? <form onSubmit={event => {
             event.preventDefault();
             if (!connected || busy || !editing.text.trim() || editing.text.trim() === comment.text) return;
@@ -103,6 +107,7 @@ export function CommentDock({
                 <span className="comment-status">{comment.status === 'resolved' ? <><Icon name="check" size={11} />Resolved</> : 'Open'}</span>
                 <CommentTime value={comment.createdAt} />
               </span>
+              {quote && <span className="comment-quote">on “<bdi dir="auto">{quote}</bdi>”{textChanged && <span className="comment-anchor-changed"><span aria-hidden="true">·</span> Text changed</span>}</span>}
               <span className="comment-text" dir="auto">{comment.text}</span>
             </Button>
             <div className="comment-row-actions">
@@ -112,7 +117,7 @@ export function CommentDock({
           </div>}
         </article>) : <div className="no-comments">
           <p><strong>{filtered ? 'No comments on this component' : 'No comments yet'}</strong></p>
-          <p>{filtered ? 'Choose the Comment icon in the bar below to add one.' : `Select a component on the ${pageLabel.toLowerCase()}, then choose the Comment icon in the bar that appears.`} Your agent applies open comments and marks them resolved.</p>
+          <p>{filtered ? 'Choose the Comment icon in the bar below to add one.' : `Select a component on the ${pageLabel.toLowerCase()}, or drag across words to choose a phrase, then choose the Comment icon in the bar that appears.`} Your agent applies open comments and marks them resolved.</p>
         </div>}
       </div>
       {openCount > 0 && agentPrompt && <CommentHandoff openCount={openCount} prompt={agentPrompt} />}

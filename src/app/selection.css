@@ -99,6 +99,19 @@
 }
 
 .text-selection-highlight { position: absolute; pointer-events: none; background: var(--inspection-selected); border-radius: 2px; }
+/* Pages keep their paper colors in either appearance, so commented phrases use the document accent. */
+.comment-phrase-highlight {
+  position: absolute;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--document-accent) 9%, transparent);
+  box-shadow: inset 0 -2px color-mix(in srgb, var(--document-accent) 55%, transparent);
+}
+@media (prefers-contrast: more) {
+  .comment-phrase-highlight { background: color-mix(in srgb, var(--document-accent) 14%, transparent); box-shadow: inset 0 -2px var(--document-accent); }
+}
+@media (forced-colors: active) {
+  .comment-phrase-highlight { forced-color-adjust: none; background: transparent; box-shadow: inset 0 -2px Highlight; }
+}
 
 .comment-popover .comment-composer { padding: 0; border: 0; }
 .comment-popover .comment-composer label { color: var(--ink); }

@@ -42,6 +42,22 @@
 .no-comments p + p { margin-top: 4px; }
 .no-comments strong { color: var(--ink); font-weight: 500; font-size: 13px; }
 
+.comment-quote {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  padding-inline-start: 8px;
+  border-inline-start: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  color: var(--muted);
+  font-size: var(--caption-size);
+  line-height: var(--caption-leading);
+  overflow-wrap: anywhere;
+}
+.comment-anchor-changed { color: var(--ink); font-weight: 500; }
+.comment-anchor-changed > span { margin-inline: 4px; color: var(--muted); font-weight: 400; }
+@media (prefers-contrast: more) { .comment-quote { border-inline-start-color: var(--accent-ink); } }
+
 .comment-status { display: inline-flex; align-items: center; gap: 3px; margin-inline-start: auto; color: var(--accent-ink); }
 .comment-card.resolved .comment-status { color: var(--muted); }
 .comment-card.resolved .comment-text { color: var(--muted); }
