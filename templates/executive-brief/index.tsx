@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
 import * as F from '@formepdf/react';
-import { TextSlot, Document, Heading, Paragraph, References, Page } from 'opendoc';
+import { TextSlot, Decoration, Document, Heading, Paragraph, References, Page } from 'opendoc';
 import { themePage, type DocTheme } from 'opendoc/themes';
+
+const capitals = 'The theme sets this label in capitals, so it cannot be edited here. Ask your agent to change it, or comment instead.';
 
 export function ExecutiveBrief({ title, theme, author, date, label, takeaway, titleStyle, children, references }: {
   title: string; theme: DocTheme; author?: string; date?: string; label?: string;
@@ -14,9 +16,9 @@ export function ExecutiveBrief({ title, theme, author, date, label, takeaway, ti
     <Page {...themePage(theme, { top: 48, bottom: 48, left: 52, right: 52 })} style={{ lineBreaking: 'greedy', ...theme.design?.page?.style }}>
       {(!theme.design || theme.runningFooter) && <F.Fixed position="footer"><F.Text style={{ fontFamily: theme.body, fontSize: 8, color: theme.muted, textAlign: 'right', ...theme.design?.furniture?.text, ...theme.design?.furniture?.footer }}>{theme.design?.furniture?.pageNumber === 'total' ? '{{pageNumber}} / {{totalPages}}' : '{{pageNumber}}'}</F.Text></F.Fixed>}
       <F.View style={theme.design?.title?.block}>
-        {label && <Paragraph id="brief-label" role="label" baseStyle={{ fontSize: 8.5, color: theme.muted, letterSpacing: 0.6, marginBottom: 8 }} style={theme.design?.title?.eyebrow}>{theme.design?.title?.uppercaseEyebrow ? label.toUpperCase() : <TextSlot slot="label" from="label">{label}</TextSlot>}</Paragraph>}
+        {label && <Paragraph id="brief-label" role="label" baseStyle={{ fontSize: 8.5, color: theme.muted, letterSpacing: 0.6, marginBottom: 8 }} style={theme.design?.title?.eyebrow}>{theme.design?.title?.uppercaseEyebrow ? <TextSlot slot="label" reason={capitals}>{label.toUpperCase()}</TextSlot> : <TextSlot slot="label" from="label">{label}</TextSlot>}</Paragraph>}
         <Heading id="brief-title" level={1} baseStyle={{ fontSize: 26, lineHeight: 1.12, marginBottom: 10 }} style={{ ...theme.design?.title?.heading, ...titleStyle }}><TextSlot slot="title" from="title">{title}</TextSlot></Heading>
-        {details && <Paragraph id="brief-details" role="small" baseStyle={{ fontSize: 9, color: theme.muted, marginBottom: 10 }} style={theme.design?.title?.byline}>{author && <TextSlot slot="author" from="author">{author}</TextSlot>}{author && date ? ' · ' : ''}{date && <TextSlot slot="date" from="date">{date}</TextSlot>}</Paragraph>}
+        {details && <Paragraph id="brief-details" role="small" baseStyle={{ fontSize: 9, color: theme.muted, marginBottom: 10 }} style={theme.design?.title?.byline}>{author && <TextSlot slot="author" from="author">{author}</TextSlot>}{author && date ? <Decoration>{' · '}</Decoration> : ''}{date && <TextSlot slot="date" from="date">{date}</TextSlot>}</Paragraph>}
         {takeaway && <Paragraph id="brief-takeaway" role="lead" baseStyle={{ fontSize: 14, fontWeight: 600, lineHeight: 1.35, marginTop: 8, marginBottom: 16 }} style={theme.design?.title?.subtitle}><TextSlot slot="takeaway" from="takeaway">{takeaway}</TextSlot></Paragraph>}
       </F.View>
       <F.View style={{ marginTop: takeaway ? 0 : 10 }}>

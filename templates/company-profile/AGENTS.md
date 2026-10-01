@@ -39,7 +39,7 @@ Every slide is 960 × 540. Default title regions occupy y=72–188, ordinary con
 
 ## Photographs and evidence
 
-`ProfileImage` shows a labelled placeholder when `image` is omitted. Supply `image={{item:'local-media-id',fit:'cover',position:{x:0.5,y:0.5}}}` to use a managed `MediaFrame`. Broken named media fails visibly rather than becoming a placeholder. Use `contain` for product screens or diagrams whose edges carry information. Replace placeholder captions with accurate descriptions and attribution as appropriate. No stock photography or source company artwork is bundled.
+`ProfileImage` shows a labelled placeholder when `image` is omitted: pass `label` to name the intended picture as editable document text, or leave it out for the template's read-only `Image position`. Supply `image={{item:'local-media-id',fit:'cover',position:{x:0.5,y:0.5}}}` to use a managed `MediaFrame`. Broken named media fails visibly rather than becoming a placeholder. Use `contain` for product screens or diagrams whose edges carry information. Replace placeholder captions with accurate descriptions and attribution as appropriate. No stock photography or source company artwork is bundled.
 
 Import actual imagery into the instance's `media/<id>/` folders through [Media](../../docs/MEDIA.md). A full photo, a technical detail, and a portrait carry different information; use the deliberately unequal frames to express that hierarchy. Review actual crops, image visibility, captions, and contrast on every affected slide. A short deck should remove unnecessary image slots rather than fill them with decoration.
 
