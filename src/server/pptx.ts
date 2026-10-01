@@ -42,6 +42,60 @@ export function presentationTextRuns(source: TextKind, lines: Pick<ElementInfo, 
   return output;
 }
 
+// Default-direction ranges of the right-to-left scripts (UAX #9 bidi classes R and AL):
+// Hebrew through Arabic Extended-A, Hebrew/Arabic presentation forms, and the SMP RTL blocks.
+const rtlLetter = /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF\u{10800}-\u{10FFF}\u{1E800}-\u{1EFFF}]/u;
+const hebrew = /[\u0590-\u05FF\uFB1D-\uFB4F]/u;
+const arabic = /[\u0600-\u06FF\u0750-\u077F\u0870-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/u;
+
+/**
+ * The paragraph's first strong character, following UAX #9 rules P2 and P3: skip text inside
+ * isolates, ignore weak and neutral characters such as digits and punctuation, and treat
+ * letters as strong. Returns undefined when the text has no strong character.
+ */
+export function firstStrongCharacter(text: string): { direction: 'ltr' | 'rtl'; character: string } | undefined {
+  let isolates = 0;
+  for (const character of text) {
+    if (character >= '\u2066' && character <= '\u2068') { isolates++; continue; }
+    if (character === '\u2069') { if (isolates) isolates--; continue; }
+    if (isolates) continue;
+    if (character === '\u200F' || character === '\u061C') return { direction: 'rtl', character };
+    if (character === '\u200E') return { direction: 'ltr', character };
+    if (/\p{L}/u.test(character)) return { direction: rtlLetter.test(character) ? 'rtl' : 'ltr', character };
+  }
+  return undefined;
+}
+
+type Direction = { rtl: boolean; lang?: string };
+/** An explicit direction style wins; otherwise the first strong character decides (P2/P3). */
+export function paragraphDirection(declared: unknown, text: string): Direction {
+  const value = typeof declared === 'string' ? declared.toLowerCase() : '';
+  const strong = firstStrongCharacter(text);
+  const rtl = value === 'rtl' || (value !== 'ltr' && strong?.direction === 'rtl');
+  if (!rtl) return { rtl };
+  // Language tags let PowerPoint choose proofing and complex-script handling for the paragraph.
+  const letter = Array.from(text).find(character => /\p{L}/u.test(character) && rtlLetter.test(character));
+  return { rtl, lang: letter && hebrew.test(letter) ? 'he-IL' : letter && arabic.test(letter) ? 'ar-SA' : undefined };
+}
+
+/**
+ * DrawingML alignment is physical. Forme reports an unaligned paragraph as Left; for a
+ * right-to-left paragraph that is its start edge, so it maps to right unless the reviewed
+ * PDF lines are visibly flush left.
+ */
+export function rtlParagraphAlignment(textAlign: string, node: Pick<ElementInfo, 'x' | 'width' | 'style'>, lines: Pick<ElementInfo, 'x' | 'width'>[]): 'left' | 'right' | 'center' | 'justify' {
+  const align = textAlign.toLowerCase();
+  if (align === 'center' || align === 'justify' || align === 'right') return align;
+  if (align === 'start') return 'right';
+  if (align === 'end') return 'left';
+  const style = node.style, tolerance = 0.5;
+  const left = node.x + (style.padding?.left ?? 0) + (style.borderWidth?.left ?? 0);
+  const right = node.x + node.width - (style.padding?.right ?? 0) - (style.borderWidth?.right ?? 0);
+  const flushLeft = lines.some(line => line.x - left <= tolerance && right - (line.x + line.width) > tolerance);
+  const flushRight = lines.some(line => right - (line.x + line.width) <= tolerance && line.x - left > tolerance);
+  return flushLeft && !flushRight ? 'left' : 'right';
+}
+
 function fontCatalog(doc: FormeDocument) {
   const fonts = new Map<string, FontFace>();
   for (const item of doc.fonts ?? []) {
@@ -123,9 +177,13 @@ export async function presentationBytes(capture: PresentationCapture): Promise<U
         const pageNumbers = (text: string) => text.replaceAll('{{pageNumber}}', String(index + 1)).replaceAll('{{totalPages}}', String(capture.slides.length)).replaceAll('\u0002', String(index + 1)).replaceAll('\u0003', String(capture.slides.length));
         const runs = presentationTextRuns({ ...source.kind, content: pageNumbers(source.kind.content), runs: source.kind.runs?.map(run => ({ ...run, content: pageNumbers(run.content) })) }, lines.map(line => ({ textContent: pageNumbers(line.textContent ?? '') })));
         if (!runs) throw new Error(`Slide ${label}: PowerPoint export cannot preserve this text transformation.`);
-        const rich = runs.map(run => ({ text: run.text, options: { ...textStyle({ ...style, ...run.style } as ElementStyleInfo), ...(run.href ? { hyperlink: { url: run.href } } : {}) } }));
-        slide.addText(rich, { ...box(node), y: lines[0].y / PT, ...textStyle(style), margin: 0, breakLine: false, paraSpaceAfter: 0, paraSpaceBefore: 0,
-          lineSpacing: style.fontSize * style.lineHeight, align: style.textAlign.toLowerCase() as TextPropsOptions['align'], valign: 'top', wrap: false, fit: 'none',
+        // PowerPoint orders and shapes mixed-direction text itself once the paragraph is marked RTL.
+        const direction = paragraphDirection((style as { direction?: unknown }).direction ?? (source.style as { direction?: unknown } | undefined)?.direction, source.kind.runs?.map(run => run.content).join('') ?? source.kind.content);
+        const bidi: TextPropsOptions = direction.rtl ? { rtlMode: true, ...(direction.lang ? { lang: direction.lang } : {}) } : {};
+        const rich = runs.map(run => ({ text: run.text, options: { ...textStyle({ ...style, ...run.style } as ElementStyleInfo), ...bidi, ...(run.href ? { hyperlink: { url: run.href } } : {}) } }));
+        const align = direction.rtl ? rtlParagraphAlignment(style.textAlign, node, lines) : style.textAlign.toLowerCase() as TextPropsOptions['align'];
+        slide.addText(rich, { ...box(node), y: lines[0].y / PT, ...textStyle(style), ...bidi, margin: 0, breakLine: false, paraSpaceAfter: 0, paraSpaceBefore: 0,
+          lineSpacing: style.fontSize * style.lineHeight, align, valign: 'top', wrap: false, fit: 'none',
           objectName: node.sourceLocation?.file?.replace('opendoc:block:', '') ?? 'text' });
         return;
       }

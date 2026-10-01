@@ -3,11 +3,13 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { readFile, writeFile, readdir } from 'node:fs/promises';
+import type { ElementInfo } from '@formepdf/core';
+import type { FormeNode } from '@formepdf/react';
 import { resolve } from 'node:path';
 import { readZip } from '@shbernal/ts-pptx/zip';
 import { fixture, projectRoot, until } from './helpers';
 import { renderOnce } from '../src/server/render';
-import { presentationBytes, readPresentationBytes, presentationTextRuns, type PresentationCapture } from '../src/server/pptx';
+import { presentationBytes, readPresentationBytes, presentationTextRuns, firstStrongCharacter, paragraphDirection, rtlParagraphAlignment, type PresentationCapture } from '../src/server/pptx';
 import { ExportStore } from '../src/server/exports';
 import { exportDocuments, parseExportArgs } from '../src/server/export-batch';
 import type { SavedExport } from '../src/shared/export';
@@ -53,6 +55,26 @@ test('PowerPoint uses the exact captured preview, native rich text, images, and 
       assert.ok(capture.doc.fonts!.some(font => typeof font.src === 'string' && Buffer.from(font.src, 'base64').equals(eot.subarray(-length))));
     }
     await assert.rejects(readPresentationBytes(render.directory, 'stale'), /preview changed/);
+    // Right-to-left paragraphs: reuse this render, with Arabic text in the title's source and line.
+    const rtl = structuredClone(capture), arabic = 'عرض Microsoft Office التجريبي';
+    const sourceNode = (node: FormeNode, content: string): FormeNode | undefined => 'content' in node.kind && node.kind.content === content ? node : node.children.map(child => sourceNode(child, content)).find(Boolean);
+    const layoutNode = (node: ElementInfo, text: string): ElementInfo | undefined => node.children.some(line => line.textContent === text) ? node : node.children.map(child => layoutNode(child, text)).find(Boolean);
+    const title = sourceNode(rtl.doc.children[0], 'Editable proof')!, titleBox = layoutNode(rtl.layout.pages[0].elements[0], 'Editable proof')!, titleLine = titleBox.children[0];
+    if (title.kind.type !== 'Heading') throw new Error('Expected the title heading.');
+    title.kind.content = arabic; titleLine.textContent = arabic;
+    sourceNode(rtl.doc.children[1], 'The final slide.')!.style = { ...sourceNode(rtl.doc.children[1], 'The final slide.')!.style, direction: 'rtl' } as never;
+    const rtlParts = await readZip(await presentationBytes(rtl)), rtlSlide = xml(rtlParts, 'ppt/slides/slide1.xml');
+    const paragraphOf = (slideXml: string, text: string) => slideXml.split('<a:p>').find(paragraph => paragraph.includes(text))!;
+    // The PDF line is flush left, so the export keeps that alignment while marking the paragraph RTL.
+    assert.match(paragraphOf(rtlSlide, 'التجريبي'), /<a:pPr rtl="1"\s+algn="l"/);
+    assert.match(paragraphOf(rtlSlide, 'Microsoft Office'), /<a:rPr lang="ar-SA" altLang="en-US"/);
+    assert.match(paragraphOf(rtlSlide, 'التجريبي'), /<a:latin typeface="[^"]+"[^>]*\/><a:cs typeface="[^"]+"\/>/);
+    assert.doesNotMatch(paragraphOf(rtlSlide, 'italic'), /rtl="1"|ar-SA/, 'LTR paragraphs keep their existing output');
+    titleLine.x = titleBox.x + titleBox.width - titleLine.width;
+    assert.match(paragraphOf(xml(await readZip(await presentationBytes(rtl)), 'ppt/slides/slide1.xml'), 'التجريبي'), /<a:pPr rtl="1"\s+algn="r"/, 'Flush-right RTL lines map to right alignment.');
+    const declared = paragraphOf(xml(rtlParts, 'ppt/slides/slide2.xml'), 'The final slide.');
+    assert.match(declared, /<a:pPr rtl="1"/);
+    assert.match(declared, /<a:rPr lang="en-US"/, 'A declared direction without RTL letters keeps the English language tag.');
     const unsafe = structuredClone(capture);
     for (const face of unsafe.doc.fonts!) {
       const font = Buffer.from(face.src as string, 'base64');
@@ -142,6 +164,25 @@ test('rich links survive line boundaries and unexpected text fails rather than d
   assert.equal(runs.map(run => run.text).join(''), 'Read the \nevidence today.');
   assert.deepEqual(runs.filter(run => run.href).map(run => run.text), ['the ', 'evidence']);
   assert.equal(presentationTextRuns(source, [{ textContent: 'Unexpected text' }]), null);
+});
+
+test('paragraph direction follows an explicit style, then the first strong character (UAX #9 P2/P3)', () => {
+  assert.equal(firstStrongCharacter('2026 قمنا بتحديث Microsoft Office')?.direction, 'rtl', 'digits and spaces are weak');
+  assert.equal(firstStrongCharacter('Microsoft Office في المكتب')?.direction, 'ltr');
+  assert.equal(firstStrongCharacter('\u2067English inside an isolate\u2069 ثم نص عربي')?.direction, 'rtl', 'isolated text is skipped');
+  assert.equal(firstStrongCharacter('\u200F2026')?.direction, 'rtl');
+  assert.equal(firstStrongCharacter('١٢٣ — 456 …'), undefined, 'Arabic-Indic digits and punctuation are not strong');
+  assert.deepEqual(paragraphDirection(undefined, '١٢٣'), { rtl: false });
+  assert.deepEqual(paragraphDirection(undefined, 'قمنا بتحديث نظام Microsoft Office'), { rtl: true, lang: 'ar-SA' });
+  assert.deepEqual(paragraphDirection('auto', 'שלום world'), { rtl: true, lang: 'he-IL' });
+  assert.deepEqual(paragraphDirection('Rtl', 'Microsoft Office'), { rtl: true, lang: undefined });
+  assert.deepEqual(paragraphDirection('ltr', 'قمنا بتحديث'), { rtl: false });
+  const box = { x: 40, width: 200, style: { padding: { top: 0, right: 10, bottom: 0, left: 10 }, borderWidth: { top: 0, right: 0, bottom: 0, left: 0 } } } as unknown as ElementInfo;
+  assert.equal(rtlParagraphAlignment('Left', box, [{ x: 130, width: 100 }]), 'right');
+  assert.equal(rtlParagraphAlignment('Left', box, [{ x: 50, width: 100 }]), 'left');
+  assert.equal(rtlParagraphAlignment('Left', box, [{ x: 50, width: 180 }]), 'right', 'a full line is aligned to the start edge');
+  assert.equal(rtlParagraphAlignment('Center', box, [{ x: 90, width: 100 }]), 'center');
+  assert.equal(rtlParagraphAlignment('Right', box, [{ x: 130, width: 100 }]), 'right');
 });
 
 test('PPTX receipts preserve recovery, format identity, collisions, delete/Undo, and stale publication', async () => {
