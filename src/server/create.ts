@@ -115,7 +115,7 @@ import { theme } from './theme';
 
 export const meta: DocumentMeta = ${JSON.stringify({ title, description: starter.description, ...(starter.id === 'blank' ? {} : { kind: starter.kind }), theme }, null, 2)};
 
-// Ask Codex to develop this draft using your brief and sources. Keep block IDs stable as it grows.
+// Ask your agent to develop this draft using your brief and sources. Keep block IDs stable as it grows.
 export default function Draft() {
   return <Document title={meta.title} theme={theme}>
     <Pages title={meta.title}>

@@ -4,6 +4,7 @@ import { parseArgs } from 'node:util';
 import { readJSON } from './files';
 import { validId } from './render';
 import { HistoryStore } from './history';
+import { recordAgentChanges } from './history-capture';
 import { blockHistory, compareVersion, restoreVersion } from './history-restore';
 import type { HistoryVersionSummary, RestoreScope } from '../shared/history';
 
@@ -12,7 +13,9 @@ const usage = `Usage: npx opendoc history list <doc> [--json]
        npx opendoc history block <doc> <block-id> [--json]
        npx opendoc history restore <doc> <version> [--block <id> | --section <id>] [--json]
 
-History is recorded automatically while OpenDoc runs and kept for 90 days in documents/<doc>/.history/.
+History is recorded automatically and kept for 90 days in documents/<doc>/.history/. Without a running
+OpenDoc service, as in OpenDoc Headless, create, check, review, export, comments, and history record
+the edits made since the previous version.
 restore without --block or --section restores the whole version. --block restores one block's own
 content; --section restores a block together with everything inside it. Every restore is recorded,
 so it can itself be undone by restoring the previous version it reports.`;
@@ -32,12 +35,14 @@ export async function runHistoryCli(args: string[], root = process.cwd()): Promi
   const [action, doc, target] = positionals;
   if (!doc || !validId(doc)) throw new Error(usage);
   const store = new HistoryStore(root);
+  // Without a running service, edits since the last command are recorded here first. Restore records them itself.
+  if (['list', 'show', 'block'].includes(action)) await recordAgentChanges(root, [doc]);
   const print = (value: unknown, text: string) => console.log(values.json ? JSON.stringify(value, null, 2) : text);
   if (action === 'list' && positionals.length === 2) {
     const versions = await store.list(doc);
     print({ documentId: doc, retentionDays: store.retentionDays, versions },
       versions.length ? [`Version history for ${doc}, newest first (kept ${store.retentionDays} days):`, ...versions.map(describe)].join('\n')
-        : `No history recorded for ${doc} yet. OpenDoc records versions while it runs and before every restore.`);
+        : `No history recorded for ${doc} yet. OpenDoc records versions while it runs and when commands such as check and review see a change.`);
   } else if (action === 'show' && target && positionals.length === 3) {
     const comparison = await compareVersion(store, doc, target);
     const lines = [`${describe(comparison.version)}`, comparison.identical ? 'Identical to the current source.' : 'Compared with the current source:'];

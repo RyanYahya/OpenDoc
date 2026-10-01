@@ -6,6 +6,7 @@ import { parseArgs } from 'node:util';
 import { applicationRoot } from '../runtime/paths';
 import { dependencyPin, installedApplication, packageIdentity, packageMetadata, packageNames, workspaceFormat, type Edition, type PackageIdentity } from './workspace';
 import { runProcess } from './process';
+import { historyDisabledVariable } from '../server/history-paths';
 
 const usageFor = (edition: Edition) => edition === 'headless'
   ? `Usage: npx --yes ${packageNames.headless} init <folder> [--json]\nCreates a headless workspace without starting a server. The folder must be new or empty.`
@@ -92,7 +93,8 @@ export async function initializeWorkspace(destination: string, options: { source
     await installedApplication(stage);
     if (dependencies.validate) await dependencies.validate(stage);
     else {
-      const result = await runProcess(process.execPath, [resolve(stage, 'node_modules/opendoc/bin/opendoc.mjs'), 'check', '--json'], stage, { capture: true });
+      // A new workspace starts without history; its first versions come from actual work.
+      const result = await runProcess(process.execPath, [resolve(stage, 'node_modules/opendoc/bin/opendoc.mjs'), 'check', '--json'], stage, { capture: true, env: { ...process.env, [historyDisabledVariable]: 'off' } });
       if (result.code) throw new Error('The installed workspace did not pass its authoring check.');
     }
     await requireEmptyDestination(root);

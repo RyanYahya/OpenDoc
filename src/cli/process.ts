@@ -1,8 +1,8 @@
 import { spawn } from 'node:child_process';
 
-export async function runProcess(command: string, args: string[], cwd: string, options: { capture?: boolean; diagnostics?: boolean } = {}) {
+export async function runProcess(command: string, args: string[], cwd: string, options: { capture?: boolean; diagnostics?: boolean; env?: NodeJS.ProcessEnv } = {}) {
   return await new Promise<{ stdout: string; code: number }>((accept, reject) => {
-    const child = spawn(command, args, { cwd, stdio: ['inherit', options.capture || options.diagnostics ? 'pipe' : 'inherit', 'inherit'] });
+    const child = spawn(command, args, { cwd, ...(options.env ? { env: options.env } : {}), stdio: ['inherit', options.capture || options.diagnostics ? 'pipe' : 'inherit', 'inherit'] });
     let stdout = '';
     let canceled = false;
     child.stdout?.on('data', chunk => { if (options.capture) stdout += String(chunk); else process.stderr.write(chunk); });

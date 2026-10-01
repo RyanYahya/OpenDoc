@@ -1,6 +1,9 @@
 /** Each document keeps its history beside its source, so a synced folder carries both together. */
 export const historyFolder = '.history';
 
+/** Set to `off` by initialization so validating a fresh workspace does not record its first versions. */
+export const historyDisabledVariable = 'OPENDOC_HISTORY';
+
 /** Feedback, history, media, and transient files are not versioned as text sources. */
 export function trackedSourcePath(relativePath: string) {
   const parts = relativePath.split(/[\\/]/);

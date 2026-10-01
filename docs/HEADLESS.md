@@ -92,6 +92,8 @@ If typechecking, layout, PPTX preparation, or source-freshness checks fail, the 
 
 The agent must inspect every page image at a readable scale, examine representative extracted text, and check the content against the brief and sources. Fix clipping, missing glyphs, awkward breaks, bad crops, incorrect claims, and other material defects. After changing source, regenerate the review artifacts and inspect affected pages and adjacent breaks. The [review skill](../.agents/skills/opendoc-review-document/SKILL.md) defines the full pass. If the agent cannot inspect images, report that concrete limitation; generating PNGs is not visual inspection.
 
+Headless keeps the same [version history](HISTORY.md) as normal OpenDoc in `documents/<id>/.history/`. With no file watcher, `create`, `check`, `review`, `export`, `comments`, and `history` record each document's changed source as an Agent change before they run, so running `check` after each round of edits gives every round its own version. Use `npx opendoc history list|show|block <id>` to find earlier wording and `history restore` to bring it back.
+
 Render and source-freshness failures return a nonzero exit status and structured diagnostics when available. They leave the previous successful review files intact, so those files must not be represented as the failed revision's output. Inspect the current command result before using an existing path.
 
 When the final revision is ready:

@@ -7,6 +7,7 @@ import { rm } from 'node:fs/promises';
 import { renderOnce, validId } from './render';
 import { captureExportInputs } from './export-inputs';
 import { getBlock, type DocumentState } from '../shared/types';
+import { recordAgentChanges } from './history-capture';
 
 const usage = 'Usage: npx opendoc comments list <doc> [--json]\n       npx opendoc comments resolve <doc> <comment-id> [--json]\n       npx opendoc comments reopen <doc> <comment-id> [--json]\n       npx opendoc comments delete <doc> <comment-id> [--json]\n       npx opendoc comments restore <doc> <comment-id> [--json]\n       npx opendoc comments add <doc> <block-id> "text" [--json]';
 
@@ -41,7 +42,9 @@ export async function runCommentsCli(args: string[], root = process.cwd(), optio
   if (values.help) { console.log(values.json ? JSON.stringify({ usage }, null, 2) : usage); return; }
   const [action, doc, target, ...words] = positionals;
   if (!doc || !validId(doc)) throw new Error(usage);
-  else if (action === 'list' && positionals.length === 2) console.log(JSON.stringify(await readComments(root, doc), null, 2));
+  // Agents read and resolve feedback around their edits; keep those edits as their own version.
+  if (['list', 'resolve', 'reopen', 'delete', 'restore', 'add'].includes(action)) await recordAgentChanges(root, [doc]);
+  if (action === 'list' && positionals.length === 2) console.log(JSON.stringify(await readComments(root, doc), null, 2));
   else if ((action === 'resolve' || action === 'reopen') && target && positionals.length === 3) {
     const comment = (await readComments(root, doc)).find(c => c.id === target);
     if (!comment) throw new Error('Comment not found.');

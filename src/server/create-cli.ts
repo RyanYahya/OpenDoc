@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { createDocument, CreateDocumentError, listStarters } from './create';
 import { createFromTemplate } from './templates';
+import { recordAgentChanges } from './history-capture';
 
 const invalid = (message: string) => new CreateDocumentError(message, 'INVALID_INPUT', 400);
 const usage = 'Usage: npx opendoc create [<id>] --project <project-id> --title "Document title" [--theme <theme-id>] [--format document|presentation]\n       Add --template <template-id> for a reusable template or --starter <starter> for an example draft.\n       npx opendoc create --list [--json]';
@@ -24,7 +25,9 @@ export async function runCreateCli(args: string[], root = process.cwd()): Promis
   const result = values.template
     ? await createFromTemplate(root, values.template, input)
     : await createDocument(root, { ...input, starter: values.starter, format: values.format });
-  console.log(values.json ? JSON.stringify(result, null, 2) : `Created ${result.entry}\nOpen it in OpenDoc, then ask Codex to develop it using your brief and sources.`);
+  // The scaffold is the document's earliest version, so the agent's first draft can be compared with it.
+  await recordAgentChanges(root, [result.id]);
+  console.log(values.json ? JSON.stringify(result, null, 2) : `Created ${result.entry}\nAsk your agent to develop it from your brief and sources.`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

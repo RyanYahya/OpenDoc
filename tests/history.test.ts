@@ -208,7 +208,7 @@ test('the history CLI lists, compares, and restores with structured output', { t
     await writeFile(f.entry, source().replace('A stable paragraph', 'An agent paragraph'));
     const { runHistoryCli } = await import('../src/server/history-cli');
     await runHistoryCli(['list', 'proof', '--json'], f.root);
-    assert.equal(JSON.parse(output.pop()!).versions.length, 1, 'Listing is read-only; it does not record the pending change.');
+    assert.deepEqual(JSON.parse(output.pop()!).versions.map((version: { label: string }) => version.label), ['Agent change', 'Earliest saved state'], 'Without a running service, listing first records the pending agent change.');
     await runHistoryCli(['show', 'proof', first.id, '--json'], f.root);
     assert.deepEqual(JSON.parse(output.pop()!).blocks.map((block: { id: string }) => block.id), ['target']);
     await runHistoryCli(['restore', 'proof', first.id, '--block', 'target', '--json'], f.root);

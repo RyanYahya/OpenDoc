@@ -106,7 +106,12 @@ export async function main(rawArgs = process.argv.slice(2)) {
           if (args.includes('--help') || args.includes('-h')) { const help = 'Usage: npx opendoc check [--json]\nTypechecks workspace documents, themes, and templates.'; console.log(json ? JSON.stringify({ usage: help }) : help); break; }
           if (args.length) throw new Error('Usage: npx opendoc check [--json]');
           const { checkWorkspace, validateInstallation } = await import('./check');
-          await validateInstallation(); await checkWorkspace(root, json); break;
+          await validateInstallation();
+          // Agents check after editing; without a running service this is where their edits are versioned.
+          const { recordAgentChanges } = await import('../server/history-capture');
+          const { discoverDocumentIds } = await import('../server/export-batch');
+          await recordAgentChanges(root, await discoverDocumentIds(root));
+          await checkWorkspace(root, json); break;
         }
         default: throw new Error(`Unknown command: ${command}. Use npx opendoc --help.`);
       }

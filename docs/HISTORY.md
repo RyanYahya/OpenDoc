@@ -10,11 +10,11 @@ OpenDoc records a version whenever a document's text sources change:
 
 - **Your edit**: a text correction saved from the reader with Save all.
 - **Undo**: Undo saved changes in the reader.
-- **Agent change**: any change made outside the reader, usually by your coding agent or an editor. OpenDoc waits for writes to settle for a few seconds, so one save or one burst of agent writes becomes one version.
+- **Agent change**: any change made outside the reader, usually by your coding agent or an editor. While OpenDoc runs, it waits for writes to settle for a few seconds, so one save or one burst of agent writes becomes one version. Without a running service, the commands an agent runs after editing record the change instead (see below).
 - **Restored**: a block, section, or version restored from history. The state being replaced is recorded first, so every restore can be undone.
-- **Earliest saved state**: the first version OpenDoc saw, recorded when the service starts or the document first appears.
+- **Earliest saved state**: the first version OpenDoc saw, recorded when the service starts, the document first appears, or `npx opendoc create` makes it.
 
-Changes made while OpenDoc is closed are recorded as one Agent change the next time it starts. In OpenDoc Headless there is no running service; `npx opendoc history restore` records the current state before it restores, and earlier states exist only where an earlier session or restore recorded them.
+Changes made while OpenDoc is closed are recorded as one Agent change the next time it starts, or earlier by the first command below. In OpenDoc Headless, and in normal OpenDoc while the browser service is stopped, there is no file watcher. Instead `create`, `check`, `review`, `export`, `comments`, and `history` record a document's text sources as an Agent change when they differ from its latest version, before doing their own work: `check` and `export --all` for every document, the others for the documents they name. Because agents run `check` and `review` after editing, each round of edits keeps its own version; edits made between two commands become one version. A running service records changes itself, so these commands leave its history to it.
 
 Text sources are the files the document owns in `documents/<id>/`: `index.tsx`, `theme.tsx`, `assets.json`, and local data or code such as JSON, CSV, and TypeScript files. Feedback in `comments.json` keeps its own history and is not part of document versions. Files in `media/` and other binary or very large files are identified by their hash only: they are never copied into history, and restoring never changes them. Use [Media](MEDIA.md) to regenerate or replace visuals.
 
@@ -55,7 +55,7 @@ npx opendoc history block <doc> <block-id> [--json]
 npx opendoc history restore <doc> <version> [--block <id> | --section <id>] [--json]
 ```
 
-`list` prints versions newest first. `show` compares one version with the current source, block by block. `block` lists the earlier wording of one block. `restore` restores the whole version, or with `--block` or `--section` only that block; it prints the command that undoes it. Restore refuses while the running reader holds unsaved text edits for the document.
+Each command first records changes made since the latest version when no service is running. `list` prints versions newest first. `show` compares one version with the current source, block by block. `block` lists the earlier wording of one block. `restore` restores the whole version, or with `--block` or `--section` only that block; it prints the command that undoes it. Restore refuses while the running reader holds unsaved text edits for the document.
 
 ## Storage
 
