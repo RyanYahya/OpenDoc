@@ -38,6 +38,9 @@
   --notice-ink: #424242;
   --destructive: #b42318;
   --destructive-fill: #b42318;
+  --destructive-fill-hover: #9e1f15;
+  --destructive-fill-active: #8a1b12;
+  --on-destructive: #ffffff;
   --error-surface: #e8e8e8;
   --error-ink: #242424;
   --error-line: #777777;

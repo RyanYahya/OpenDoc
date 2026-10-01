@@ -106,6 +106,28 @@
   color: var(--muted);
   box-shadow: none;
 }
+/* Confirms an action that removes something, such as deleting a document or a folder. */
+.ui-button.destructive {
+  background: var(--destructive-fill);
+  border-color: var(--destructive-fill);
+  color: var(--on-destructive);
+  box-shadow: var(--shadow-control);
+}
+.ui-button.destructive:hover {
+  background: var(--destructive-fill-hover);
+  border-color: var(--destructive-fill-hover);
+}
+.ui-button.destructive:active:not(:disabled) {
+  background: var(--destructive-fill-active);
+  border-color: var(--destructive-fill-active);
+}
+.ui-button.destructive:disabled,
+.ui-button.destructive[data-disabled] {
+  background: var(--control-active);
+  border-color: var(--control-active);
+  color: var(--muted);
+  box-shadow: none;
+}
 .ui-button.icon-button {
   background: transparent;
   border: 0;

@@ -69,7 +69,7 @@ export function ProjectDialog({ open, project, documentCount, connected, themes,
           <div className="dialog-actions"><Dialog.Close render={<Button disabled={busy} />}>Cancel</Dialog.Close><Button className="primary" type="submit" disabled={busy || !connected || !name.trim()}>{busy ? 'Saving…' : project ? 'Save changes' : 'Create project'}</Button></div>
         </form>
         {project && <div className="project-delete">
-          {confirmDelete ? <><p>Delete this empty project?</p><div className="dialog-actions"><Button onClick={() => setConfirmDelete(false)} disabled={busy}>Keep project</Button><Button onClick={() => void remove()} disabled={busy || !connected || documentCount > 0}>Delete project</Button></div></>
+          {confirmDelete ? <><p>Delete this empty project?</p><div className="dialog-actions"><Button onClick={() => setConfirmDelete(false)} disabled={busy}>Keep project</Button><Button className="destructive" onClick={() => void remove()} disabled={busy || !connected || documentCount > 0}>{busy ? 'Deleting…' : 'Delete project'}</Button></div></>
             : <><Button className="text-button" onClick={() => setConfirmDelete(true)} disabled={busy || documentCount > 0}>Delete project</Button>{documentCount > 0 && <p className="field-hint">Move its documents to another project before deleting it.</p>}</>}
         </div>}
       </Dialog.Popup>

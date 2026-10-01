@@ -60,7 +60,6 @@
 .ui-button.document-menu-trigger { position: absolute; top: 8px; right: 8px; min-width: 28px; min-height: 28px; padding: 6px; border: 0; border-radius: 6px; background: var(--surface); color: var(--muted); box-shadow: none; }
 .ui-button.document-menu-trigger:hover, .ui-button.document-menu-trigger[data-popup-open] { color: var(--ink); background: var(--control-hover); }
 .document-menu-positioner { z-index: 60; }
-.ui-button.document-delete-button { background: var(--destructive-fill); border-color: var(--destructive-fill); color: white; }
 .documents-list .document-card-wrap { padding-right: 44px; }
 .documents-list .document-menu-trigger { top: 50%; right: 0; transform: translateY(-50%); border-color: transparent; background: transparent; box-shadow: none; }
 @media (hover: hover) and (pointer: fine) {

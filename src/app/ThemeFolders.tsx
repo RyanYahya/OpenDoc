@@ -180,7 +180,7 @@ export function ThemeFolderDialog({ action, manifest, themes, connected, onClose
   if (!current) return null;
   const actions = (label: string, busyLabel: string, disabled: boolean, danger = false, cancel?: RefObject<HTMLButtonElement | null>) => <div className="dialog-actions">
     <Dialog.Close render={<Button ref={cancel} disabled={busy} />}>Cancel</Dialog.Close>
-    <Button type="submit" className={danger ? 'theme-folder-delete-button' : 'primary'} disabled={busy || !connected || disabled}>{busy ? busyLabel : label}</Button>
+    <Button type="submit" className={danger ? 'destructive' : 'primary'} disabled={busy || !connected || disabled}>{busy ? busyLabel : label}</Button>
   </div>;
 
   if (current.kind === 'create' || current.kind === 'rename') {

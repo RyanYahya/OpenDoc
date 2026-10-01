@@ -73,7 +73,7 @@ export function DocumentActionDialog({ selection, connected, onClose, onRenamed,
       <form onSubmit={event => void submit(event)} aria-busy={busy}>
         {!deleting && <label className="create-field" htmlFor="document-name"><span>Document name</span><Input ref={input} id="document-name" value={name} onChange={event => { setName(event.target.value); setError(''); }} disabled={busy} maxLength={160} required autoComplete="off" /></label>}
         {error && <p className="field-error" role="alert">{error}</p>}
-        <div className="dialog-actions"><Dialog.Close render={<Button ref={cancel} disabled={busy} />}>Cancel</Dialog.Close><Button type="submit" className={deleting ? 'document-delete-button' : 'primary'} disabled={busy || !connected || (!deleting && !name.trim())}>{busy ? deleting ? 'Deleting…' : 'Saving…' : deleting ? 'Delete document' : 'Save name'}</Button></div>
+        <div className="dialog-actions"><Dialog.Close render={<Button ref={cancel} disabled={busy} />}>Cancel</Dialog.Close><Button type="submit" className={deleting ? 'destructive' : 'primary'} disabled={busy || !connected || (!deleting && !name.trim())}>{busy ? deleting ? 'Deleting…' : 'Saving…' : deleting ? 'Delete document' : 'Save name'}</Button></div>
       </form>
     </Dialog.Popup></Dialog.Portal>
   </Dialog.Root>;

@@ -36,7 +36,6 @@
 .theme-folder-empty p { max-width: 52ch; margin-inline: auto; line-height: 1.6; }
 
 .theme-folder-dialog .field-hint { margin-top: 8px; }
-.ui-button.theme-folder-delete-button { background: var(--destructive-fill); border-color: var(--destructive-fill); color: white; }
 .theme-organization dl { margin: 0; font-size: 12px; }
 .theme-organization dl div { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 12px; }
 .theme-organization dl div + div { margin-top: 10px; }
