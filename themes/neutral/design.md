@@ -10,7 +10,7 @@ Maintain regular paragraph spacing and enough separation before a new section. U
 
 ## Type and emphasis
 
-The sans-serif family carries both display and reading text. Weight and scale establish hierarchy; grayscale distinguishes secondary notes. Use bold for a short emphasis and italic for a change of voice. Keep labels readable and avoid using uppercase for ordinary sentences. The executable definition in `index.ts` owns all sizes, spacing, and style values. The default A4 page uses 54 pt margins, 11 pt body type, 1.5 leading, and 12 pt paragraph gaps. Standard headings are 30, 21, and 14 pt with 1.2 leading and weight 600; title blocks start at 32 pt. Captions are 9 pt and small notes 8.5 pt. A template may supply different starting proportions; document styles can adapt them.
+The sans-serif family carries both display and reading text. Weight and scale establish hierarchy; grayscale distinguishes secondary notes. Use bold for a short emphasis and italic for a change of voice. Keep labels readable and avoid using uppercase for ordinary sentences. `index.ts` sets the page, body, and palette values: an A4 page with 54 pt margins, 11 pt body type, 1.5 leading, and 12 pt paragraph gaps. Neutral defines no `design` rules, so the remaining sizes are OpenDoc's default type roles: headings are 30, 21, and 14 pt with 1.2 leading and weight 600, title blocks start at 32 pt, captions are 9 pt, and small notes 8.5 pt. A template may supply different starting proportions; document styles can adapt them.
 
 ## Palette
 

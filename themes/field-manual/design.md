@@ -1,6 +1,6 @@
 # Field Manual
 
-**Evidence before ornament.** Field Manual is a technical publishing system with warm stock, dense ink, a safety-orange spine, coded annotations, and visible revision information. Use it for manuals, evidence dossiers, decision records, and operational handovers. Every line identifies, divides, connects, or measures something. It is not a nostalgic imitation of an agency document.
+**Evidence before ornament.** Field Manual is a technical publishing system with warm stock, dense ink, a safety-orange spine, coded annotations, and visible revision information. Use it for manuals, evidence dossiers, decision records, and operational handovers. Every line identifies, divides, connects, or measures something.
 
 ## Palette and function
 
@@ -55,9 +55,11 @@ Import `theme` from `themes/field-manual`, and import the following from `compon
 - `ManualSpine({id, children})` provides the exact 6/18 pt opening geometry.
 - `ManualOpening({id, code, label, title, subtitle?, surface?})` keeps the title and its supporting line with the code.
 - `SpecRows({id, rows, surface?})` takes `{label, value}` records. Labels occupy 68 pt; values flow beside them. Use real metadata, definitions, or revision information.
-- `EvidenceChain({id, steps})` takes exactly three `{title, detail}` entries in source/method/action order.
+- `EvidenceChain({id, steps})` takes exactly three `{title, detail}` entries in source/method/action order. The theme labels the steps `01 / INPUT`, `02 / METHOD`, and `03 / OUTPUT` and draws the arrows between them.
 - `ManualAnnotation({id, code, surface?, children})` separates a quiet explanatory note from the main reading field.
 - `DirectivePage({id, code, revision, title, lead, rows})` creates a full dark closing/revision page with an orange rule and spine. It is reusable publication content, not a preview-only graphic.
+
+Text a document passes to these components edits in the reader and saves at the document's call site: codes, titles, subtitles, leads, annotations, `SpecRows` values, and evidence-step titles and details. A row value or step is editable when its wording identifies one record. Code-chip and `SpecRows` labels are set in capitals by the theme; the step labels, `DirectivePage`'s `Closing directive` label, and its `FM / RULE` note are the theme's own. These stay read-only and say why, and the arrows are decorations that cannot be selected as text.
 
 Preserve stable IDs and real record identity. Avoid wrapping a whole long section in an unbreakable component. Normal `TitleBlock`, headings, tables, figures, lists, code, and callouts also receive executable theme styles.
 

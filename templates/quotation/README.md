@@ -6,11 +6,11 @@ A native Forme quotation with an opening reference and dates, paired seller/clie
 
 ## Instance data
 
-Creation copies this folder's `data.json` into the new document and safely fills the initial title. Each document then edits its own data. Its TSX entry exports template and data provenance; changing `data.json` changes the content and metadata. Existing quotations and template examples do not share mutable input.
+Creation copies this folder's `data.json` into the new document and safely fills the initial title. Each document then edits its own data. Its TSX entry exports template and data provenance; changing `data.json` changes the content and metadata. Corrections made in the reader to supplied text (the title, number, dates, party names and details, introduction, terms, acceptance wording, item descriptions and units, and the tax label) save to `data.json` after the parser accepts them. Quantities, prices, and totals are calculated, and the `QUOTATION` label, `From` and `Prepared for`, the totals labels, and the signature-line captions belong to the template; these stay read-only and say why. Existing quotations and template examples do not share mutable input.
 
 Required fields are `schemaVersion: 1`, `title`, `number`, `issuedOn`, `seller`, `client`, `synthetic`, and `pricing`. Dates use real `YYYY-MM-DD` values. Optional `validUntil` cannot precede the issue date. Each party has a required `name` (one supplied line, up to 180 characters) and optional `details` (up to 700 characters and eight supplied address/contact lines). Both wrap naturally within the columns. Longer background belongs in the flowing introduction or terms.
 
-Optional `introduction` and `acceptance` are prose. Acceptance adds blank name, signature, and date lines, not an assertion that anyone has signed. Optional `terms` is an array of `{ id, title, text }`; each ID must be unique and stable when reordered. Term comment targets include a length-prefixed ID. The pricing table is a single stable comment target across pages. Unknown fields fail rather than silently disappearing.
+Optional `introduction` and `acceptance` are prose. Acceptance adds blank name, signature, and date lines, not an assertion that anyone has signed. Optional `terms` is an array of `{ id, title, text }`; each ID must be unique and stable when reordered. Term comment targets include a length-prefixed ID. The pricing table is a single stable block across pages; its rows take their IDs from item `id`s, so phrase comments on a cell follow its item. Unknown fields fail rather than silently disappearing.
 
 Set `synthetic: true` for illustrative data. All bundled examples identify fictional parties, dates, prices, rates, and terms in the PDF and each footer. Set it to false only after replacing the samples with actual supplied material. This is a generic quotation format; no jurisdiction-specific tax or legal certification is claimed.
 
@@ -24,17 +24,17 @@ Set `synthetic: true` for illustrative data. All bundled examples identify ficti
 
 The shared `templates/_shared/commerce.ts` uses integer arithmetic: quantity × unit price is rounded to the currency precision **for each line, half up**; those rounded lines form the subtotal; the fixed discount is subtracted; the supplied tax rate is applied to that net amount and rounded half up once; the quoted total is net plus tax. Both subtotal and total must fit within `Number.MAX_SAFE_INTEGER` minor units, although calculations themselves use BigInt. The typical example is 1,225.00 − 25.00 + 120.00 = USD 1,320.00.
 
-This version supports one currency and one tax rate applied to the whole discounted subtotal. Inclusive tax, line-specific rates, percentage discounts, credits, and additional charges need an explicit contract extension. Do not work around validation by typing different totals into prose. `templates/_shared/Pricing.tsx` provides the native line-item and totals display for the quotation, invoice, and proposal layouts.
+This version supports one currency and one tax rate applied to the whole discounted subtotal. Inclusive tax, line-specific rates, percentage discounts, credits, and additional charges need an explicit contract extension. Do not work around validation by typing different totals into prose. `templates/_shared/Pricing.tsx` provides the native line-item and totals display for the quotation, invoice, and proposal layouts. In the reader, item descriptions, units, and the tax label edit in place; quantities, unit prices, amounts, and totals are calculated, and their Edit tooltips ask you to have your agent change the inputs.
 
 ## Logo
 
-The opening has a quiet, outlined **YOUR LOGO** placeholder at the upper right. It appears once, on the cover when present or at the start of the body. Replace it with supplied artwork through the optional `logo` prop, or pass `logo={null}` to omit it. The placeholder follows the selected theme; actual artwork retains its own colors. Keep logo dimensions bounded and preserve its aspect ratio; 88 × 28 points is a starting size, not a brand requirement.
+The opening has a quiet, outlined **YOUR LOGO** placeholder at the upper right. It appears once, at the top of the first page. Replace it with supplied artwork through the optional `logo` prop, or pass `logo={null}` to omit it. The placeholder follows the selected theme; actual artwork retains its own colors. Keep logo dimensions bounded and preserve its aspect ratio; 88 × 28 points is a starting size, not a brand requirement.
 
 Import reusable artwork into the shared [asset library](../../docs/ASSETS.md), inspect its variation guidance, and bind an exact version to the intended document:
 
 ```sh
-pnpm assets -- inspect logo acme
-pnpm assets -- bind my-document logo acme --variation default
+npx opendoc assets inspect logo acme
+npx opendoc assets bind my-document logo acme --variation default
 ```
 
 Import `Logo` from `opendoc` and supply `<Logo width={88} height={28} />` through the `logo` prop. Choose a variation for the actual page background, preserve its proportions, and review the PDF. The existing logo block provides the feedback target; a decorative mark needs no figure caption. Artwork belongs in the layout, separately from commercial JSON.

@@ -29,7 +29,8 @@ Use the embedded **OpenDoc Sans** regular and semibold faces. This is a delibera
 
 | Role | Size / leading |
 | --- | --- |
-| Cover | 62 pt / 1.01 |
+| `ConsultingCover` title | 62 pt / 1.01 |
+| `Cover` and template cover titles | 58 pt / 1.04 |
 | Answer or exhibit heading | 31 pt / 1.10 |
 | Section | 19 pt / 1.15 |
 | Subheading | 12 pt / 1.20 |
@@ -61,8 +62,10 @@ Import the theme from `./index` and the components below from `./components` (us
 | `Implication` | `id`, optional `label`, text children; pale-blue decision field |
 | `SourceNote` | `id`, text children; a readable caveat and source line |
 
+Text a document passes to these components edits in the reader and saves at the document's call site, including `RankedBars` labels and details when their wording identifies one row. `ExhibitTitle` draws `EXHIBIT` and the slash as fixed decorations around the editable `number`; the topic, like the cover label, is set in capitals by the theme. Bar values and axis labels are computed from the data, and `Implication` shows its own `What this changes` label until you pass `label`. These stay read-only and say why.
+
 Use standard OpenDoc `Pages`, `Paragraph`, `DataTable`, `Figure` and citation primitives for the rest; the theme’s native role styles already govern them. Retain stable IDs. The three-page `preview.tsx` demonstrates the cover, exact system grammar and an applied analytical exhibit through these same reusable components.
 
 ## Basis
 
-This is an independent implementation using OpenDoc primitives, a deep-blue/electric-blue palette, answer-first exhibits, and square geometry. It uses bundled OpenDoc Sans instead of proprietary fonts and includes no McKinsey artwork. The theme does not claim affiliation or endorsement.
+This is an independent implementation built from OpenDoc primitives. It uses bundled OpenDoc Sans instead of proprietary fonts and includes no McKinsey artwork. The theme does not claim affiliation or endorsement.

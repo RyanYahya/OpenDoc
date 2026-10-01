@@ -1,8 +1,8 @@
 # Monthly operational report
 
-A pure, reusable English report with flowing sections, a scorecard, risks, and an action register. The supplied data is clearly marked synthetic in every exported PDF.
+A reusable report with flowing sections, a scorecard, risks, and an action register. The bundled sample data is synthetic, and its PDF says so. The template's own headings, labels, month names, and number formats are English; an Arabic report needs a local variant of the layout, following [Arabic and right-to-left text](../../docs/AUTHORING.md#arabic-and-right-to-left-text).
 
-Create a working instance with `pnpm run create -- monthly-report --project <project-id> --template monthly-report --title "Monthly report"`. It is also available from Templates in the app. Its source binds this template to a neighboring `data.json` through the generated `theme.tsx` adapter; retain that adapter and the exact selections in `assets.json`. Update the data for a new edition; the layout stays in one place. The project's default document theme applies at creation, with `--theme <id>` available to override it.
+Create a working instance with `npx opendoc create monthly-report --project <project-id> --template monthly-report --title "Monthly report"`. It is also available from Templates in the app. Its source binds this template to a neighboring `data.json` through the generated `theme.tsx` adapter; retain that adapter and the exact selections in `assets.json`. Update the data for a new edition; the layout stays in one place. The project's default document theme applies at creation, with `--theme <id>` available to override it.
 
 ## Data contract
 
@@ -19,6 +19,6 @@ The five optional arrays are `metrics`, `highlights`, `risks`, `actions`, and `n
 
 `parseMonthlyReport(unknown)` validates the entire input and reports concise field paths in one error. Unknown fields are rejected so a misspelling cannot silently disappear. It returns a fresh normalized `MonthlyReportData` object without mutating the input. `monthlyReportTemplate(theme)` returns `parse`, `meta`, and `render` for the shared template binding and batch export commands, using the instance's adapted theme.
 
-Narrative and risk comment targets use record IDs, so reordering preserves their identities. Tables keep their block identity through pagination; string cells use stable record bindings for quick text corrections. Calculated and numeric values remain protected. Long narratives split into flowing blocks and are edited by the agent in `data.json`; the reader explains this when selected. Prose and tables flow naturally; the template has no manually positioned pages or prescribed page count.
+Narrative and risk comment targets use record IDs, so reordering preserves their identities. Tables keep their block identity through pagination and take row IDs from record `id`s, so string cells take quick text corrections and phrase comments that follow their records. Formatted numbers, dates, and statuses remain protected, and their Edit tooltips say why. Long narratives split into flowing blocks and are edited by the agent in `data.json`; the reader explains this when selected. Prose and tables flow naturally; the template has no manually positioned pages or prescribed page count.
 
 The instance `data.json` is normalized report input. Leave supplied spreadsheets or prior reports in the project’s existing organization; chart-specific derived rows belong in the document’s `media/<id>/`. See [document media](../../docs/MEDIA.md).
