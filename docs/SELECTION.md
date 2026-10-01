@@ -2,6 +2,8 @@
 
 OpenDoc uses stable component selection for text editing and feedback. A fixed-width bottom bar offers Edit and Comment for the selection; both use the same panel above it. Saved comments have their own bottom-right dock. Hover outlines identify components before clicking. Text selection and copying stay inside the editor; the PDF itself supports component selection, links, navigation, and reading.
 
+From the keyboard, each page or slide is a single Tab stop. Arrow keys move between its components in visual reading order (down each column, across table rows), Home and End reach the first and last, and Enter or Space selects, exactly as a click does. When a component's text is selectable on its own, the arrow keys visit the text; Alt+Up Arrow (Option+Up Arrow on a Mac) moves to the enclosing component and Alt+Down Arrow back to its contents. Escape clears the selection. Skip links at the top of the reader jump to the document and to comments. Component names come from their kind and visible text, never from block IDs.
+
 ## Correcting text
 
 Click a component to select it without opening a panel. Choose the Edit icon to edit its full text value, or the Comment icon to write feedback. The bar keeps the same dimensions when either panel opens or closes. Valid changes enter a browser draft and update a separately rendered PDF preview. Moving to another component, clicking outside, **Done**, Cmd/Ctrl+Enter, and Escape keep those changes without writing source. A change that crosses source values or generated content must be corrected or reset before leaving the editor. Formatting and structural changes remain agent work.

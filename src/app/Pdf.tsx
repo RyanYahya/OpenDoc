@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type KeyboardEvent,
   type RefObject,
 } from "react";
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask, TextLayer } from "pdfjs-dist";
@@ -17,6 +18,7 @@ import { getBlock, type Fragment, type ArtifactSummary, type RenderArtifact } fr
 import type { DocumentSelection } from "../shared/selection";
 import { mapPdfTextSpans, pdfSpanRangeForSelection, type PdfSpanMapping } from "./pdfSelection";
 import { loadPdfWithDeadline } from './pdfLoading';
+import { componentName, componentNavigation, isWithin, moveComponentFocus, navigationMove } from './componentNavigation';
 
 let pdfJs: Promise<typeof import('pdfjs-dist')> | undefined;
 function loadPdfJs() {
@@ -185,6 +187,10 @@ type PdfPageProps = {
   onComment?: (id: string, page: number) => void;
   onTextClick?: (selection: DocumentSelection, rect: { left: number; top: number; width: number; height: number }) => void;
   onNavigate?: (page: number) => void;
+  /** Names the page for assistive technology, such as "Page 2 of 8". */
+  label?: string;
+  /** Identifies the element that explains keyboard navigation between components. */
+  keyboardHelp?: string;
 };
 export const PdfPage = memo(function PdfPage({
   pdf,
@@ -199,6 +205,8 @@ export const PdfPage = memo(function PdfPage({
   onComment,
   onTextClick,
   onNavigate,
+  label,
+  keyboardHelp,
 }: PdfPageProps) {
   const container = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -403,6 +411,59 @@ export const PdfPage = memo(function PdfPage({
     return [{ target, x, y, width: Math.max(...lines.map(line => line.x + line.width)) - x,
       height: Math.max(...lines.map(line => line.y + line.height)) - y }];
   }) : [], [artifact, number, renderPage, thumbnail]);
+  // Each page is one tab stop. Arrow keys move through its components in
+  // visual reading order without changing their stacking or click targets.
+  const navigation = useMemo(() => {
+    const textBlocks = new Set(textComponents.map(item => item.target.blockId));
+    return componentNavigation([
+      ...(renderPage && !thumbnail ? artifact?.pages[number - 1]?.fragments ?? [] : []).map(fragment => ({
+        key: `block:${fragment.id}`, x: fragment.x, y: fragment.y, width: fragment.width, height: fragment.height,
+        linear: !textBlocks.has(fragment.id), rowsFirst: getBlock(artifact, fragment.id)?.kind === 'table',
+      })),
+      ...textComponents.map(item => ({ key: `text:${item.target.id}`, owner: `block:${item.target.blockId}`,
+        x: item.x, y: item.y, width: item.width, height: item.height })),
+    ]);
+  }, [artifact, number, renderPage, textComponents, thumbnail]);
+  const names = useMemo(() => {
+    const result = new Map<string, string>();
+    const textBlocks = new Set(textComponents.map(item => item.target.blockId));
+    const texts = new Map(textComponents.map(item => [`text:${item.target.id}`, item.target.text]));
+    for (const item of textComponents) {
+      result.set(`text:${item.target.id}`, componentName({ kind: getBlock(artifact, item.target.blockId)?.kind, text: item.target.text }));
+    }
+    for (const key of navigation.order) {
+      if (!key.startsWith('block:')) continue;
+      const id = key.slice(6);
+      const block = getBlock(artifact, id);
+      const depicts = block?.kind !== 'block' ? undefined
+        : artifact?.assets?.some(use => use.blockId === id && use.kind === 'logo') ? 'Logo'
+        : artifact?.media?.some(use => use.blockId === id) ? 'Image' : undefined;
+      // A container without text of its own is named by its first contents.
+      const contents = navigation.order.find(other => texts.has(other) && isWithin(navigation, other, key));
+      result.set(key, componentName({ kind: block?.kind, depicts, whole: textBlocks.has(id),
+        text: block?.text.trim() || (depicts ? '' : texts.get(contents ?? '')) }));
+    }
+    return result;
+  }, [artifact, navigation, textComponents]);
+  const [activeComponent, setActiveComponent] = useState<string | null>(null);
+  const tabStop = activeComponent && navigation.order.includes(activeComponent)
+    ? activeComponent : navigation.order.find(key => navigation.linear.has(key));
+  function componentFocus(key: string) {
+    return {
+      tabIndex: key === tabStop ? 0 : -1,
+      onFocus: () => setActiveComponent(key),
+      onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+        const move = navigationMove(event);
+        if (!move) return;
+        event.preventDefault();
+        const next = moveComponentFocus(navigation, key, move);
+        if (!next) return;
+        container.current?.querySelector<HTMLElement>(next.startsWith('text:')
+          ? `[data-text-target="${CSS.escape(next.slice(5))}"]`
+          : `.component-target[data-block-id="${CSS.escape(next.slice(6))}"]`)?.focus();
+      },
+    };
+  }
   function rectStyle(f: Pick<Fragment, 'x' | 'y' | 'width' | 'height'>): CSSProperties {
     return {
       left: f.x * scale,
@@ -418,6 +479,9 @@ export const PdfPage = memo(function PdfPage({
       data-page={number}
       data-render-hash={artifact?.hash}
       data-rendered={rendered}
+      role={label ? 'group' : undefined}
+      aria-label={label}
+      aria-describedby={label ? keyboardHelp : undefined}
       onPointerDownCapture={event => { pointerStart.current = { x: event.clientX, y: event.clientY }; }}
       onClickCapture={event => {
         if (event.detail > 0 && Math.hypot(event.clientX - pointerStart.current.x, event.clientY - pointerStart.current.y) > 4) {
@@ -476,10 +540,9 @@ export const PdfPage = memo(function PdfPage({
             {phraseHighlights.map((rect, index) => <div key={index} className="text-selection-highlight" aria-hidden="true" style={{ ...rect, pointerEvents: 'none' }} />)}
             {fragments.map(fragment => {
               const block = getBlock(artifact, fragment.id);
-              const hasText = textComponents.some(item => item.target.blockId === fragment.id);
               return <Button static key={fragment.id} className={`block-target component-target ${selected === fragment.id && showBlockSelection ? 'selected' : ''}`}
-                data-block-id={fragment.id} style={rectStyle(fragment)} tabIndex={hasText ? -1 : 0}
-                aria-label={`Select ${block?.kind ?? 'document'} component: ${block?.text.slice(0, 90) || fragment.id}`}
+                data-block-id={fragment.id} style={rectStyle(fragment)} {...componentFocus(`block:${fragment.id}`)}
+                aria-label={names.get(`block:${fragment.id}`)}
                 onClick={() => onSelect?.(fragment.id, number)}>
                 <span className="block-label" aria-hidden="true">{block?.kind ?? 'Component'}</span>
               </Button>;
@@ -488,8 +551,8 @@ export const PdfPage = memo(function PdfPage({
               const block = getBlock(artifact, item.target.blockId);
               const fullSelected = selection?.targetId === item.target.id && selection.start === 0 && selection.end === item.target.text.length;
               return <Button static key={item.target.id} className={`block-target component-target text-component ${fullSelected ? 'selected' : ''}`}
-                data-text-target={item.target.id} style={rectStyle(item)}
-                aria-label={`Select ${block?.kind ?? 'text'}: ${item.target.text.slice(0, 90)}`}
+                data-text-target={item.target.id} style={rectStyle(item)} {...componentFocus(`text:${item.target.id}`)}
+                aria-label={names.get(`text:${item.target.id}`)}
                 onClick={event => {
                   const rect = event.currentTarget.getBoundingClientRect();
                   onTextClick?.({ blockId: item.target.blockId, targetId: item.target.id, start: 0, end: item.target.text.length,
@@ -500,9 +563,8 @@ export const PdfPage = memo(function PdfPage({
               </Button>;
             })}
             {fragments.filter(fragment => commented?.has(fragment.id)).map(fragment => {
-              const block = getBlock(artifact, fragment.id);
               return <Button static key={fragment.id} className="comment-marker"
-                aria-label={`View comments on ${block?.kind ?? 'block'}: ${block?.text.slice(0, 90) || fragment.id}`}
+                aria-label={`View comments on ${(names.get(`block:${fragment.id}`) ?? 'Component').replace(/^./, letter => letter.toLowerCase())}`}
                 style={{ left: (fragment.x + fragment.width) * scale + 4, top: fragment.y * scale - 6, pointerEvents: 'auto' }}
                 onClick={() => (onComment ?? onSelect)?.(fragment.id, number)}><Icon name="comment" size={12} /></Button>;
             })}

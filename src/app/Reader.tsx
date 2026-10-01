@@ -499,6 +499,16 @@ export function Reader({
       sheet?.querySelector<HTMLElement>(selector)?.focus({ preventScroll: true });
     });
   }
+  function skipToDocument() {
+    const sheet = scroll.current?.querySelector(`[data-sheet="${safePage}"]`);
+    const component = sheet?.querySelector<HTMLElement>('.component-target[tabindex="0"]');
+    if (component) component.focus();
+    else scroll.current?.focus();
+  }
+  function skipToComments() {
+    const panel = document.getElementById('reader-comments');
+    (panel?.querySelector<HTMLElement>('button:not(:disabled), textarea, [tabindex="0"]') ?? commentsTrigger.current)?.focus();
+  }
   function navigateFromRail(number: number, block?: string) {
     if (block) scrollToBlock(block);
     else goPage(number);
@@ -582,6 +592,13 @@ export function Reader({
   </>;
   return (
     <div className="reader">
+      <nav className="skip-links" aria-label="Skip links">
+        <Button static className="skip-link" onClick={skipToDocument}>Skip to {formatLabel.toLowerCase()}</Button>
+        <Button static className="skip-link" onClick={skipToComments}>Skip to comments</Button>
+      </nav>
+      <p id="reader-component-keys" className="sr-only">
+        Use the arrow keys to move between components in reading order, Home and End for the first and last, and Enter to select. {navigator.platform.includes('Mac') ? 'Option' : 'Alt'} with Up Arrow moves to the enclosing component, and with Down Arrow to its contents.
+      </p>
       <header className="reader-toolbar" aria-label={`${formatLabel} toolbar`}>
         <div className="reader-identity">{identity}</div>
         <div className="reader-page-controls">{pageControls}</div>
@@ -709,6 +726,8 @@ export function Reader({
                     onComment={viewComments}
                     onTextClick={selectComponent}
                     onNavigate={goPage}
+                    label={`${pageLabel} ${i + 1} of ${pages.length}`}
+                    keyboardHelp="reader-component-keys"
                   />
                 </section>
               ))}
