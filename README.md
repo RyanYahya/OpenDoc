@@ -17,6 +17,9 @@ Work together in the browser, or let an agent produce the finished files entirel
 - **Consistency across projects.** Reuse themes, fonts, logos, and templates so the next report feels like it belongs with the last one.
 - **A complete starting library.** Adapt the included templates, explore five themes, or ask your agent to create a design of your own.
 - **An easy review loop.** In the browser, correct text directly, leave comments on specific content, and have your agent apply the feedback. Stable identities keep feedback attached through revisions.
+- **Arabic and English.** Write in English, Arabic, or both on one page or slide. Arabic text that the document's fonts cannot draw falls back to the bundled Noto Naskh Arabic, and review flags any character no font covers, which prints as `?`.
+- **Version history.** Every saved edit and agent change is kept for 90 days. Restore one paragraph, one section, or a whole earlier version, and undo any restore.
+- **Organized work.** Group documents into projects, give each a type and status, and find work by type, status, detected language, or your own tags.
 - **Files you own.** Keep editable source, project records, and media alongside your exports. Use the same commands locally or in an agent's remote environment.
 
 ## OpenDoc or OpenDoc Headless?
@@ -33,7 +36,7 @@ Both editions share the **same engine, authoring API, templates, themes, fonts, 
 | Service | A local foreground server while the app is open | No browser or server needed |
 | Package | [`@ryanyahya/opendoc`](https://www.npmjs.com/package/@ryanyahya/opendoc) | [`@ryanyahya/opendoc-headless`](https://www.npmjs.com/package/@ryanyahya/opendoc-headless) |
 
-With Headless, the recipient simply receives the PDF or PowerPoint. They do not need OpenDoc installed.
+With Headless, the recipient receives the PDF or PowerPoint. They do not need OpenDoc installed.
 
 <a id="start"></a>
 
@@ -186,6 +189,7 @@ Updates preserve your edition, documents, templates, themes, assets, and feedbac
 | Produce finished files remotely | [Headless](docs/HEADLESS.md) |
 | Author documents and presentations | [Authoring API](docs/AUTHORING.md) |
 | Create reusable designs | [Templates](docs/TEMPLATES.md) · [Themes](docs/THEMES.md) |
+| Group documents into projects; rename, duplicate, delete, and restore them | [Projects](docs/PROJECTS.md) |
 | Type, status, language, and tags for documents, themes, and templates | [Tags](docs/TAGS.md) |
 | Work with images, fonts, and logos | [Media](docs/MEDIA.md) · [Assets](docs/ASSETS.md) |
 | Apply precise corrections and feedback | [Selection](docs/SELECTION.md) |

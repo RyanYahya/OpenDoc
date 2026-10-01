@@ -43,7 +43,7 @@ Give your agent [the README](../README.md#installation) and the brief. It can in
 | Grok Bot | Give the Bot this setup and production workflow on its cloud computer. It can follow the guide directly or save the workflow as a skill through its Cursor-compatible skill/plugin support. |
 | Other agents | Read `AGENTS.md` and the matching linked skill, then use the CLI. |
 
-These are shared files and documented setup paths, not a requirement to install an agent-specific plugin. The host needs file access, terminal execution, a way to inspect page images, and a way to return files. Use the host's existing tools for those steps. No particular model or tool-call name is required.
+These are shared files and documented setup paths; no agent-specific plugin is required. The host needs file access, terminal execution, a way to inspect page images, and a way to return files. Use the host's existing tools for those steps. No particular model or tool-call name is required.
 
 For workspaces created by an older release, add `@AGENTS.md` to `CLAUDE.md` if it is missing, preserving any existing instructions. Where `.claude/skills` does not already exist, create a relative directory link to `../.agents/skills`. If it already contains skills, preserve them and expose only the missing OpenDoc skills. Runtime updates deliberately preserve workspace instructions rather than replacing user edits. Any agent can also read `node_modules/opendoc/AGENTS.md` and its linked skills directly.
 
@@ -90,7 +90,7 @@ npx opendoc review project-deck --export --json
 
 If typechecking, layout, PPTX preparation, or source-freshness checks fail, the command exits unsuccessfully and retains the previous set. Use ordinary `review` to inspect a valid PDF while fixing PPTX-only limitations. `powerpointVisualReview: "required"` explicitly records that creating an editable deck does not verify its appearance in native PowerPoint. Subsequent ordinary review replaces the set with PDF review artifacts only, so use `--export` again after the final revision when both formats are needed.
 
-The agent must inspect every page image at a readable scale, examine representative extracted text, and check the content against the brief and sources. Fix clipping, missing glyphs, awkward breaks, bad crops, incorrect claims, and other material defects. After changing source, regenerate the review artifacts and inspect affected pages and adjacent breaks. The [review skill](../.agents/skills/opendoc-review-document/SKILL.md) defines the full pass. If the agent cannot inspect images, report that concrete limitation; generating PNGs is not visual inspection.
+The agent must inspect every page image at a readable scale, examine representative extracted text, and check the content against the brief and sources. Fix clipping, missing glyphs, awkward breaks, bad crops, incorrect claims, and other material defects. A character that no font covers prints as `?` and appears in `issues` as `missing-glyphs`; Arabic text needs no font setup ([Authoring](AUTHORING.md#arabic-and-right-to-left-text)). After changing source, regenerate the review artifacts and inspect affected pages and adjacent breaks. The [review skill](../.agents/skills/opendoc-review-document/SKILL.md) defines the full pass. If the agent cannot inspect images, report that concrete limitation; generating PNGs is not visual inspection.
 
 Headless keeps the same [version history](HISTORY.md) as normal OpenDoc in `documents/<id>/.history/`. With no file watcher, `create`, `check`, `review`, `export`, `comments`, `documents`, and `history` record each document's changed source as an Agent change before they run, so running `check` after each round of edits gives every round its own version. Use `npx opendoc history list|show|block <id>` to find earlier wording and `history restore` to bring it back.
 
@@ -137,6 +137,18 @@ npx opendoc projects assign my-report client-work
 ```
 
 `delete` moves the document to Trash with its history, comments, tags, and status, and prints its restore command; `restore` takes that restore ID, or the document ID when Trash holds one copy. A duplicate starts its own history and has no status. [Projects](PROJECTS.md#commands) describes each command.
+
+## Leave and apply feedback
+
+Headless has no reader; comments go through the same `comments` command:
+
+```sh
+npx opendoc comments add my-report report-summary "Cite the survey here." --phrase "grew 12%"
+npx opendoc comments list my-report --anchors
+npx opendoc comments resolve my-report <comment-id>
+```
+
+`add` checks the block against a fresh render of saved source. `--phrase` anchors the comment to one occurrence of those words in the block, such as one table cell; add `--target <field-id>` when the words appear in more than one text field. `list --anchors` adds `anchorStatus` (`attached`, `changed`, or `missing`) and `targetAvailable` to each comment, so after a revision the agent can see which feedback still finds its text. `delete` keeps the record and prints its `comments restore` command, and `list --deleted` shows comments deleted in the last 90 days. Resolve a comment only after making and verifying the change; [opendoc-apply-comments](../.agents/skills/opendoc-apply-comments/SKILL.md) covers the workflow.
 
 ## Create themes and templates remotely
 

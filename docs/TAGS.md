@@ -13,7 +13,7 @@ Each item has up to four facets:
 
 ## Types
 
-An item has one type. Typing a type's ID, label, or alias in any letter case selects it, and a new type replaces the old one. Themes have no type.
+An item has one type. Typing a type's ID, label, or alias in any letter case selects it, and a new type replaces the old one. Themes have no type; a type word given to a theme becomes a custom tag with the type's label, such as *Report*.
 
 | Type | Also selected by |
 | --- | --- |
@@ -31,7 +31,7 @@ The format is already known, so presentation and document are never types.
 
 ## Status
 
-A document has no status until one is set: `draft`, `in-review`, `final`, or `archived`. *In review* and *review* also select `in-review`. The app shows the status as a small badge on cards, list rows, and the reader title. Duplicating a document copies its tags but not its status.
+A document has no status until one is set: `draft`, `in-review`, `final`, or `archived`. Labels and aliases also work in any letter case: *in review*, *review*, and *reviewing* select `in-review`, *done* and *delivered* select `final`, and *archive* selects `archived`. The app shows the status as a small badge on cards, list rows, and the reader title. Duplicating a document copies its tags but not its status.
 
 ## Language
 
@@ -74,7 +74,7 @@ npx opendoc templates list --type invoice --language english
 npx opendoc themes list --tag Minimal --language arabic
 ```
 
-`<kind>` is `document`, `presentation`, `theme`, or `template`. Tags may be separate arguments or comma-separated; a type spelling sets the type, and removing one clears it. `set` with no tags clears an item's type and custom tags. `tags status <id>` alone prints the status. `find` requires every listed tag and each filter; `--status none` finds documents without a status. Documents in `find` also report their library name, format, and project. Every command prints JSON with `type` and `status` as `null` when unset.
+`<kind>` is `document`, `presentation`, `theme`, or `template`. A presentation is a document with a presentation format, so `document` and `presentation` are interchangeable and results report `"kind": "document"`. `tags` and `tags list` take `--kind` to count one kind. Tags may be separate arguments or comma-separated; a type spelling sets the type, and removing one clears it. `set` with no tags clears an item's type and custom tags. `tags status <id>` alone prints the status. `find` needs at least one tag or filter, and returns items that carry every listed tag and match each filter; `--status none` finds documents without a status. Documents in `find` also report their library name, format, and project. Every command prints JSON with `type` and `status` as `null` when unset. `npx opendoc themes tags <theme-id>` from earlier versions still edits a theme's tags.
 
 ## Tagging by agents
 
