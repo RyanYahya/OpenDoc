@@ -176,6 +176,8 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
   } : undefined;
   const themeFolder = theme ? folderOf(manifest, theme.id) : undefined;
   const themeTags = theme ? tagManifest.themes[theme.id] ?? [] : [];
+  // Custom tags appear on a theme's page and in its Tags editor, not on gallery cards.
+  const cardTags: Record<string, string[]> = {};
   const summary = `${visible.length} ${visible.length === 1 ? 'print system' : 'print systems'}${currentFolder ? ` in “${isolate(currentFolder.name)}”` : ''}${activeTag ? ` tagged “${isolate(tagLabel)}”` : ''}`;
   return <section className="library-content themes-content">
     {selection ? <>
@@ -212,7 +214,7 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
         {tagging && <TagFilter className="theme-tag-filter" manifest={tagManifest} kind="themes" ids={themes.map(item => item.id)} value={activeTag} onChange={value => { location.hash = filterHash({ tag: value }); }} />}
       </div>}
       <p className="theme-gallery-label" role="status">{loaded ? summary : 'Reading local themes…'}</p>
-      <ThemeGallery themes={visible} generation={generation} onRefresh={onRefresh} organize={organizing || tagging ? { manifest, tags: tagManifest.themes, folders: organizing, tagging, showFolder: organizing && !currentFolder, tag: activeTag, disabled: !connected, onAction: onFolderAction } : undefined} />
+      <ThemeGallery themes={visible} generation={generation} onRefresh={onRefresh} organize={organizing || tagging ? { manifest, tags: cardTags, folders: organizing, tagging, showFolder: organizing && !currentFolder, tag: activeTag, disabled: !connected, onAction: onFolderAction } : undefined} />
       {loaded && themes.length === 0 && <div className="empty-state"><h2>No themes yet</h2><p>Create a print system with your coding agent. Its reviewed PDF will appear here.</p><Button onClick={() => setPromptOpen(true)}>Create theme</Button></div>}
       {loaded && missingFolder && <div className="empty-state"><h2>Folder not found</h2><p>It may have been deleted or renamed in another window. Your themes are still in the library.</p><a href={filterHash({ folder: '' })} className="project-templates-link">Show all themes<Icon name="arrow" size={16} /></a></div>}
       {loaded && folderEmpty && <div className="empty-state theme-folder-empty"><h2><bdi>{currentFolder!.name}</bdi> is empty</h2><p>Drag a theme card onto the <bdi>{currentFolder!.name}</bdi> button, or choose Move to folder… from a theme’s options menu.</p><a href={filterHash({ folder: '' })} className="project-templates-link">Show all themes<Icon name="arrow" size={16} /></a></div>}

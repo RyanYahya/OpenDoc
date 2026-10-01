@@ -1,5 +1,5 @@
 import { ExportHistoryDialog } from "./ExportHistoryDialog";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { AssetsBrowser } from "./AssetsBrowser";
 import { TemplatesBrowser } from "./TemplatesBrowser";
@@ -21,8 +21,8 @@ import { documentName, documentFormat, formatLabel, type DocumentFormat, type Do
 import { emptyProjects, type Project, type ProjectsManifest } from "../shared/projects";
 import { emptyThemeFolders, type ThemeFoldersManifest } from "../shared/theme-folders";
 import type { ThemeOrganization } from "./ThemeFolders";
-import { emptyTags, type TagsManifest } from "../shared/tags";
-import { TagEditorDialog, type TagState, type TagTarget } from "./Tags";
+import { emptyTags, itemStatus, type DocumentStatus, type TagsManifest } from "../shared/tags";
+import { DetailsDialog, StatusBadge, TagsProvider, type TagState, type TagTarget } from "./Tags";
 import "./style.css";
 
 function route() {
@@ -191,9 +191,19 @@ function App() {
       notifications.success(`${copy.name} created`, { label: 'Open', onClick: () => go(`document/${copy.id}`) });
     }).catch(error => notifications.error(error.message)).finally(() => { copying.current = false; setDuplicating(false); });
   };
+  // The notification helpers are recreated on each render; keep the status setter stable.
+  const notify = useRef(notifications);
+  notify.current = notifications;
+  const setDocumentStatus = useCallback((document: DocumentSummary, status: DocumentStatus | null) => {
+    void api<{ manifest: TagsManifest }>(`/api/tags/documents/${document.id}/status`, { method: 'PUT', body: JSON.stringify({ status }) })
+      .then(result => { setTagState({ manifest: result.manifest }); void refresh(); })
+      .catch(error => notify.current.error(error.message));
+  }, [refresh]);
+  // Cards, menus, and the reader read type and status from here; status changes need a connection.
+  const tagContext = useMemo(() => ({ manifest: tagState.manifest, setStatus: connected && !tagState.error ? setDocumentStatus : undefined }), [tagState, connected, setDocumentStatus]);
   const createProject = () => setProjectDialog({ project: null });
   const createDocument = (format: DocumentFormat = 'document') => { setCreationFormat(format); setHelp(true); };
-  return <div className={`app ${current.view === "document" ? "reading" : ""}`}>
+  return <TagsProvider value={tagContext}><div className={`app ${current.view === "document" ? "reading" : ""}`}>
     {current.view !== "document" && <Sidebar view={current.view} projectId={project?.id} projects={manifest.projects} documents={documents} loaded={loaded} connected={connected} appearance={appearance} onAppearanceChange={changeAppearance} onCreateProject={createProject} onProjectSettings={project => setProjectDialog({ project })} />}
     <main className="main">
       {current.view === "document" && !active && <header className="topbar">
@@ -207,7 +217,7 @@ function App() {
       {current.view === "document" ? active ? <Reader key={active.id} state={active} generation={generation} connected={connected} onShowExports={() => setExportDocument(active)}
         identity={<>
           <IconButton label={`Back to ${backLabel}`} className="reader-back" render={<a href={`#${backHash}`} />} nativeButton={false}><Icon name="left" size={17} /></IconButton>
-          <div className="reader-document"><a href={project ? `#project/${project.id}` : "#library"} title={project?.name ?? "Documents"} dir="auto">{project?.name ?? "Documents"}</a><span className="reader-context-separator" aria-hidden="true">/</span><span className="reader-document-title" title={documentName(active)} dir="auto">{documentName(active)}</span></div>
+          <div className="reader-document"><a href={project ? `#project/${project.id}` : "#library"} title={project?.name ?? "Documents"} dir="auto">{project?.name ?? "Documents"}</a><span className="reader-context-separator" aria-hidden="true">/</span><span className="reader-document-title" title={documentName(active)} dir="auto">{documentName(active)}</span><StatusBadge status={itemStatus(tagState.manifest, active.id)} className="reader-status" /></div>
         </>}
         options={<DocumentMenuItems document={active} onAction={onDocumentAction} disabled={!connected || duplicating} exports={false}>
           <AppearanceSubmenu value={appearance} onChange={changeAppearance} />
@@ -224,7 +234,7 @@ function App() {
       setManifest(previous => ({ ...previous, projects: previous.projects.some(project => project.id === saved.id) ? previous.projects.map(project => project.id === saved.id ? saved : project) : [...previous.projects, saved] }));
       go(`project/${saved.id}`); void refresh();
     }} onDeleted={() => { setManifest(previous => ({ ...previous, projects: previous.projects.filter(project => project.id !== projectDialog?.project?.id) })); go("library"); void refresh(); }} />
-    <TagEditorDialog target={tagTarget} manifest={tagState.manifest} connected={connected} onClose={() => setTagTarget(null)} onChange={next => { setTagState({ manifest: next }); void refresh(); }} />
+    <DetailsDialog target={tagTarget} manifest={tagState.manifest} connected={connected} onClose={() => setTagTarget(null)} onChange={next => { setTagState({ manifest: next }); void refresh(); }} />
     <ExportHistoryDialog document={exportDocument} connected={connected} onClose={() => setExportDocument(null)} />
     <DocumentActionDialog selection={documentAction} connected={connected} onClose={() => setDocumentAction(null)} onRenamed={(id, name) => {
       setDocuments(previous => previous.map(document => document.id === id ? { ...document, name } : document)); void refresh();
@@ -240,7 +250,7 @@ function App() {
     <MoveDocumentDialog document={moving} projects={manifest.projects} connected={connected} onClose={() => setMoving(null)} onMoved={projectId => {
       setDocuments(previous => previous.map(document => document.id === moving?.id ? { ...document, projectId } : document)); void refresh();
     }} />
-  </div>;
+  </div></TagsProvider>;
 }
 
 createRoot(document.getElementById("root")!).render(<UiProvider><App /></UiProvider>);

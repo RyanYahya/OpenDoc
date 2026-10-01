@@ -35,9 +35,6 @@
 .documents-list .cover-preview { max-width: 24px; }
 .documents-list .document-card h2 { grid-area: title; margin: 0; font-size: var(--title-size); line-height: var(--title-leading); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-wrap: nowrap; }
 .documents-list .card-meta { grid-area: meta; margin: 0; font-size: var(--caption-size); }
-/* Tags take their own line under the title only when an item has them. */
-.document-grid .card-tags { margin-top: 2px; }
-.documents-list .card-tags { grid-column: 2 / -1; margin-top: -2px; }
 .documents-list .document-project-link, .documents-list .document-move { margin: 0; justify-self: end; font-size: var(--caption-size); }
 @media (max-width: 1050px) {
   .documents-content .library-heading, .project-documents .library-heading { align-items: flex-start; flex-wrap: wrap; }

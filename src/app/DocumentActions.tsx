@@ -4,6 +4,7 @@ import { documentName, documentFormat, type DocumentSummary } from '../shared/ty
 import { api } from './api';
 import { Button, Dialog, Input } from './ui';
 import { Icon } from './ui/Icon';
+import { StatusSubmenu } from './Tags';
 
 export type DocumentAction = 'rename' | 'duplicate' | 'move' | 'tags' | 'delete' | 'exports';
 export type DocumentActionHandler = (document: DocumentSummary, action: DocumentAction) => void;
@@ -20,7 +21,8 @@ export function DocumentMenuItems({ document, disabled, onAction, exports = true
     <Menu.Item className="ui-menu-item" disabled={disabled} onClick={() => onAction(document, 'rename')}><Icon name="edit" size={16} /><span>Rename</span></Menu.Item>
     <Menu.Item className="ui-menu-item" disabled={disabled || !document.projectId} onClick={() => onAction(document, 'duplicate')}><Icon name="copy" size={16} /><span>Duplicate</span></Menu.Item>
     <Menu.Item className="ui-menu-item" disabled={disabled} onClick={() => onAction(document, 'move')}><Icon name="folder" size={16} /><span>Move to project…</span></Menu.Item>
-    <Menu.Item className="ui-menu-item" disabled={disabled} onClick={() => onAction(document, 'tags')}><Icon name="tag" size={16} /><span>Edit tags…</span></Menu.Item>
+    <Menu.Item className="ui-menu-item" disabled={disabled} onClick={() => onAction(document, 'tags')}><Icon name="tag" size={16} /><span>Details…</span></Menu.Item>
+    <StatusSubmenu document={document} disabled={disabled} />
     {exports && <><Menu.Separator className="ui-menu-separator" />
       <Menu.Item className="ui-menu-item" disabled={disabled} onClick={() => onAction(document, 'exports')}><Icon name="archive" size={16} /><span>Previous exports</span></Menu.Item></>}
     {children && <><Menu.Separator className="ui-menu-separator" />{children}</>}

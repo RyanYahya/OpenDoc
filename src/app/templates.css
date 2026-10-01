@@ -48,6 +48,5 @@
 .template-grid-presentations .template-preview { aspect-ratio: 16 / 9; min-height: 0; }
 .template-detail-presentation .template-preview { min-height: 0; }
 
-.template-tag-filter { margin-top: 16px; }
-.template-card .template-card-tags { margin-top: 4px; }
+.template-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 16px; }
 .template-options .template-tags { margin-top: 28px; }

@@ -8,13 +8,13 @@ import { DocumentViewControl, type DocumentView } from './DocumentViewControl';
 import { Button, IconButton, SelectControl } from './ui';
 import { SearchField } from './SearchField';
 import { Icon } from './ui/Icon';
-import { matchesTag, TagFilter, type TagState } from './Tags';
-import { emptyTags, tagLabel, type TagsManifest } from '../shared/tags';
+import { detailsText, filtering, ItemFilters, matchesFilters, noFilters, type TagState } from './Tags';
+import { emptyTags, type TagsManifest } from '../shared/tags';
 import './projects.css';
 
-/** Search also matches tag labels, so typing “Finance” finds tagged work. */
+/** Search also matches the type, status, and custom tags, so typing “Minutes” or a client name finds work. */
 function searchText(document: DocumentSummary, tags: TagsManifest, extra = '') {
-  return `${documentName(document)} ${document.artifact?.meta.description ?? ''} ${extra} ${(tags.documents[document.id] ?? []).map(tagLabel).join(' ')}`.toLowerCase();
+  return `${documentName(document)} ${document.artifact?.meta.description ?? ''} ${extra} ${detailsText(tags, 'documents', document.id)}`.toLowerCase();
 }
 
 type ViewProps = { view: DocumentView; onViewChange: (view: DocumentView) => void };
@@ -31,26 +31,26 @@ export function DocumentsBrowser({ format = 'document', projects, documents, tag
   format?: DocumentFormat; projects: Project[]; documents: DocumentSummary[]; tags?: TagState; loaded: boolean; onCreate: () => void; onMove: (document: DocumentSummary) => void; onAction: DocumentActionHandler; disabled: boolean;
 }) {
   const [query, setQuery] = useState('');
-  const [tag, setTag] = useState('');
+  const [filters, setFilters] = useState(noFilters);
   const manifest = tags?.manifest ?? emptyTags();
   const plural = format === 'presentation' ? 'Presentations' : 'Documents';
   const projectById = new Map(projects.map(project => [project.id, project]));
-  const hasFilters = Boolean(query) || Boolean(tag);
-  const visible = documents.filter(document => matchesTag(manifest, 'documents', document.id, tag)
+  const hasFilters = Boolean(query) || filtering(filters);
+  const visible = documents.filter(document => matchesFilters(manifest, 'documents', document, filters)
     && searchText(document, manifest, projectById.get(document.projectId ?? '')?.name).includes(query.toLowerCase()));
   return <section className="library-content documents-content">
     <div className="library-heading"><h1>{plural}</h1><Button className="primary" aria-label={`Create ${format}`} onClick={onCreate} disabled={!loaded || disabled}><Icon name="plus" size={17} /><span>Create {format}</span></Button></div>
     <DocumentTools noun={format} query={query} onQueryChange={setQuery} view={view} onViewChange={onViewChange}
-      filter={<TagFilter manifest={manifest} kind="documents" ids={documents.map(document => document.id)} value={tag} onChange={setTag} />} />
+      filter={<ItemFilters manifest={manifest} kind="documents" items={documents} value={filters} onChange={setFilters} />} />
     <div className={view === 'list' ? 'documents-list' : 'document-grid'} role="list">{visible.map(document => {
       const project = projectById.get(document.projectId ?? '');
       return <article className="project-document" key={document.id} role="listitem">
-        <DocumentCard document={document} view={view} tags={manifest.documents[document.id]} onAction={onAction} disabled={disabled} onOpen={() => { location.hash = `document/${document.id}`; }} />
+        <DocumentCard document={document} view={view} onAction={onAction} disabled={disabled} onOpen={() => { location.hash = `document/${document.id}`; }} />
         {project ? <a className="document-project-link" href={`#project/${project.id}`}><Icon name="folder" size={15} /><span dir="auto">{project.name}</span></a>
           : <Button className="text-button document-move" onClick={() => onMove(document)} disabled={!projects.length}>Choose a project</Button>}
       </article>;
     })}</div>
-    {!visible.length && <div className="empty-state"><h2>{!loaded ? `Loading ${plural.toLowerCase()}…` : hasFilters ? `No matching ${plural.toLowerCase()}` : `Your ${plural.toLowerCase()} start here`}</h2><p>{!loaded ? 'Opening your local workspace.' : hasFilters ? tag ? 'Try another tag, title, or project name.' : 'Try a different title, project, or tag.' : projects.length ? format === 'presentation' ? 'Create a presentation with your agent and review every slide here.' : 'Create a document in a project, or choose a layout from Templates.' : 'Create your first project using the + beside Projects in the sidebar.'}</p>{loaded && hasFilters && <Button onClick={() => { setQuery(''); setTag(''); }}>Clear filters</Button>}</div>}
+    {!visible.length && <div className="empty-state"><h2>{!loaded ? `Loading ${plural.toLowerCase()}…` : hasFilters ? `No matching ${plural.toLowerCase()}` : `Your ${plural.toLowerCase()} start here`}</h2><p>{!loaded ? 'Opening your local workspace.' : hasFilters ? filtering(filters) ? 'Try other filters, or another title or project name.' : 'Try a different title, project, or tag.' : projects.length ? format === 'presentation' ? 'Create a presentation with your agent and review every slide here.' : 'Create a document in a project, or choose a layout from Templates.' : 'Create your first project using the + beside Projects in the sidebar.'}</p>{loaded && hasFilters && <Button onClick={() => { setQuery(''); setFilters(noFilters); }}>Clear filters</Button>}</div>}
   </section>;
 }
 
@@ -59,11 +59,11 @@ export function ProjectDocuments({ project, documents, tags, loaded, view, onVie
 }) {
   const [query, setQuery] = useState('');
   const [format, setFormat] = useState<'all' | DocumentFormat>('all');
-  const [tag, setTag] = useState('');
+  const [filters, setFilters] = useState(noFilters);
   const manifest = tags?.manifest ?? emptyTags();
-  const hasFilters = Boolean(query) || format !== 'all' || Boolean(tag);
+  const hasFilters = Boolean(query) || format !== 'all' || filtering(filters);
   const visible = documents.filter(document => (format === 'all' || documentFormat(document) === format)
-    && matchesTag(manifest, 'documents', document.id, tag) && searchText(document, manifest).includes(query.toLowerCase()));
+    && matchesFilters(manifest, 'documents', document, filters) && searchText(document, manifest).includes(query.toLowerCase()));
   return <section className="library-content project-documents">
     <div className="library-heading"><h1 dir="auto">{project.name}</h1><div className="project-actions">
       <IconButton label="Project settings" onClick={onSettings}><Icon name="gear" size={18} /></IconButton>
@@ -77,8 +77,8 @@ export function ProjectDocuments({ project, documents, tags, loaded, view, onVie
     <DocumentTools noun="item" query={query} onQueryChange={setQuery} view={view} onViewChange={onViewChange}
       filter={<><SelectControl label="Filter by format" value={format} onValueChange={value => { if (value === 'all' || value === 'document' || value === 'presentation') setFormat(value); }} items={[
         { label: 'All formats', value: 'all' }, { label: 'Documents', value: 'document' }, { label: 'Presentations', value: 'presentation' },
-      ]} /><TagFilter manifest={manifest} kind="documents" ids={documents.map(document => document.id)} value={tag} onChange={setTag} /></>} />
-    <div className={view === 'list' ? 'documents-list' : 'document-grid'} role="list">{visible.map(document => <article className="project-document" key={document.id} role="listitem"><DocumentCard document={document} view={view} tags={manifest.documents[document.id]} onAction={onAction} disabled={disabled} onOpen={() => { location.hash = `document/${document.id}`; }} /></article>)}</div>
-    {!visible.length && <div className="empty-state"><h2>{!loaded ? 'Loading project…' : hasFilters ? 'No matching items' : 'Your project is ready'}</h2><p>{!loaded ? 'Opening your local workspace.' : hasFilters ? 'Try another search, format, or tag.' : 'Create a document or presentation with your agent.'}</p>{loaded && (hasFilters ? <Button onClick={() => { setQuery(''); setFormat('all'); setTag(''); }}>Clear filters</Button> : <a href="#templates" className="project-templates-link">Browse templates<Icon name="arrow" size={16} /></a>)}</div>}
+      ]} /><ItemFilters manifest={manifest} kind="documents" items={documents} value={filters} onChange={setFilters} /></>} />
+    <div className={view === 'list' ? 'documents-list' : 'document-grid'} role="list">{visible.map(document => <article className="project-document" key={document.id} role="listitem"><DocumentCard document={document} view={view} onAction={onAction} disabled={disabled} onOpen={() => { location.hash = `document/${document.id}`; }} /></article>)}</div>
+    {!visible.length && <div className="empty-state"><h2>{!loaded ? 'Loading project…' : hasFilters ? 'No matching items' : 'Your project is ready'}</h2><p>{!loaded ? 'Opening your local workspace.' : hasFilters ? 'Try another search, format, or filter.' : 'Create a document or presentation with your agent.'}</p>{loaded && (hasFilters ? <Button onClick={() => { setQuery(''); setFormat('all'); setFilters(noFilters); }}>Clear filters</Button> : <a href="#templates" className="project-templates-link">Browse templates<Icon name="arrow" size={16} /></a>)}</div>}
   </section>;
 }
