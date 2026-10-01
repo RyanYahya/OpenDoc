@@ -28,9 +28,9 @@
 .correction-actions .ui-button.primary:active:not(:disabled) { background: color-mix(in srgb, var(--accent) 26%, var(--popup-surface)); }
 .correction-actions .ui-button:disabled { opacity: 0.55; }
 .correction-actions kbd { font: inherit; font-size: var(--tag-size); }
-.ui-button.comment-marker { position: absolute; z-index: 4; width: 22px; height: 22px; min-width: 22px !important; min-height: 22px !important; padding: 4px !important; border: 1px solid var(--paper); border-radius: 50%; color: var(--on-accent); background: var(--comment-marker); }
-.ui-button.comment-marker:hover { background: var(--accent-hover); color: var(--on-accent); }
-.ui-button.comment-marker:active:not(:disabled) { background: var(--accent-active); color: var(--on-accent); }
+.ui-button.comment-marker { position: absolute; z-index: 4; width: 22px; height: 22px; min-width: 22px !important; min-height: 22px !important; padding: 4px !important; border: 1px solid var(--paper); border-radius: 50%; color: var(--on-document-accent); background: var(--comment-marker); }
+.ui-button.comment-marker:hover { background: var(--document-accent-hover); color: var(--on-document-accent); }
+.ui-button.comment-marker:active:not(:disabled) { background: var(--document-accent-active); color: var(--on-document-accent); }
 /* Touch screens keep the small marker on the page but give it a finger-sized tap area. */
 @media (pointer: coarse) {
   .ui-button.comment-marker::after { content: ""; position: absolute; inset: -9px; border-radius: 50%; }

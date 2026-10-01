@@ -43,7 +43,8 @@
   --error-surface: #e8e8e8;
   --error-ink: #242424;
   --error-line: #777777;
-  --comment-marker: var(--accent);
+  /* Markers sit on the page, which keeps its paper colours in either appearance. */
+  --comment-marker: var(--document-accent);
   --scrollbar: #a3a3a3;
   --selection: #d2e4f5;
   --pdf-selection: #2777c133;
@@ -70,6 +71,8 @@
   --paper: #ffffff;
   --paper-muted: #555555;
   --document-accent: #2777c1;
+  --document-accent-hover: #226aab;
+  --document-accent-active: #1d5b93;
   --on-document-accent: #ffffff;
   --media-surface: #ffffff;
 }

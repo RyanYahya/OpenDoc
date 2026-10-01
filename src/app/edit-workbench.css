@@ -102,7 +102,7 @@
 .save-bar .discard-edits { color: var(--muted); }
 .save-bar .discard-edits:hover:not([data-disabled]) { color: var(--ink); background: var(--control-hover); }
 .save-bar .ui-button.save-edits { gap: 10px; padding-inline: 12px; }
-.save-bar kbd { font: inherit; font-size: var(--tag-size); opacity: 0.75; }
+.save-bar kbd { font: inherit; font-size: var(--tag-size); font-weight: 400; }
 .edit-session-notice { padding: 10px 12px; max-width: 620px; display: flex; align-items: center; gap: 12px; }
 .edit-session-notice p { margin: 0; font-size: var(--caption-size); line-height: 1.5; }
 .edit-session-notice .ui-button { flex-shrink: 0; font-size: var(--caption-size); padding: 6px 9px; min-height: 32px; }
