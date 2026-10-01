@@ -27,7 +27,7 @@ Any other text becomes a custom tag. Custom tags are trimmed and compared withou
 
 - **Documents**, **Presentations**, and each project show tags on cards and list rows. Their **Filter by tag** control lists the tags in use, grouped like the vocabulary, with counts; search also matches tag labels.
 - A card's **…** menu and the reader's options menu offer **Edit tags…**. The editor shows the standard groups suited to the item, then custom tags; choose a tag to add or remove it, or type a new one and press Enter.
-- **Themes** shows tags on cards and on a theme's page, filters across every folder, and keeps **Edit tags…** in each theme's menu.
+- **Themes** shows tags on cards and on a theme's page, combines the tag filter with the folder filter buttons, and keeps **Edit tags…** in each theme's menu.
 - **Templates** shows tags on cards, filters both the Documents and Presentations tabs, and offers **Edit tags…** on a template's page.
 
 ## Command line

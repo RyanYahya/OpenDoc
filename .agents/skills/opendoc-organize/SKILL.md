@@ -47,13 +47,13 @@ Change folders only when the user asks; see [Organize the catalog](../../../docs
 
 ```sh
 npx opendoc themes folders
-npx opendoc themes folders create Clients/Acme
-npx opendoc themes assign <theme-id> Clients/Acme
+npx opendoc themes folders create Acme
+npx opendoc themes assign <theme-id> Acme
 ```
 
-`folders update <path> --name "Name" --parent <path|none>` renames or moves a folder, `folders delete <path>` moves its themes and subfolders to its parent, and `assign <theme-id> none` returns a theme to the top level. Confirm a folder deletion or a move of several themes first. Folders live in `themes/folders.json`; never move, rename, or edit `themes/<id>/`, because documents and project defaults refer to it.
+Folders are single-level: a folder cannot contain another folder, so offer a flat set of names (or a tag) when the user describes a hierarchy. `folders rename <name> <new-name>` renames a folder and keeps its themes, `folders delete <name>` leaves its themes outside any folder without deleting them, and `assign <theme-id> none` takes a theme out of its folder. Quote names with spaces. `folders create` refuses a `/` path and every command refuses `--parent`. Confirm a folder deletion or a move of several themes first. Folders live in `themes/folders.json`; never move, rename, or edit `themes/<id>/`, because documents and project defaults refer to it. A file from an earlier version with nested folders is flattened when read; if `themes folders` reports a `migration`, tell the user which folders were flattened, renamed, or removed before making further changes.
 
-**Ready:** the requested folder structure and assignments are in place, or no folder change was requested.
+**Ready:** the requested folders and assignments are in place, or no folder change was requested.
 
 ## 5. Group documents into projects with approval
 
