@@ -20,7 +20,7 @@ export async function historyService(root: string) {
 
 /**
  * Record agent edits made since a document's latest version, from the commands an agent
- * runs after editing: create, check, review, export, comments, and history. While the
+ * runs after editing: create, check, review, export, comments, documents, and history. While the
  * normal edition's service runs, its watcher records them with the reader's own origins.
  * Without one, as always in OpenDoc Headless, these commands are the only place an edit is
  * seen, so they record it as an Agent change. Unchanged documents add nothing.

@@ -92,7 +92,7 @@ In the reader, select a component and choose **Edit** or **Comment**. Text edits
 
 The **History** button keeps every saved edit, agent change, and restore for 90 days. Restore one paragraph, one section, or a whole earlier version and leave the rest as it is; every restore offers Undo. Deleted comments stay under **Recently deleted** in the comments panel. [Version history](HISTORY.md) explains what is recorded and when a restore is refused.
 
-Use the document **…** menu to rename, duplicate, move, or delete it. Rename changes the library name, while the PDF title remains authored content. Duplicate copies saved source, local data, media, and feedback. Delete offers Undo and keeps a recovery folder in `.opendoc/trash/`; existing exports remain in `output/`. [Projects](PROJECTS.md) covers membership and recovery.
+Use the document **…** menu to rename, duplicate, move, or delete it. Rename changes the library name, while the PDF title remains authored content. Duplicate copies saved source, local data, media, and feedback. Delete offers Undo and keeps a recovery folder in `.opendoc/trash/`; existing exports remain in `output/`. `npx opendoc documents rename|duplicate|delete|trash|restore` does the same from the command line, in either edition. [Projects](PROJECTS.md) covers membership and recovery.
 
 ## Use media, logos, and fonts
 

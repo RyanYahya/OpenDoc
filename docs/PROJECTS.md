@@ -58,4 +58,16 @@ npx opendoc projects delete empty-project
 
 `--theme` sets the default for both formats; `--document-theme` and `--presentation-theme` set one each, and `none` clears a default. An omitted flag leaves that default unchanged. `projects list --json`, `create`, and `update` report each project's resolved `themeDefaults` as `{ "document": …, "presentation": … }`, so readers need not apply the fallback themselves.
 
+Rename, duplicate, delete, and restore documents with the `documents` command, in either edition:
+
+```sh
+npx opendoc documents rename proposal "Proposal for Acme"
+npx opendoc documents duplicate proposal --id proposal-2027 --title "Proposal 2027" --project client-work
+npx opendoc documents delete proposal
+npx opendoc documents trash
+npx opendoc documents restore <restore-id>
+```
+
+These use the same operations as the **…** menu. `rename` changes the library name only. `duplicate` copies the saved source, data, media, comments, and tags into a new document with its own history and no status; without options, the copy is `<id>-copy` named “Copy of …” in the original's project. `delete` moves the document, with its history and comments, to Trash, keeps its tags and status with it, and prints the `documents restore` command. `documents trash` lists deleted documents with their restore IDs, most recent first. `restore` also accepts a document ID when Trash holds one copy of it. Never move folders in or out of `.opendoc/trash/` by hand.
+
 A missing or unknown project prevents creation before any document folder is written. Use the normal creation command for bespoke documents too, then replace its editable source. If importing existing document folders, assign each one using the project command. Preserve unrelated assignments and stable document IDs.

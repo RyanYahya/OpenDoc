@@ -89,15 +89,28 @@ async function copyDocumentTree(source: string, destination: string, root: strin
   }
 }
 
-export async function duplicateDocument(root: string, id: string, title: string) {
+/**
+ * Copy a document into a new folder. The copy keeps the original's project unless another is
+ * chosen, and is named "Copy of …" unless a name is given. An explicit ID never replaces work.
+ */
+export async function duplicateDocument(root: string, id: string, title: string, options: { id?: string; name?: string; projectId?: string } = {}) {
   return withProjects(root, async (manifest, save) => {
     const source = await documentFolder(root, id);
-    const project = requireProject(manifest, manifest.assignments[id]);
-    const stem = `${id.slice(0, 65).replace(/-$/, '')}-copy`;
-    let copyId = stem, suffix = 2;
-    while (await exists(resolve(root, 'documents', copyId)) || Object.hasOwn(manifest.assignments, copyId) || (manifest.names && Object.hasOwn(manifest.names, copyId)) || (manifest.formats && Object.hasOwn(manifest.formats, copyId))) copyId = `${stem}-${suffix++}`;
+    const project = requireProject(manifest, options.projectId ?? manifest.assignments[id]);
+    const taken = async (candidate: string) => Boolean(await exists(resolve(root, 'documents', candidate))) || Object.hasOwn(manifest.assignments, candidate) || Boolean(manifest.names && Object.hasOwn(manifest.names, candidate)) || Boolean(manifest.formats && Object.hasOwn(manifest.formats, candidate));
+    let copyId: string;
+    if (options.id !== undefined) {
+      if (!validId(options.id) || options.id.length > 80) throw new ProjectError('Use a document ID of 80 characters or fewer, with lowercase letters, numbers, and single hyphens.');
+      if (await taken(options.id)) throw new ProjectError(`A document already uses the ID ${options.id}. Choose another ID.`, 409);
+      copyId = options.id;
+    } else {
+      const stem = `${id.slice(0, 65).replace(/-$/, '')}-copy`;
+      let suffix = 2;
+      copyId = stem;
+      while (await taken(copyId)) copyId = `${stem}-${suffix++}`;
+    }
     const staging = resolve(root, 'documents', `.copy-${randomUUID()}`);
-    const name = documentDisplayName(`Copy of ${((manifest.names && Object.hasOwn(manifest.names, id) ? manifest.names[id] : title)).replace(/[\r\n]/g, ' ').trim()}`.slice(0, 160));
+    const name = options.name !== undefined ? documentDisplayName(options.name) : documentDisplayName(`Copy of ${((manifest.names && Object.hasOwn(manifest.names, id) ? manifest.names[id] : title)).replace(/[\r\n]/g, ' ').trim()}`.slice(0, 160));
     try {
       await copyDocumentTree(source, staging, root, id, copyId);
       manifest.assignments[copyId] = project.id;
@@ -134,8 +147,32 @@ export async function deleteDocument(root: string, id: string) {
   });
 }
 
+const trashId = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+/** A deleted document as listed from Trash; restore it with its restore ID. */
+export interface TrashEntry { restoreId: string; id: string; name?: string; format: DocumentFormat; projectId: string | null; deletedAt: string }
+
+/** Documents in Trash, most recently deleted first. Unreadable records are skipped, never changed. */
+export async function listTrash(root: string): Promise<TrashEntry[]> {
+  const folder = resolve(await realpath(root), '.opendoc', 'trash');
+  const entries = await readdir(folder, { withFileTypes: true }).catch(error => { if (error.code === 'ENOENT') return []; throw error; });
+  const listed: TrashEntry[] = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !trashId.test(entry.name)) continue;
+    try {
+      const file = resolve(folder, entry.name, 'receipt.json');
+      const info = await exists(file);
+      if (!info?.isFile() || info.isSymbolicLink() || info.size > 4096) continue;
+      const receipt = JSON.parse(await readFile(file, 'utf8')) as TrashReceipt;
+      if (!receipt || typeof receipt.id !== 'string' || !validId(receipt.id) || typeof receipt.deletedAt !== 'string') continue;
+      listed.push({ restoreId: entry.name, id: receipt.id, ...(typeof receipt.name === 'string' ? { name: receipt.name } : {}), format: receipt.format === 'presentation' ? 'presentation' : 'document', projectId: typeof receipt.projectId === 'string' ? receipt.projectId : null, deletedAt: receipt.deletedAt });
+    } catch { continue; }
+  }
+  return listed.sort((a, b) => b.deletedAt.localeCompare(a.deletedAt) || a.restoreId.localeCompare(b.restoreId));
+}
+
 export async function restoreDocument(root: string, restoreId: string) {
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(restoreId)) throw new ProjectError('Invalid deleted document.');
+  if (!trashId.test(restoreId)) throw new ProjectError('Invalid deleted document.');
   return withProjects(root, async (manifest, save) => {
     const trash = resolve(await trashFolder(root), restoreId);
     if (!await exists(trash)) throw new ProjectError('This document has already been restored or is no longer in Trash.', 404);

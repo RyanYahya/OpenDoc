@@ -92,7 +92,7 @@ If typechecking, layout, PPTX preparation, or source-freshness checks fail, the 
 
 The agent must inspect every page image at a readable scale, examine representative extracted text, and check the content against the brief and sources. Fix clipping, missing glyphs, awkward breaks, bad crops, incorrect claims, and other material defects. After changing source, regenerate the review artifacts and inspect affected pages and adjacent breaks. The [review skill](../.agents/skills/opendoc-review-document/SKILL.md) defines the full pass. If the agent cannot inspect images, report that concrete limitation; generating PNGs is not visual inspection.
 
-Headless keeps the same [version history](HISTORY.md) as normal OpenDoc in `documents/<id>/.history/`. With no file watcher, `create`, `check`, `review`, `export`, `comments`, and `history` record each document's changed source as an Agent change before they run, so running `check` after each round of edits gives every round its own version. Use `npx opendoc history list|show|block <id>` to find earlier wording and `history restore` to bring it back.
+Headless keeps the same [version history](HISTORY.md) as normal OpenDoc in `documents/<id>/.history/`. With no file watcher, `create`, `check`, `review`, `export`, `comments`, `documents`, and `history` record each document's changed source as an Agent change before they run, so running `check` after each round of edits gives every round its own version. Use `npx opendoc history list|show|block <id>` to find earlier wording and `history restore` to bring it back.
 
 Render and source-freshness failures return a nonzero exit status and structured diagnostics when available. They leave the previous successful review files intact, so those files must not be represented as the failed revision's output. Inspect the current command result before using an existing path.
 
@@ -122,6 +122,21 @@ npx opendoc export project-deck --format pptx --json
 Deliver both `output/project-deck.pdf` and `output/project-deck.pptx` unless the user requests a single format. Review the PDF even for a PowerPoint-only request because it supplies the layout used for export. Follow [PowerPoint delivery](AUTHORING.md#powerpoint-delivery) for supported effects, editable objects, font embedding, package/content checks, and native inspection when available.
 
 A remote environment need not have Microsoft PowerPoint installed. Complete available PDF and PPTX package/content checks and state when native PowerPoint appearance was not verified; that limitation alone does not prevent delivery of a valid requested file. A failed PPTX export is a separate incomplete format and must be reported and corrected within scope.
+
+## Manage documents
+
+Headless has no library menu; use the same commands for document lifecycle and grouping:
+
+```sh
+npx opendoc documents rename my-report "Quarterly report"
+npx opendoc documents duplicate my-report --id my-report-q3 --title "Q3 report" --json
+npx opendoc documents delete my-report-q3
+npx opendoc documents trash --json
+npx opendoc documents restore my-report-q3
+npx opendoc projects assign my-report client-work
+```
+
+`delete` moves the document to Trash with its history, comments, tags, and status, and prints its restore command; `restore` takes that restore ID, or the document ID when Trash holds one copy. A duplicate starts its own history and has no status. [Projects](PROJECTS.md#commands) describes each command.
 
 ## Create themes and templates remotely
 

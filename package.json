@@ -19,6 +19,7 @@
     "start": "tsx src/server/index.ts --production",
     "create": "tsx src/server/create-cli.ts",
     "projects": "tsx src/server/projects-cli.ts",
+    "documents": "tsx src/server/documents-cli.ts",
     "export": "tsx src/server/export.ts",
     "comments": "tsx src/server/comments-cli.ts",
     "history": "tsx src/server/history-cli.ts",

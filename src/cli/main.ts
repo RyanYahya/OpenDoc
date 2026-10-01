@@ -13,6 +13,7 @@ ${edition === 'headless'
     : `  npx --yes ${packageNames.normal} init [folder]\n                                   Create a workspace and open OpenDoc\n  npx opendoc start [folder]         Start its installed runtime`}
   npx opendoc create <id>            Create a document or presentation
   npx opendoc projects              Manage projects and membership
+  npx opendoc documents             Rename, duplicate, delete, and restore documents
   npx opendoc templates             Inspect, check, and preview templates
   npx opendoc themes                Inspect, check, and preview themes
   npx opendoc tags                  Set types, status, and tags; find work
@@ -92,6 +93,7 @@ export async function main(rawArgs = process.argv.slice(2)) {
         case 'start': await (await import('./start')).runStart(flags, root); break;
         case 'create': await (await import('../server/create-cli')).runCreateCli(flags, root); break;
         case 'projects': await (await import('../server/projects-cli')).runProjectsCli(flags, root); break;
+        case 'documents': await (await import('../server/documents-cli')).runDocumentsCli(flags, root); break;
         case 'templates': await (await import('../server/templates-cli')).runTemplatesCli(flags, root); break;
         case 'themes': await (await import('../server/themes-cli')).runThemesCli(flags, root); break;
         case 'tags': await (await import('../server/tags-cli')).runTagsCli(flags, root); break;
