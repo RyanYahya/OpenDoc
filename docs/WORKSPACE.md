@@ -1,6 +1,6 @@
 # Using OpenDoc
 
-An open-source document-production workspace for making well-designed English documents and presentations with a coding agent, on your computer or in a remote agent environment.
+An open-source document-production workspace for making well-designed documents and presentations in English, Arabic, or both with a coding agent, on your computer or in a remote agent environment.
 
 Open source under the [MIT license](../LICENSE). Start with the included welcome document and presentation; no personal workspace, account, or API key is included or required.
 
@@ -100,7 +100,7 @@ Use the document **…** menu to rename, duplicate, move, or delete it. Rename c
 
 - **Media:** photographs, illustrations, charts, and diagrams, with each visual's metadata and optional prepared data and recipe beside it. Add or regenerate these with your agent. Original reference material stays in its existing project location. See [Media](MEDIA.md).
 - **Logos:** import SVG or PNG, add named variations, and describe when to use each. A saved document binding pins the chosen version. Place it explicitly with `Logo`; the app's appearance does not select artwork.
-- **Fonts:** import original static TTF/OTF faces and inspect their real PDF specimens. Inter, Roboto, Open Sans, Lato, and Merriweather are bundled with six styles each; Geist includes regular, medium, and bold. Each family retains its license. Fonts must pass compatibility checks before becoming body or heading defaults.
+- **Fonts:** import original static TTF/OTF faces and inspect their real PDF specimens. Inter, Roboto, Open Sans, Lato, and Merriweather are bundled with six styles each; Geist includes regular, medium, and bold; Noto Naskh Arabic, the automatic fallback for Arabic text, includes regular, medium, semibold, and bold. Each family retains its license. Fonts must pass compatibility checks before becoming body or heading defaults.
 
 Theme details can choose assets for **new documents**. Updating a family or theme default does not silently change an existing document. Use the app or the same local CLI, described in [Assets](ASSETS.md):
 
@@ -179,4 +179,4 @@ Authoring uses the public imports `opendoc`, `opendoc/template`, `opendoc/assets
 
 In a source checkout, `src/document/` implements the authoring API, `src/template/` binds validated data, `src/assets/` owns shared asset contracts, `src/rendering/` supplies shared render utilities, `src/cli/` owns installation and command dispatch, and `src/server/` contains render/file operations alongside the normal edition's service entry. `src/shared/` holds shared contracts and `src/app/` is the browser review interface. Shared render and export operations are callable without the service; both packages use the same implementation.
 
-OpenDoc remains an English-only TSX authoring product that runs in the user's or agent's workspace. It has no embedded AI, Markdown document editor, visual theme editor, or cloud collaboration. Document code is trusted local code; render workers isolate crashes and timeouts, not hostile code. Keep the service local and never copy `.opendoc/server.json`'s session token into documents, logs, or messages.
+OpenDoc remains a TSX authoring product for English and Arabic or mixed right-to-left content ([Authoring](AUTHORING.md#arabic-and-right-to-left-text)) that runs in the user's or agent's workspace. It has no embedded AI, Markdown document editor, visual theme editor, or cloud collaboration. Document code is trusted local code; render workers isolate crashes and timeouts, not hostile code. Keep the service local and never copy `.opendoc/server.json`'s session token into documents, logs, or messages.

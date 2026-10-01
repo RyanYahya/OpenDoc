@@ -197,7 +197,7 @@ pnpm dev
 
 Run `pnpm verify` before contributing. Build both distributions with `pnpm package:pack`; the packages share one repository and release version. npm distributes the installable editions; GitHub hosts source and release notes.
 
-OpenDoc currently supports English content and TSX authoring. It runs trusted document code in your environment. PowerPoint supports editable text, rectangular shapes, images, and compatible embedded fonts; some visual effects are intentionally unsupported. [Security](SECURITY.md) · [Third-party notices](THIRD_PARTY.md)
+OpenDoc supports English, Arabic, and mixed right-to-left content ([Authoring](docs/AUTHORING.md#arabic-and-right-to-left-text)) with TSX authoring. It runs trusted document code in your environment. PowerPoint supports editable text, rectangular shapes, images, and compatible embedded fonts; some visual effects are intentionally unsupported. [Security](SECURITY.md) · [Third-party notices](THIRD_PARTY.md)
 
 ## License
 
