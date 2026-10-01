@@ -148,7 +148,8 @@
 }
 
 .pdf-page { user-select: none; -webkit-user-select: none; }
-.inspection-layer .component-target { pointer-events: auto; cursor: pointer; user-select: none; -webkit-user-select: none; }
+/* Double-tap opens the editor; pinch zoom and panning stay available. */
+.inspection-layer .component-target { pointer-events: auto; cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
 .inspection-layer .component-target:focus-visible { background: var(--inspection-hover); border-color: var(--inspection-line); }
 .component-target .block-label { display: none; pointer-events: none; }
 .component-target:focus-visible .block-label { display: block; }

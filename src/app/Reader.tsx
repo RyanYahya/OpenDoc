@@ -413,13 +413,21 @@ export function Reader({
     componentTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     chooseSelection(next);
   }
-  function openTextComponent(next: DocumentSelection) {
+  function canEditText(targetId: string | undefined) {
+    return !!targetId && canCorrectComponent(editing.target(targetId)) && !editPending && !submitting && !editError && !editing.savedId;
+  }
+  /** Double-click edits text where editing is available, and otherwise only selects it. */
+  function editFromPage(next: DocumentSelection, caret?: TextRange) {
+    if (canEditText(next.targetId)) openTextComponent(next, caret);
+    else selectComponent(next);
+  }
+  function openTextComponent(next: DocumentSelection, caret?: TextRange) {
     if (editPending || editError) return;
     const target = editing.target(next.targetId);
     if (!target) return;
-    // The page shows the previewed text; carry a selected phrase into the editor's copy.
+    // The page shows the previewed text; carry the clicked word or phrase into the editor's copy.
     const shown = getTextTarget(artifact, next.targetId)?.text;
-    const range = isPhrase(next, getTextTarget(artifact, next.targetId)) ? { start: next.start!, end: next.end! } : undefined;
+    const range = caret ?? (isPhrase(next, getTextTarget(artifact, next.targetId)) ? { start: next.start!, end: next.end! } : undefined);
     editorCaret.current = range && shown !== undefined ? carryRange(shown, target.text, range) ?? null : null;
     chooseSelection(next);
     componentTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -765,6 +773,7 @@ export function Reader({
                     onComment={viewComments}
                     onTextClick={selectComponent}
                     onPhraseSelect={selectComponent}
+                    onTextEdit={editFromPage}
                     onNavigate={goPage}
                     label={`${pageLabel} ${i + 1} of ${pages.length}`}
                     keyboardHelp="reader-component-keys"
@@ -824,7 +833,7 @@ export function Reader({
         </div>}
         <div className="edit-session-bar" role="toolbar" aria-label="Component actions">
           <div className="selection-actions">
-            <IconButton ref={editAction} label="Edit selected text" aria-pressed={!!editor} aria-controls="selection-panel" disabled={!selection?.targetId || !canCorrectComponent(editing.target(selection.targetId)) || editPending || submitting || !!editError || !!editing.savedId} onClick={() => { if (editor) closeEditor(); else if (selection) openTextComponent(selection); }}><Icon name="edit" size={16} /></IconButton>
+            <IconButton ref={editAction} label="Edit selected text" aria-pressed={!!editor} aria-controls="selection-panel" disabled={!canEditText(selection?.targetId)} onClick={() => { if (editor) closeEditor(); else if (selection) openTextComponent(selection); }}><Icon name="edit" size={16} /></IconButton>
             <IconButton ref={commentAction} label={selectedPhrase && !editor ? 'Comment on selected phrase' : 'Comment on selection'} aria-pressed={composingComment} aria-controls="selection-panel" disabled={!selectedBlock || editPending || submitting || !!editError} onClick={composingComment ? closeComments : openComments}><Icon name="comment" size={16} /></IconButton>
           </div>
           <div className="edit-session-status" role="status"><Icon name={editing.saved ? 'check' : 'edit'} size={15} /><span>{editPending ? 'Saving changes…' : editing.saved ? 'All changes saved' : editing.count ? `${editing.count} unsaved ${editing.count === 1 ? 'change' : 'changes'}` : 'No unsaved changes'}</span>{(editing.previewing || readerPreview.loading) && editing.count > 0 && !editPending && <span className="draft-preview-status">Updating preview…</span>}</div>

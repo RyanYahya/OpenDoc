@@ -194,6 +194,8 @@ type PdfPageProps = {
   onTextClick?: (selection: DocumentSelection, rect: { left: number; top: number; width: number; height: number }) => void;
   /** A mouse or pen drag across words selects that phrase within one text component. */
   onPhraseSelect?: (selection: DocumentSelection) => void;
+  /** Double-click opens the text editor, with the clicked word when it can be located. */
+  onTextEdit?: (selection: DocumentSelection, caret?: TextRange) => void;
   onNavigate?: (page: number) => void;
   /** Names the page for assistive technology, such as "Page 2 of 8". */
   label?: string;
@@ -214,6 +216,7 @@ export const PdfPage = memo(function PdfPage({
   onComment,
   onTextClick,
   onPhraseSelect,
+  onTextEdit,
   onNavigate,
   label,
   keyboardHelp,
@@ -633,6 +636,10 @@ export const PdfPage = memo(function PdfPage({
                 onClick={event => {
                   const rect = event.currentTarget.getBoundingClientRect();
                   onTextClick?.(wholeText(item.target), { left: rect.left, top: rect.top, width: rect.width, height: rect.height });
+                }}
+                onDoubleClick={event => {
+                  const hit = onTextEdit && textAt(item.target.id, event.clientX, event.clientY);
+                  onTextEdit?.(wholeText(item.target), hit ? wordRange(item.target.text, hit.start, hit.end) ?? { start: hit.start, end: hit.start } : undefined);
                 }}>
                 <span className="block-label" aria-hidden="true">{block?.kind ?? 'Text'}</span>
               </Button>;
