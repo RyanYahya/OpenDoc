@@ -1,7 +1,13 @@
-import type { TextTarget } from '../shared/selection';
+import { generatedTextReason, type TextTarget } from '../shared/selection';
 
 export function canCorrectComponent(target: TextTarget | undefined) {
   return !!target?.runs.some(run => run.source && !run.protected && run.source.value === target.text.slice(run.start, run.end));
+}
+
+/** Why the Edit action is unavailable for a selected component, or undefined when it can open. */
+export function correctionUnavailableReason(target: TextTarget | undefined) {
+  if (canCorrectComponent(target)) return undefined;
+  return target ? target.reason ?? generatedTextReason : 'This component has no text to edit. Comment instead.';
 }
 
 /** The popover holds the whole component; a correction still owns one source value. */

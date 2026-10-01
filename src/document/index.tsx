@@ -66,9 +66,11 @@ export function prepareDocument(input: ReactNode) {
   };
   const map = globals.__formeSourceMap ??= new WeakMap();
   const textCapture = new TextCapture(map);
-  // A passed React child retains the component that constructed it. This is
-  // the explicit provenance chain for TextSlot, not a search through ancestors.
-  const componentOwners = new WeakMap<object, SourceLocation | undefined>();
+  // A passed React child retains the component instances that constructed it,
+  // innermost first. This is the explicit provenance chain for text bindings,
+  // not a search through ancestors.
+  const componentOwners = new WeakMap<object, SourceLocation[]>();
+  const frames = (element: object, source?: SourceLocation) => source ? [source, ...(componentOwners.get(element) ?? [])] : [];
   function elementsIn(value: unknown, found: WeakSet<object>, callback?: (element: ReactElement) => void) {
     if (!value || typeof value !== 'object' || found.has(value)) return;
     found.add(value);
@@ -197,8 +199,9 @@ export function prepareDocument(input: ReactNode) {
       let output: ReactNode;
       try {
         output = (el.type as (p: unknown) => ReactNode)(el.props);
+        const owners = frames(el, ownSource);
         elementsIn(output, new WeakSet(), element => {
-          if (!inputs.has(element) && !componentOwners.has(element)) componentOwners.set(element, ownSource);
+          if (!inputs.has(element) && !componentOwners.has(element)) componentOwners.set(element, owners);
         });
         return visit(output, id, source, resolving);
       } finally { runtime.currentBlock = previousBlock; runtime.currentSlide = previousSlide; }
@@ -207,7 +210,7 @@ export function prepareDocument(input: ReactNode) {
     const cloned = createElement(el.type, { ...el.props, key: el.key }, visit(el.props.children, id, source, resolving));
     const location = id ? { file: `opendoc:block:${id}`, line: 1, column: 1 } : map.get(el);
     if (location) map.set(cloned, location);
-    textCapture.remember(cloned, ownSource);
+    textCapture.remember(cloned, frames(el, ownSource));
     return cloned;
   }
   const collected = visit(input);

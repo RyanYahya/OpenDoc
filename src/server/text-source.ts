@@ -33,9 +33,36 @@ function jsxValue(raw: string, attribute: boolean): string | undefined {
   return value;
 }
 
-export interface TextSourceResolver {
-  resolveAt(line: number, column: number, slot?: string, childIndex?: number): TextSourceValue | undefined;
+export interface TextSourceContext {
+  /** Component instances outward from the rendered element: each created the previous one. */
+  owners?: { line: number; column: number }[];
+  /** The rendered text. It selects within a closed set of authored values; it never searches the file. */
+  text?: string;
 }
+
+export interface TextSourceResolver {
+  resolveAt(line: number, column: number, slot?: string, childIndex?: number, context?: TextSourceContext): TextSourceValue | undefined;
+}
+
+type Opening = ts.JsxOpeningElement | ts.JsxSelfClosingElement;
+/**
+ * scope[0] is the JSX element being evaluated and scope[1] the local component
+ * instance whose render created it. Without a scope, a component's props are
+ * the union of every instance in the file, which is never a proof.
+ */
+type Scope = readonly Opening[] | undefined;
+type Value = { node: ts.Node; scope: Scope };
+/** `complete` proves every value an expression can take; partial values still decide protection. */
+type Flow = { values: Value[]; complete: boolean; absent?: boolean };
+type Role = { kind: 'component'; symbol: ts.Symbol }
+  | { kind: 'callback'; receiver: ts.Expression }
+  | { kind: 'helper'; sites: { call: ts.CallExpression; callback: boolean }[]; exported: boolean };
+const unknown: Flow = { values: [], complete: false };
+const partial = (flow: Flow): Flow => ({ values: flow.values, complete: false });
+const absent: Flow = { values: [], complete: true, absent: true };
+const callbacks = new Set(['map', 'filter']);
+const subsets = new Set(['filter', 'slice']);
+const arrayMethods = new Set([...callbacks, ...subsets]);
 
 /** Only provable values in this source file are followed. Imported values and arbitrary expressions stay read-only. */
 export function createTextSourceResolver(file: string, source: string): TextSourceResolver {
@@ -119,27 +146,195 @@ export function createTextSourceResolver(file: string, source: string): TextSour
     return true;
   }
 
-  function expressionNode(input: ts.Expression, seen = new Set<ts.Node>()): ts.Expression | undefined {
-    const node = unwrap(input);
-    if (seen.has(node)) return undefined;
-    seen.add(node);
-    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isObjectLiteralExpression(node)) return node;
+  const references = new Map<ts.Symbol, ts.Identifier[]>();
+  for (const node of nodes) {
+    const symbol = ts.isIdentifier(node) ? referenceSymbol(node) : undefined;
+    if (symbol) references.set(symbol, [...(references.get(symbol) ?? []), node as ts.Identifier]);
+  }
+  const isOpening = (node: ts.Node): node is Opening => ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node);
+  const tagSymbol = (opening: Opening) => ts.isIdentifier(opening.tagName) ? checker.getSymbolAtLocation(opening.tagName) : undefined;
+  function isArrayCall(node: ts.Node, names: Set<string>): node is ts.CallExpression & { expression: ts.PropertyAccessExpression } {
+    return ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && names.has(node.expression.name.text);
+  }
+  function merge(flows: Flow[]): Flow {
+    return { values: flows.flatMap(flow => flow.values), complete: flows.every(flow => flow.complete), absent: flows.some(flow => flow.absent) };
+  }
+  /** A named same-file function, or undefined for anything that is not a plain declaration. */
+  function functionOf(symbol: ts.Symbol | undefined) {
+    const declaration = symbol?.declarations?.length === 1 ? symbol.declarations[0] : undefined;
+    if (!declaration || declaration.getSourceFile() !== tree) return undefined;
+    if (ts.isFunctionDeclaration(declaration)) return declaration;
+    const initializer = ts.isVariableDeclaration(declaration) && declaration.initializer && ts.isVariableDeclarationList(declaration.parent) && declaration.parent.flags & ts.NodeFlags.Const ? unwrap(declaration.initializer) : undefined;
+    return initializer && (ts.isArrowFunction(initializer) || ts.isFunctionExpression(initializer)) ? initializer : undefined;
+  }
+
+  const roles = new Map<ts.Node, Role | undefined>();
+  /** Parameters receive authored values only from functions whose every use is known. */
+  function role(fn: ts.SignatureDeclaration): Role | undefined {
+    if (roles.has(fn)) return roles.get(fn);
+    roles.set(fn, undefined);
+    const outer = outerExpression(fn);
+    const owner = ts.isFunctionDeclaration(fn) ? fn : ts.isVariableDeclaration(outer.parent) && outer.parent.initializer === outer ? outer.parent : undefined;
+    const symbol = owner?.name && functionOf(checker.getSymbolAtLocation(owner.name)) === fn ? checker.getSymbolAtLocation(owner.name) : undefined;
+    let result: Role | undefined;
+    if (!symbol) {
+      const call = outer.parent;
+      if ((ts.isArrowFunction(fn) || ts.isFunctionExpression(fn)) && isArrayCall(call, callbacks) && call.arguments[0] === outer) result = { kind: 'callback', receiver: call.expression.expression };
+    } else {
+      const uses = (references.get(symbol) ?? []).filter(node => node !== owner!.name);
+      const tags = uses.filter(node => (isOpening(node.parent) || ts.isJsxClosingElement(node.parent)) && node.parent.tagName === node);
+      // A recursive component could pass its own closure to a nested instance of itself.
+      if (uses.length && tags.length === uses.length && fn.parameters.length <= 1 && !tags.some(tag => tag.pos >= fn.pos && tag.end <= fn.end)) result = { kind: 'component', symbol };
+      else {
+        const sites = uses.map(use => {
+          const reference = outerExpression(use), call = reference.parent;
+          if (ts.isCallExpression(call) && call.expression === reference) return { call, callback: false };
+          return isArrayCall(call, callbacks) && call.arguments[0] === reference ? { call, callback: true } : undefined;
+        });
+        if (sites.every(site => !!site)) result = { kind: 'helper', sites, exported: !!(ts.getCombinedModifierFlags(owner!) & ts.ModifierFlags.Export) };
+      }
+    }
+    roles.set(fn, result);
+    return result;
+  }
+  function component(opening: Opening) {
+    const fn = functionOf(tagSymbol(opening));
+    return !!fn && role(fn)?.kind === 'component';
+  }
+
+  type Seen = Map<ts.Node, Set<number>>;
+  const memo = new Map<ts.Node, Flow>();
+  let cycles = 0;
+  /** Values an expression can take, following only same-file literals, constants, props and arguments. */
+  function flow(input: ts.Expression, scope: Scope, seen: Seen = new Map()): Flow {
+    const node = unwrap(input), depth = scope?.length ?? -1;
+    if (!scope && memo.has(node)) return memo.get(node)!;
+    const visiting = seen.get(node) ?? new Set<number>();
+    if (visiting.has(depth)) { cycles++; return unknown; }
+    visiting.add(depth); seen.set(node, visiting);
+    const before = cycles;
+    try {
+      const result = evaluate(node, scope, seen);
+      // A result cut short by a cycle is only valid for this path.
+      if (!scope && cycles === before) memo.set(node, result);
+      return result;
+    } finally { visiting.delete(depth); }
+  }
+  function evaluate(node: ts.Expression, scope: Scope, seen: Seen): Flow {
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isObjectLiteralExpression(node) || ts.isArrayLiteralExpression(node)) return { values: [{ node, scope }], complete: true };
     if (ts.isIdentifier(node)) {
-      const symbol = referenceSymbol(node);
-      const declarations = symbol?.declarations;
-      if (declarations?.length !== 1 || !ts.isVariableDeclaration(declarations[0]) || declarations[0].getSourceFile() !== tree || !safeDeclaration(declarations[0])) return undefined;
-      return expressionNode(declarations[0].initializer!, seen);
+      const declarations = referenceSymbol(node)?.declarations;
+      const declaration = declarations?.length === 1 && declarations[0].getSourceFile() === tree ? declarations[0] : undefined;
+      if (declaration && ts.isVariableDeclaration(declaration) && ts.isIdentifier(declaration.name)) return safeDeclaration(declaration) ? flow(declaration.initializer!, scope, seen) : unknown;
+      return declaration && (ts.isParameter(declaration) || ts.isBindingElement(declaration)) ? binding(declaration, scope, seen) : unknown;
     }
     if (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) {
-      const key = ts.isPropertyAccessExpression(node) ? node.name.text : node.argumentExpression && ts.isStringLiteral(unwrap(node.argumentExpression)) ? (unwrap(node.argumentExpression) as ts.StringLiteral).text : undefined;
-      const object = expressionNode(node.expression, seen);
-      if (key === undefined || !object || !ts.isObjectLiteralExpression(object)) return undefined;
-      if (object.properties.some(property => !propertyValue(property) || !property.name || propertyName(property.name) === undefined)) return undefined;
-      const matches = object.properties.filter(property => propertyName(property.name!) === key);
-      if (matches.length !== 1 || !propertyValue(matches[0])) return undefined;
-      return expressionNode(propertyValue(matches[0])!, seen);
+      const argument = ts.isElementAccessExpression(node) ? unwrap(node.argumentExpression) : undefined;
+      const key = ts.isPropertyAccessExpression(node) ? node.name.text
+        : argument && (ts.isStringLiteral(argument) || ts.isNumericLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument)) ? argument.text : undefined;
+      return member(flow(node.expression, scope, seen), key, seen);
     }
-    return undefined;
+    if (isArrayCall(node, subsets)) {
+      // filter and slice keep a subset of the same authored elements.
+      const container = flow(node.expression.expression, scope, seen);
+      return { values: container.values, complete: container.complete && container.values.every(value => ts.isArrayLiteralExpression(value.node)) };
+    }
+    return unknown;
+  }
+  function binding(declaration: ts.ParameterDeclaration | ts.BindingElement, scope: Scope, seen: Seen): Flow {
+    let result: Flow;
+    if (ts.isParameter(declaration)) result = argumentFlow(declaration.parent, declaration.parent.parameters.indexOf(declaration), scope, seen);
+    else {
+      const pattern = declaration.parent, owner = pattern.parent;
+      const container = ts.isParameter(owner) || ts.isBindingElement(owner) ? binding(owner, scope, seen)
+        : owner.initializer && ts.isVariableDeclarationList(owner.parent) && owner.parent.flags & ts.NodeFlags.Const ? flow(owner.initializer, scope, seen) : unknown;
+      const name = declaration.propertyName ?? declaration.name;
+      const key = declaration.dotDotDotToken ? undefined : ts.isArrayBindingPattern(pattern) ? String(pattern.elements.indexOf(declaration))
+        : ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name) ? name.text : undefined;
+      // A rest binding carries the remaining container itself.
+      result = declaration.dotDotDotToken ? partial(container) : member(container, key, seen);
+    }
+    return result.absent && declaration.initializer ? merge([{ ...result, absent: false }, flow(declaration.initializer, scope, seen)]) : result;
+  }
+  function argumentFlow(fn: ts.SignatureDeclaration, index: number, scope: Scope, seen: Seen): Flow {
+    const kind = role(fn);
+    if (!kind) return unknown;
+    if (kind.kind === 'component') {
+      if (index !== 0) return unknown;
+      if (!scope) return partial({ values: (references.get(kind.symbol) ?? []).map(node => node.parent).filter(isOpening).map(node => ({ node, scope: undefined })), complete: false });
+      // The exact instance that rendered this element, never a search by wording.
+      const instance = scope[1];
+      return instance && tagSymbol(instance) === kind.symbol ? { values: [{ node: instance, scope: scope.slice(1) }], complete: true } : unknown;
+    }
+    if (kind.kind === 'callback') return index === 0 ? elements(flow(kind.receiver, scope, seen), seen) : unknown;
+    const result = merge(kind.sites.map(({ call, callback }) => callback
+      ? index === 0 ? elements(flow((call.expression as ts.PropertyAccessExpression).expression, scope, seen), seen) : unknown
+      : argument(call, index, scope, seen)));
+    return kind.exported ? partial(result) : result;
+  }
+  function argument(call: ts.CallExpression, index: number, scope: Scope, seen: Seen): Flow {
+    const spread = call.arguments.findIndex(ts.isSpreadElement);
+    if (spread >= 0 && spread <= index) return partial(merge(call.arguments.slice(spread).map(item => flow(ts.isSpreadElement(item) ? item.expression : item, scope, seen))));
+    return index < call.arguments.length ? flow(call.arguments[index], scope, seen) : absent;
+  }
+  function elements(container: Flow, seen: Seen): Flow {
+    const flows: Flow[] = container.complete ? [] : [unknown];
+    for (const { node, scope } of container.values) {
+      if (!ts.isArrayLiteralExpression(node)) { flows.push(unknown); continue; }
+      for (const element of node.elements) {
+        if (ts.isOmittedExpression(element)) continue;
+        flows.push(ts.isSpreadElement(element) ? partial(elements(flow(element.expression, scope, seen), seen)) : flow(element, scope, seen));
+      }
+    }
+    return merge(flows);
+  }
+  function member(container: Flow, key: string | undefined, seen: Seen): Flow {
+    const flows: Flow[] = container.complete ? [] : [unknown];
+    for (const { node, scope } of container.values) {
+      if (ts.isObjectLiteralExpression(node)) {
+        const regular = node.properties.every(item => propertyValue(item) && item.name && propertyName(item.name) !== undefined);
+        const matches = node.properties.filter(item => key === undefined || (item.name && propertyName(item.name) === key));
+        const values = merge(matches.map(item => propertyValue(item) ? flow(propertyValue(item)!, scope, seen) : unknown));
+        flows.push(regular && key !== undefined && matches.length <= 1 ? matches.length ? values : absent : partial(values));
+      } else if (ts.isArrayLiteralExpression(node)) {
+        const index = key !== undefined && /^\d+$/.test(key) ? Number(key) : undefined;
+        const spread = node.elements.findIndex(ts.isSpreadElement);
+        if (key === undefined || (index !== undefined && spread >= 0 && spread <= index)) flows.push(partial(elements({ values: [{ node, scope }], complete: true }, seen)));
+        else if (index === undefined) flows.push(unknown);
+        else flows.push(index >= node.elements.length || ts.isOmittedExpression(node.elements[index]) ? absent : flow(node.elements[index], scope, seen));
+      } else if (isOpening(node)) flows.push(prop(node, key, scope, seen));
+      else flows.push(unknown);
+    }
+    return merge(flows);
+  }
+  /** Read a prop at one component instance; JSX children replace a children attribute. */
+  function prop(opening: Opening, key: string | undefined, scope: Scope, seen: Seen): Flow {
+    const attributes = opening.attributes.properties;
+    if (key === undefined) return partial(merge([...attributes.map(item => ts.isJsxAttribute(item) ? attributeFlow(item, scope, seen) : flow(item.expression, scope, seen)), childrenFlow(opening, scope, seen)]));
+    const named = attributes.filter((item): item is ts.JsxAttribute => ts.isJsxAttribute(item) && item.name.getText(tree) === key);
+    const result = key === 'children' && childRows(opening).length ? childrenFlow(opening, scope, seen)
+      : named.length === 1 ? attributeFlow(named[0], scope, seen) : named.length ? partial(merge(named.map(item => attributeFlow(item, scope, seen)))) : absent;
+    // A spread can override an earlier named field, so even a literal beside it is not a proof.
+    return attributes.some(ts.isJsxSpreadAttribute) ? partial(result) : result;
+  }
+  function attributeFlow(attribute: ts.JsxAttribute, scope: Scope, seen: Seen = new Map()): Flow {
+    const initializer = attribute.initializer;
+    if (initializer && ts.isStringLiteral(initializer)) return { values: [{ node: initializer, scope }], complete: true };
+    return initializer && ts.isJsxExpression(initializer) && initializer.expression ? flow(initializer.expression, scope, seen) : unknown;
+  }
+  const rows = new Map<Opening, ts.JsxChild[]>();
+  function childRows(opening: Opening) {
+    if (!ts.isJsxOpeningElement(opening) || !ts.isJsxElement(opening.parent)) return [];
+    if (!rows.has(opening)) rows.set(opening, opening.parent.children.filter(child => ts.isJsxText(child) ? !!jsx(child, false) : !ts.isJsxExpression(child) || !!child.expression));
+    return rows.get(opening)!;
+  }
+  function rowFlow(row: ts.JsxChild, scope: Scope, seen: Seen = new Map()): Flow {
+    if (ts.isJsxText(row)) return { values: [{ node: row, scope }], complete: true };
+    return ts.isJsxExpression(row) && row.expression && !row.dotDotDotToken ? flow(row.expression, scope, seen) : unknown;
+  }
+  function childrenFlow(opening: Opening, scope: Scope, seen: Seen): Flow {
+    const flows = childRows(opening).map(row => rowFlow(row, scope, seen));
+    return flows.length === 1 ? flows[0] : flows.length ? partial(merge(flows)) : absent;
   }
 
   const textProps = new Set(['children', 'title', 'subtitle', 'eyebrow', 'byline', 'caption', 'lead', 'body', 'footer', 'description', 'author', 'label']);
@@ -151,12 +346,23 @@ export function createTextSourceResolver(file: string, source: string): TextSour
   function textConsumer(input: ts.Expression): boolean {
     const node = outerExpression(input), parent = node.parent;
     if (ts.isVariableDeclaration(parent)) {
-      // A direct const alias is checked at all of its own uses below.
-      return parent.initializer === node && ts.isIdentifier(parent.name) && safeDeclaration(parent);
+      // A direct const alias or destructuring is checked at all of its own uses below.
+      if (parent.initializer !== node) return false;
+      return ts.isIdentifier(parent.name) ? safeDeclaration(parent) : ts.isVariableDeclarationList(parent.parent) && !!(parent.parent.flags & ts.NodeFlags.Const);
     }
     if (ts.isJsxExpression(parent) && parent.expression === node) {
-      return ts.isJsxAttribute(parent.parent) ? textProps.has(parent.parent.name.getText(tree))
+      // A local component's props are checked where its body uses them.
+      return ts.isJsxAttribute(parent.parent) ? component(parent.parent.parent.parent) || textProps.has(parent.parent.name.getText(tree))
         : ts.isJsxElement(parent.parent) || ts.isJsxFragment(parent.parent);
+    }
+    // `{value && <Paragraph>{value}</Paragraph>}` only tests whether optional text is present.
+    if ((ts.isBinaryExpression(parent) && parent.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken && parent.left === node) || (ts.isConditionalExpression(parent) && parent.condition === node)) {
+      const use = outerExpression(parent).parent;
+      return ts.isJsxExpression(use) && (ts.isJsxElement(use.parent) || ts.isJsxFragment(use.parent));
+    }
+    if (ts.isCallExpression(parent) && parent.arguments.some(item => item === node)) {
+      const fn = ts.isIdentifier(unwrap(parent.expression)) ? functionOf(checker.getSymbolAtLocation(unwrap(parent.expression))) : undefined;
+      return !!fn && role(fn)?.kind === 'helper';
     }
     // Metadata is a documented text consumer, not an arbitrary escaped object.
     if ((ts.isPropertyAssignment(parent) && parent.initializer === node) || (ts.isShorthandPropertyAssignment(parent) && parent.name === node)) {
@@ -167,81 +373,107 @@ export function createTextSourceResolver(file: string, source: string): TextSour
     }
     return false;
   }
+  /** Whether a reference exposes its value (or everything it contains) to logic, identity, or unknown code. */
+  function exposure(node: ts.Expression): 'value' | 'deep' | undefined {
+    const outer = outerExpression(node), parent = outer.parent;
+    if (isWriteTarget(outer)) return 'deep';
+    if ((ts.isPropertyAccessExpression(parent) || ts.isElementAccessExpression(parent)) && parent.expression === outer) {
+      // A length adapts layout without revealing the text itself.
+      if (ts.isPropertyAccessExpression(parent) && parent.name.text === 'length') return undefined;
+      const call = parent.parent;
+      return ts.isCallExpression(call) && call.expression === parent && !isArrayCall(call, arrayMethods) ? 'deep' : 'value';
+    }
+    if (ts.isCallExpression(parent) && parent.expression === outer) return undefined;
+    return textConsumer(node) ? undefined : 'deep';
+  }
+  function protect(values: Value[], deep: boolean, visited = new Set<ts.Node>()) {
+    for (const { node, scope } of values) {
+      if (visited.has(node)) continue;
+      visited.add(node);
+      if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isJsxText(node)) protectedTokens.add(node);
+      else if (!deep) continue;
+      else if (ts.isObjectLiteralExpression(node)) for (const item of node.properties) {
+        const value = propertyValue(item) ?? (ts.isSpreadAssignment(item) ? item.expression : undefined);
+        if (value) protect(flow(value, scope).values, true, visited);
+      } else if (ts.isArrayLiteralExpression(node)) {
+        for (const element of node.elements) if (!ts.isOmittedExpression(element)) protect(flow(ts.isSpreadElement(element) ? element.expression : element, scope).values, true, visited);
+      } else if (isOpening(node)) protect(prop(node, undefined, scope, new Map()).values, true, visited);
+    }
+  }
   for (const node of nodes) {
-    if (!ts.isIdentifier(node) && !ts.isPropertyAccessExpression(node) && !ts.isElementAccessExpression(node)) continue;
-    if (ts.isVariableDeclaration(node.parent) && node.parent.name === node) continue;
-    const value = expressionNode(node);
-    if (value && (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value)) && !textConsumer(node)) protectedTokens.add(value);
+    if (ts.isIdentifier(node)) {
+      const declaration = referenceSymbol(node)?.declarations?.[0];
+      if (!declaration || declaration.getSourceFile() !== tree || !(ts.isVariableDeclaration(declaration) || ts.isParameter(declaration) || ts.isBindingElement(declaration))) continue;
+      // Declared names, attribute names, and member names are not reads of the value.
+      if ((node.getStart(tree) >= declaration.name.getStart(tree) && node.end <= declaration.name.end) || ts.isJsxAttribute(node.parent)
+        || (ts.isBindingElement(node.parent) && node.parent.propertyName === node) || (ts.isPropertyAccessExpression(node.parent) && node.parent.name === node)) continue;
+    } else if (!ts.isPropertyAccessExpression(node) && !ts.isElementAccessExpression(node) && !isArrayCall(node, subsets)) continue;
+    const level = exposure(node as ts.Expression);
+    if (level) protect(flow(node as ts.Expression, undefined).values, level === 'deep');
   }
 
-  function expression(input: ts.Expression): TextSourceValue | undefined {
-    const node = expressionNode(input);
-    if (!node || protectedTokens.has(node) || (!ts.isStringLiteral(node) && !ts.isNoSubstitutionTemplateLiteral(node))) return undefined;
-    return descriptor(node, 'string', node.text);
+  function textValue({ node }: Value): TextSourceValue | undefined {
+    if (ts.isJsxText(node)) { const value = jsx(node, false); return value ? descriptor(node, 'jsx-text', value) : undefined; }
+    if (ts.isStringLiteral(node) && ts.isJsxAttribute(node.parent)) { const value = jsx(node, true); return value === undefined ? undefined : descriptor(node, 'jsx-attribute', value); }
+    return ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) ? descriptor(node, 'string', node.text) : undefined;
+  }
+  /** One unprotected authored token, only when every possible value is known and the rendered text identifies exactly one. */
+  function bind(result: Flow, text?: string): TextSourceValue | undefined {
+    if (!result.complete) return undefined;
+    const candidates = new Map<ts.Node, TextSourceValue>();
+    for (const value of result.values) {
+      const source = textValue(value);
+      if (!source) return undefined;
+      if (text === undefined || source.value === text) candidates.set(value.node, source);
+    }
+    if (candidates.size !== 1) return undefined;
+    const [[node, source]] = candidates;
+    return protectedTokens.has(node) ? undefined : source;
   }
 
-  function openingAt(line: number, column: number): ts.JsxOpeningElement | ts.JsxSelfClosingElement | undefined {
+  function openingAt(line: number, column: number): Opening | undefined {
     if (!Number.isInteger(line) || !Number.isInteger(column) || line < 1 || column < 1) return undefined;
     const starts = tree.getLineStarts();
     if (line > starts.length) return undefined;
     const position = starts[line - 1] + column - 1;
-    return nodes.find(node => (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) && node.getStart(tree) <= position && node.tagName.end >= position) as ts.JsxOpeningElement | ts.JsxSelfClosingElement | undefined;
+    return nodes.find(node => isOpening(node) && node.getStart(tree) <= position && node.tagName.end >= position) as Opening | undefined;
   }
 
-  function attribute(opening: ts.JsxOpeningElement | ts.JsxSelfClosingElement, slot: string): TextSourceValue | undefined {
+  function attribute(opening: Opening, slot: string, scope?: Scope, text?: string): TextSourceValue | undefined {
     // A spread can override an earlier named field, so even a literal beside it is not a proof.
     if (opening.attributes.properties.some(ts.isJsxSpreadAttribute)) return undefined;
     const matches = opening.attributes.properties.filter(item => ts.isJsxAttribute(item) && item.name.getText(tree) === slot);
-    if (matches.length !== 1 || !ts.isJsxAttribute(matches[0])) return undefined;
-    const initializer = matches[0].initializer;
-    if (!initializer) return undefined;
-    if (ts.isStringLiteral(initializer)) {
-      const value = jsx(initializer, true);
-      return value === undefined ? undefined : descriptor(initializer, 'jsx-attribute', value);
-    }
-    return ts.isJsxExpression(initializer) && initializer.expression ? expression(initializer.expression) : undefined;
+    return matches.length === 1 && ts.isJsxAttribute(matches[0]) ? bind(attributeFlow(matches[0], scope), text) : undefined;
   }
 
-  function children(opening: ts.JsxOpeningElement | ts.JsxSelfClosingElement) {
-    const rows: { childIndex: number; source?: TextSourceValue }[] = [];
-    if (ts.isJsxSelfClosingElement(opening)) {
-      const source = attribute(opening, 'children');
-      return source ? [{ childIndex: 0, source }] : [];
-    }
-    const parent = opening.parent;
-    if (!ts.isJsxElement(parent)) return rows;
-    for (const child of parent.children) {
-      if (ts.isJsxExpression(child) && !child.expression) continue;
-      let value: TextSourceValue | undefined;
-      if (ts.isJsxText(child)) {
-        const text = jsx(child, false);
-        if (text === undefined || text === '') continue;
-        value = descriptor(child, 'jsx-text', text);
-      } else if (ts.isJsxExpression(child) && child.expression && !child.dotDotDotToken) value = expression(child.expression);
-      rows.push({ childIndex: rows.length, ...(value ? { source: value } : {}) });
-    }
-    if (!rows.length) {
-      const source = attribute(opening, 'children');
-      if (source) rows.push({ childIndex: 0, source });
-    }
-    return rows;
+  function child(opening: Opening, index: number, scope?: Scope, text?: string): TextSourceValue | undefined {
+    const children = childRows(opening);
+    if (!children.length) return index === 0 ? attribute(opening, 'children', scope, text) : undefined;
+    return children[index] ? bind(rowFlow(children[index], scope), text) : undefined;
   }
 
   // Count linked authored occurrences by token identity, not matching visible text.
   const occurrenceCounts = new Map<string, number>();
   const identity = (value: TextSourceValue) => `${value.start}:${value.end}`;
   for (const node of nodes) {
-    if (!ts.isJsxOpeningElement(node) && !ts.isJsxSelfClosingElement(node)) continue;
-    const values = children(node).map(child => child.source);
+    if (!isOpening(node)) continue;
+    const count = childRows(node).length;
+    const values = count ? Array.from({ length: count }, (_, index) => child(node, index)) : [child(node, 0)];
     for (const item of node.attributes.properties) if (ts.isJsxAttribute(item) && item.name.getText(tree) !== 'children') values.push(attribute(node, item.name.getText(tree)));
     for (const value of values) if (value) occurrenceCounts.set(identity(value), (occurrenceCounts.get(identity(value)) ?? 0) + 1);
   }
   const linked = (value: TextSourceValue | undefined) => value ? { ...value, linkedOccurrences: occurrenceCounts.get(identity(value)) ?? 1 } : undefined;
   return {
-    resolveAt(line, column, slot = 'children', childIndex = 0) {
+    resolveAt(line, column, slot = 'children', childIndex = 0, context = {}) {
       const opening = openingAt(line, column);
       if (!opening) return undefined;
-      return linked(slot === 'children' ? children(opening)[childIndex]?.source : attribute(opening, slot));
+      const scope: Opening[] = [opening];
+      for (const owner of context.owners ?? []) {
+        const instance = openingAt(owner.line, owner.column);
+        if (!instance) break;
+        scope.push(instance);
+      }
+      return linked(slot === 'children' ? child(opening, childIndex, scope, context.text) : attribute(opening, slot, scope, context.text));
     },
   };
 }

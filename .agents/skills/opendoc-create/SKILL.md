@@ -52,7 +52,7 @@ Load only the branch needed:
 
 - **Visuals:** [Media](../../../docs/MEDIA.md) covers local images, charts, prepared data, and recording after visual review. For exact crops use `MediaFrame`; for full bleed use `Page backgroundMedia`. The workspace’s Image story guide at `templates/image-story/AGENTS.md` offers optional half-page, panoramic, inset, collage, and overlay compositions. Use a reviewed chart image when native chart labels cannot render correctly. Review actual image visibility and crop; a successful export alone does not establish them.
 - **Logos or fonts:** [Assets](../../../docs/ASSETS.md) covers exact bindings, compatibility, and explicit logo placement on the actual PDF background.
-- **Editable or reusable content:** [Selection](../../../docs/SELECTION.md) covers text slots, stable records, and preservation of saved corrections.
+- **Editable or reusable content:** keep visible wording as literal children, literal props, or local constants, including props of helper components in the same file; do not compute, transform, or reuse visible text as IDs. [Selection](../../../docs/SELECTION.md) covers what stays editable, text slots for shared components, stable records, and preservation of saved corrections.
 - **A new print system:** [opendoc-create-theme](../opendoc-create-theme/SKILL.md) handles theme creation or a requested shared refinement. Keep one-document variations local.
 
 Develop a complete draft that addresses the brief, with honest sources or illustrative labels for visuals and references. Continue through review and delivery; a scaffold or outline is not the finished request.

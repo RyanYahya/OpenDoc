@@ -50,17 +50,21 @@ function Hint({ label, children }: { label: string; children: ReactElement }) {
 
 export function IconButton({
   label,
+  hint,
   className,
   ...props
 }: Omit<ButtonProps, "className"> & {
   label: string;
+  /** Replaces the tooltip, e.g. to explain an unavailable action. */
+  hint?: string;
   className?: string;
 }) {
   return (
-    <Hint label={label}>
+    <Hint label={hint ?? label}>
       <Button
         {...props}
         aria-label={label}
+        aria-description={hint}
         className={`icon-button ${className ?? ""}`}
       />
     </Hint>

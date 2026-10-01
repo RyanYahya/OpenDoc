@@ -14,7 +14,7 @@ import { PageNumberInput } from "./PageNumberInput";
 import { commentDraftKey, componentCommentDraftKey, commentDrafts, type CommentDrafts } from "./commentDrafts";
 import type { DocumentSelection, TextAnchor } from "../shared/selection";
 import { anchorForSelection, getTextTarget, resolveCommentAnchor, selectionReason } from "../shared/anchors";
-import { canCorrectComponent } from "./componentCorrection";
+import { canCorrectComponent, correctionUnavailableReason } from "./componentCorrection";
 import { carryRange, isPhrase, phraseFromText, savedPhrase, type TextRange } from './phraseSelection';
 import { missingGlyphs, pageList } from "./missingGlyphs";
 import { sessionForDocument, sourceIdentity } from './editSession';
@@ -119,6 +119,8 @@ export function Reader({
   const selectedBlock = getBlock(artifact, selected);
   const editorTarget = editing.target(editor?.selection.targetId);
   const editorWritable = canCorrectComponent(editorTarget);
+  // A selected component explains why Edit is unavailable instead of a silent disabled control.
+  const editUnavailable = selection ? correctionUnavailableReason(editing.target(selection.targetId)) : undefined;
   const editStale = editing.stale;
   const ready = state.status === "ready" && connected;
   const width =
@@ -845,7 +847,7 @@ export function Reader({
         </div>}
         <div className="edit-session-bar" role="toolbar" aria-label="Component actions">
           <div className="selection-actions">
-            <IconButton ref={editAction} label="Edit selected text" aria-pressed={!!editor} aria-controls="selection-panel" disabled={!canEditText(selection?.targetId)} onClick={() => { if (editor) closeEditor(); else if (selection) openTextComponent(selection); }}><Icon name="edit" size={16} /></IconButton>
+            <IconButton ref={editAction} label="Edit selected text" hint={editUnavailable} focusableWhenDisabled={!!editUnavailable} aria-pressed={!!editor} aria-controls="selection-panel" disabled={!canEditText(selection?.targetId)} onClick={() => { if (editor) closeEditor(); else if (selection) openTextComponent(selection); }}><Icon name="edit" size={16} /></IconButton>
             <IconButton ref={commentAction} label={selectedPhrase && !editor ? 'Comment on selected phrase' : 'Comment on selection'} aria-pressed={composingComment} aria-controls="selection-panel" disabled={!selectedBlock || editPending || submitting || !!editError} onClick={composingComment ? closeComments : openComments}><Icon name="comment" size={16} /></IconButton>
           </div>
           <div className="edit-session-status" role="status"><Icon name={editing.saved ? 'check' : 'edit'} size={15} /><span>{editPending ? 'Saving changes…' : editing.saved ? 'All changes saved' : editing.count ? `${editing.count} unsaved ${editing.count === 1 ? 'change' : 'changes'}` : 'No unsaved changes'}</span>{(editing.previewing || readerPreview.loading) && editing.count > 0 && !editPending && <span className="draft-preview-status">Updating preview…</span>}</div>

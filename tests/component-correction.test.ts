@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canCorrectComponent, componentCorrection } from '../src/app/componentCorrection';
-import type { TextTarget } from '../src/shared/selection';
+import { canCorrectComponent, componentCorrection, correctionUnavailableReason } from '../src/app/componentCorrection';
+import { generatedTextReason, type TextTarget } from '../src/shared/selection';
 
 function target(parts: (string | { generated: string })[]): TextTarget {
   let text = '';
@@ -33,4 +33,11 @@ test('a plain component supports complete replacement, while generated-only comp
   const generated = target([{ generated: '42' }]);
   assert.equal(canCorrectComponent(generated), false);
   assert.equal(componentCorrection(generated, '43'), undefined);
+});
+
+test('an unavailable Edit action states why instead of staying silently disabled', () => {
+  assert.equal(correctionUnavailableReason(target(['Editable text.'])), undefined);
+  assert.equal(correctionUnavailableReason(target([{ generated: '42' }])), generatedTextReason);
+  assert.equal(correctionUnavailableReason({ ...target([{ generated: '[1]' }]), reason: 'Generated reference content. Ask your agent to change its inputs.' }), 'Generated reference content. Ask your agent to change its inputs.');
+  assert.match(correctionUnavailableReason(undefined)!, /no text to edit/);
 });

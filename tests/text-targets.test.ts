@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { renderOnce } from '../src/server/render';
+import { TextEditService } from '../src/server/edits';
+import { canCorrectComponent } from '../src/app/componentCorrection';
+import { generatedTextReason } from '../src/shared/selection';
 import { fixture } from './helpers';
 import { attachTextLines } from '../src/server/text-layout';
 import type { LayoutInfo } from '@formepdf/core';
@@ -110,5 +113,48 @@ test('positional and colliding text identities cannot become durable phrase anch
     assert.equal(after.find(target => target.slot === 'row-stable-row-column-0')?.stable, false);
     assert.equal(after.find(target => target.slot === 'stable-row-description')?.stable, true);
     assert.equal(new Set(after.map(target => target.id)).size, after.length);
+  } finally { await f.cleanup(); }
+});
+
+test('text passed through local helper components is editable per instance and saves to its own call site', async () => {
+  const f = await fixture();
+  try {
+    await writeFile(f.entry, document(`<Item id="alpha" heading={['history-title', 'History']} title="Alpha role" when="2020 to 2022">
+        <Points id="alpha-points" items={['First point.', 'Second point.']}/>
+      </Item>
+      <Item id="beta" title="Beta role" when="2020 to 2022"/>
+      <Points id="same" items={['Same point.', 'Same point.']}/>
+      <Paragraph id="computed">{shout('generated')}</Paragraph>`, `function Title({ id, children }: { id: string; children: string }) { return <F.View><Heading id={id} level={2}>{children}</Heading></F.View>; }
+function Item({ id, title, when, heading, children }: { id: string; title: string; when?: string; heading?: [string, string]; children?: any }) {
+  return <Block id={id}>{heading && <Title id={heading[0]}>{heading[1]}</Title>}<Paragraph id={\`\${id}-title\`}>{title}</Paragraph>{when && <Paragraph id={\`\${id}-when\`}>{when}</Paragraph>}{children}</Block>;
+}
+function Points({ id, items }: { id: string; items: string[] }) {
+  const row = (text: string, i: number) => <Paragraph key={i} id={\`\${id}-\${i + 1}\`}>{text}</Paragraph>;
+  return <F.View>{items.length > 0 && row(items[0], 0)}{items.slice(1).map((text, i) => row(text, i + 1))}</F.View>;
+}
+function shout(text: string) { return text.toUpperCase(); }`));
+    const artifact = (await renderOnce(f.root, 'proof')).artifact;
+    const target = (blockId: string) => artifact.textTargets!.find(value => value.blockId === blockId)!;
+    for (const id of ['history-title', 'alpha-title', 'alpha-when', 'alpha-points-1', 'alpha-points-2', 'beta-title', 'beta-when']) assert.ok(canCorrectComponent(target(id)), id);
+    assert.notEqual(target('alpha-when').runs[0].source!.start, target('beta-when').runs[0].source!.start);
+    for (const id of ['same-1', 'same-2', 'computed']) {
+      assert.equal(canCorrectComponent(target(id)), false, id);
+      assert.equal(target(id).reason, generatedTextReason);
+    }
+    const beta = target('beta-when');
+    const state = { id: 'proof', status: 'ready' as const, revision: 1, artifact };
+    const edit = { targetId: beta.id, start: 0, end: beta.text.length, replacement: '2021 to 2023', revision: 1, hash: artifact.hash };
+    const service = new TextEditService(f.root);
+    const preview = await service.preview('proof', { edits: [edit], revision: 1, hash: artifact.hash }, state);
+    const previewed = preview.artifact.textTargets!.find(value => value.blockId === 'beta-when')!;
+    assert.equal(previewed.text, '2021 to 2023');
+    assert.equal(previewed.runs[0].source?.bindingId, beta.runs[0].source?.bindingId, 'A draft keeps the authored identity of the edited prop.');
+    const before = await readFile(f.entry, 'utf8');
+    await service.apply('proof', edit, state);
+    const after = await readFile(f.entry, 'utf8');
+    assert.equal(after, before.replace('<Item id="beta" title="Beta role" when="2020 to 2022"/>', '<Item id="beta" title="Beta role" when={"2021 to 2023"}/>'));
+    const saved = (await renderOnce(f.root, 'proof')).artifact.textTargets!;
+    assert.equal(saved.find(value => value.blockId === 'alpha-when')!.text, '2020 to 2022');
+    assert.ok(canCorrectComponent(saved.find(value => value.blockId === 'beta-when')));
   } finally { await f.cleanup(); }
 });

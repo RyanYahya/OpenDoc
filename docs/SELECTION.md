@@ -14,13 +14,30 @@ Drafts and their bounded history survive document navigation and reloads in the 
 
 Open editors remember the source version they came from. Untouched text follows source updates; modified text from an older or unknown version stays available for review without silently becoming a new draft change.
 
-A correction replaces text within one proven writable source value and preserves surrounding structure and formatting. Shared local constants update every occurrence, and the draft count counts that shared value once. Mixed formatting stays intact: individual changes must stay inside one existing source value. Imported, computed, and unsupported expressions are available for feedback rather than guessed from their displayed wording.
+A correction replaces text within one proven writable source value and preserves surrounding structure and formatting. Shared local constants update every occurrence, and the draft count counts that shared value once. Mixed formatting stays intact: individual changes must stay inside one existing source value. Imported, computed, and unsupported expressions are available for feedback rather than guessed from their displayed wording. When Edit is unavailable, its tooltip says why and suggests a comment.
 
 The renderer issues writable targets. Requests do not choose arbitrary files or source spans. The server checks the baseline document revision, PDF hash, source digests, and source ownership; validates all candidate files; and renders a real draft PDF through isolated source overrides. Previewing never changes document source or canonical artifacts. Save stages the validated replacements and uses guarded rollback on a write failure, preserving intervening external changes. These safeguards do not imply a filesystem-wide atomic rename across independent files.
 
 ## Binding reusable content
 
-Native OpenDoc blocks provide content slots. Shared components can declare a caller-owned prop with the transparent `TextSlot` helper:
+Prefer literal text: children such as `<Paragraph id="intro">Text</Paragraph>`, string props, and local `const` strings are editable where they are written. Helper components declared in the same document file also stay editable without extra markup:
+
+```tsx
+function Entry({ id, title, dates }: { id: string; title: string; dates?: string }) {
+  return <Block id={id}>
+    <Paragraph id={`${id}-title`}>{title}</Paragraph>
+    {dates && <Paragraph id={`${id}-dates`}>{dates}</Paragraph>}
+  </Block>;
+}
+
+<Entry id="role" title="Project lead" dates="2024 to present" />
+```
+
+The renderer follows each rendered string back through the component instance that produced it, to a literal prop, child, constant, or array element in the same file. A correction changes that instance's call site. Values passed through `props.title`, destructured props with literal defaults, `.map`, `.filter`, `.slice`, literal array indexes, and same-file helper functions are followed. When a mapped array contains the same wording twice, neither copy is editable, because the rendered text cannot identify its source.
+
+Text stays read-only, with a reason in the Edit tooltip, when its value is computed or transformed, imported from another file, forwarded with a spread, reaches a component or helper that is also used another way, or is also used as an ID, key, link, lookup, comparison, or other logic. A presence check such as `{dates && …}` and reading `.length` are allowed. Keep IDs as separate props instead of deriving them from visible text.
+
+Shared components in other files, such as templates, declare a caller-owned prop with the transparent `TextSlot` helper:
 
 ```tsx
 import { Paragraph, TextSlot } from 'opendoc';

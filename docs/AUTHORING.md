@@ -215,7 +215,7 @@ OpenDoc validates reference records and relationships. It does not verify whethe
 
 Every commentable block needs a unique, stable `id`. Preserve it when rewriting or moving the same idea; assign a new ID to a different idea. Avoid IDs derived from page numbers or array positions.
 
-Selections can identify individual phrases within those blocks. Literal document-owned text supports quick corrections; reusable props and instance data use transparent `TextSlot` bindings. Preserve slot and record IDs alongside block IDs. See [Selection and quick corrections](SELECTION.md) for the binding and agent-context contract.
+Selections can identify individual phrases within those blocks. Literal document-owned text supports quick corrections, including literal props passed to helper components in the same file. Shared components in other files and instance data use transparent `TextSlot` bindings. Preserve slot and record IDs alongside block IDs. See [Selection and quick corrections](SELECTION.md) for the binding and agent-context contract.
 
 Composite primitives reserve their child IDs. `TitleBlock id="opening"` creates `opening-title`, `opening-subtitle`, and `opening-byline` when present. `Section id="method"` creates `method-heading` and `method-lead`. `List id="steps"` combines its ID with each item ID. `Cover` defaults to the `cover-` prefix; choose another prefix for a second cover. References reserve `reference-<source-id>` and notes reserve `note-<note-id>`.
 

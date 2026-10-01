@@ -1,7 +1,7 @@
 import React, { createElement, isValidElement, type ReactElement, type ReactNode } from 'react';
 import * as F from '@formepdf/react';
 import type { SourceLocation } from '../shared/types';
-import type { TextRun, TextSourceValue, TextTarget } from '../shared/selection';
+import { generatedTextReason, type TextRun, type TextSourceValue, type TextTarget } from '../shared/selection';
 
 export type TextFieldPath = (string | { id: string })[];
 export interface TextSlotProps {
@@ -22,12 +22,13 @@ export interface TextSlotProps {
 /** Transparent source provenance. It introduces no text, styles, or PDF nodes. */
 export function TextSlot({ children }: TextSlotProps) { return <>{children}</>; }
 
-export type TextResolution = (location: SourceLocation, slot: string, childIndex?: number) => TextSourceValue | undefined;
+/** `frames` starts at the rendered element, then each component instance that created the previous frame. */
+export type TextResolution = (frames: SourceLocation[], slot: string, childIndex?: number, text?: string) => TextSourceValue | undefined;
 export type TextGlobals = typeof globalThis & {
   __opendocResolveTextSource?: TextResolution;
   __opendocResolveTextField?: (field: TextFieldPath) => TextSourceValue | undefined;
 };
-type Binding = { slot?: string; source?: TextSourceValue; origin?: SourceLocation; from?: string; childIndex?: number; stable?: boolean; protected?: boolean; reason?: string };
+type Binding = { slot?: string; source?: TextSourceValue; origin?: SourceLocation[]; from?: string; childIndex?: number; stable?: boolean; protected?: boolean; reason?: string };
 const textTypes = new Set<unknown>([F.Text, F.H1, F.H2, F.H3, F.H4, F.H5, F.H6]);
 
 function rawText(node: ReactNode): string {
@@ -39,20 +40,20 @@ function rawText(node: ReactNode): string {
 /** Capture authored leaves before Forme flattens inline runs into text lines. */
 export class TextCapture {
   private bindings = new WeakMap<object, Binding>();
-  private origins = new WeakMap<object, SourceLocation>();
+  private origins = new WeakMap<object, SourceLocation[]>();
   constructor(private sourceMap: WeakMap<object, SourceLocation>) {}
 
-  remember(element: object, source?: SourceLocation) { if (source) this.origins.set(element, source); }
+  remember(element: object, frames?: SourceLocation[]) { if (frames?.length) this.origins.set(element, frames); }
   copy(from: object, to: object) {
     const binding = this.bindings.get(from), origin = this.origins.get(from);
     if (binding) this.bindings.set(to, binding);
     if (origin) this.origins.set(to, origin);
   }
-  wrap(children: ReactNode, props: TextSlotProps, caller?: SourceLocation): ReactElement {
+  wrap(children: ReactNode, props: TextSlotProps, caller?: SourceLocation[]): ReactElement {
     if (typeof props.slot !== 'string' || !props.slot.trim()) throw new Error('TextSlot needs a nonempty stable content name.');
     const globals = globalThis as TextGlobals;
     const source = props.field ? globals.__opendocResolveTextField?.(props.field)
-      : props.from && props.from !== 'children' && caller ? globals.__opendocResolveTextSource?.(caller, props.from) : undefined;
+      : props.from && props.from !== 'children' && caller?.length ? globals.__opendocResolveTextSource?.(caller, props.from, undefined, rawText(children)) : undefined;
     const marker = createElement(React.Fragment, {}, children);
     this.bindings.set(marker, { slot: props.slot, source, origin: caller, from: props.from, childIndex: props.childIndex, stable: props.stable, reason: props.reason, protected: !!props.reason });
     return marker;
@@ -69,7 +70,7 @@ export class TextCapture {
     const used = new Set<string>();
     const identities = new Map<TextTarget, { named: boolean; key: string }>();
     const globals = globalThis as TextGlobals;
-    const resolve = (location: SourceLocation | undefined, slot: string, childIndex?: number) => location ? globals.__opendocResolveTextSource?.(location, slot, childIndex) : undefined;
+    const resolve = (frames: SourceLocation[] | undefined, slot: string, childIndex: number, text: string) => frames?.length ? globals.__opendocResolveTextSource?.(frames, slot, childIndex, text) : undefined;
     const containsProtected = (node: ReactNode): boolean => {
       if (Array.isArray(node)) return node.some(containsProtected);
       if (!isValidElement<{ children?: ReactNode }>(node)) return false;
@@ -83,7 +84,7 @@ export class TextCapture {
         const writable = !inherited?.protected && candidate?.value === text ? candidate : undefined;
         const start = buffer.text.length; buffer.text += text;
         runs.push({ start, end: buffer.text.length, ...(writable ? { source: writable } : {}),
-          ...(!writable ? { protected: !!inherited?.protected, reason: inherited?.reason ?? 'Ask your agent to change this text.' } : {}) });
+          ...(!writable ? { protected: !!inherited?.protected, reason: inherited?.reason ?? generatedTextReason } : {}) });
         return;
       }
       if (Array.isArray(node)) { node.forEach(child => gather(child, runs, buffer, inherited)); return; }
@@ -101,7 +102,7 @@ export class TextCapture {
       const from = own?.from ?? 'children';
       const children = Array.isArray(node.props.children) ? node.props.children : [node.props.children];
       children.forEach((child, index) => gather(child, runs, buffer, binding,
-        typeof child === 'string' || typeof child === 'number' ? resolve(origin, from, index + (own?.childIndex ?? 0)) : undefined));
+        typeof child === 'string' || typeof child === 'number' ? resolve(origin, from, index + (own?.childIndex ?? 0), String(child)) : undefined));
     };
     const descendantSlot = (node: ReactNode): Binding | undefined => {
       if (Array.isArray(node)) {
