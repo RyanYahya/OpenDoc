@@ -218,7 +218,7 @@ function App() {
       {current.view === "document" ? active ? <Reader key={active.id} state={active} generation={generation} connected={connected} onShowExports={() => setExportDocument(active)}
         identity={<>
           <IconButton label={`Back to ${backLabel}`} className="reader-back" render={<a href={`#${backHash}`} />} nativeButton={false}><Icon name="left" size={17} /></IconButton>
-          <div className="reader-document"><a href={project ? `#project/${project.id}` : "#library"} title={project?.name ?? "Documents"} dir="auto" lang={project && textLang(project.name)}>{project?.name ?? "Documents"}</a><span className="reader-context-separator" aria-hidden="true">/</span><span className="reader-document-title" title={documentName(active)} dir="auto" lang={textLang(documentName(active), activeSummary?.language)}>{documentName(active)}</span><StatusBadge status={itemStatus(tagState.manifest, active.id)} className="reader-status" /></div>
+          <div className="reader-document"><a href={project ? `#project/${project.id}` : "#library"} title={project?.name ?? "Documents"} dir="auto" lang={project && textLang(project.name)}>{project?.name ?? "Documents"}</a><span className="reader-context-separator" aria-hidden="true">/</span><h1 className="reader-document-title" title={documentName(active)} dir="auto" lang={textLang(documentName(active), activeSummary?.language)}>{documentName(active)}</h1><StatusBadge status={itemStatus(tagState.manifest, active.id)} className="reader-status" /></div>
         </>}
         options={<DocumentMenuItems document={active} onAction={onDocumentAction} disabled={!connected || duplicating} exports={false}>
           <AppearanceSubmenu value={appearance} onChange={changeAppearance} />

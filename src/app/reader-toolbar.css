@@ -20,7 +20,8 @@
 .reader-document a { color: var(--muted); text-decoration: none; padding-block: 10px; max-width: 150px; }
 .reader-document a:hover { color: var(--ink); }
 .reader-context-separator { color: var(--muted); opacity: 0.55; }
-.reader-document-title { font-weight: 500; }
+/* The document title is the reader's h1, set at the toolbar's label size. */
+.reader-document-title { font-size: inherit; line-height: inherit; font-weight: 500; }
 .reader-document a, .reader-document-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .reader-page-controls { display: flex; align-items: center; flex: 0 0 auto; gap: 12px; }
 .reader-pagination { display: flex; align-items: center; gap: 2px; background: var(--background); border-radius: 7px; padding: 2px; }
