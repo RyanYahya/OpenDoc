@@ -1,6 +1,6 @@
 ---
 name: opendoc-organize
-description: Tag, find, and organize OpenDoc documents, presentations, themes, and templates when the user asks to tag or label work, find items by type, status, language, or tag (such as all final minutes or every Arabic report), mark a document final or in review, clean up or rename tags, arrange themes into folders, or group documents into projects.
+description: Tag, find, and organize OpenDoc documents, presentations, themes, and templates when the user asks to tag or label work, find items by type, status, language, or tag (such as all final minutes or every Arabic report), mark a document final or in review, clean up or rename tags, arrange themes into folders, group documents into projects, move a document to another project, rename or delete a project or set its default themes, or rename, duplicate, delete, or restore a document.
 ---
 
 Use the user's OpenDoc workspace as the working directory. `documents/`, `templates/`, `themes/`, `assets/`, and `.opendoc/` are workspace paths; guide links are relative to this installed skill. Use `npx opendoc` for commands and keep authoring changes out of `node_modules/opendoc`. In Headless, follow [the remote workflow](../../../docs/HEADLESS.md); these commands and imports stay the same, and no browser or recipient-side installation is needed.
@@ -62,9 +62,9 @@ Folders are single-level: a folder cannot contain another folder, so offer a fla
 
 **Ready:** the requested folders and assignments are in place, or no folder change was requested.
 
-## 5. Group documents into projects with approval
+## 5. Group documents and manage projects
 
-Documents and presentations are grouped by project; see [Projects](../../../docs/PROJECTS.md). Regroup only when the user asks, never on your own initiative or as a side effect of tagging. You may suggest a grouping, such as documents that share a client, programme, or recurring series, or that sit in a catch-all project. Present the proposed projects and memberships, then wait for an explicit yes before creating projects or moving documents:
+Documents and presentations are grouped by project; see [Projects](../../../docs/PROJECTS.md). A direct request, such as "move the Q3 report to Client work" or "create a project for Acme", is its own approval: carry it out. Regroup only when asked, never on your own initiative or as a side effect of tagging. When you suggest a grouping yourself, such as documents that share a client, programme, or recurring series, or that sit in a catch-all project, present the proposed projects and memberships and wait for an explicit yes before creating projects or moving documents:
 
 ```sh
 npx opendoc projects list
@@ -72,12 +72,37 @@ npx opendoc projects create <project-id> --name "Project name"
 npx opendoc projects assign <document-id> <project-id>
 ```
 
-Leave `--theme` off a new project unless the user chose its default theme. Moving a document keeps its theme, bindings, and content; do not rebind or edit it. Change a project's default theme, rename it, or delete it only when asked.
+Leave `--theme` off a new project unless the user chose its default theme. Moving a document keeps its theme, bindings, and content; do not rebind or edit it. Change project settings only when asked:
 
-**Ready:** the approved projects exist and each approved document belongs to its project, or no grouping was requested.
+```sh
+npx opendoc projects update <project-id> --name "New name"
+npx opendoc projects update <project-id> --document-theme <theme-id> --presentation-theme <theme-id>
+npx opendoc projects update <project-id> --theme none
+npx opendoc projects delete <project-id>
+```
 
-## 6. Report
+`--theme` sets the default for both formats, `--document-theme` and `--presentation-theme` set one each, and `none` clears it; defaults apply to new documents only. `delete` succeeds only for an empty project; move or delete its documents first only when the user asks.
 
-Confirm the result with `tags show`, `tags find`, `themes list`, or `projects list`. Tags, folders, and projects never change source, rendering, or exports, so no check, review, or re-export is needed.
+**Ready:** the requested projects, settings, and memberships are in place, any suggested regrouping was approved, or no grouping was requested.
 
-**Done:** the user has the found items or a concise list of every tag, folder, project, and assignment that changed, with anything left unchanged and why.
+## 6. Rename, duplicate, delete, and restore documents
+
+Use the `documents` command, never folder moves; act only on the user's request:
+
+```sh
+npx opendoc documents rename <document-id> "New title"
+npx opendoc documents duplicate <document-id> --id <new-id> --title "Title" --project <project-id>
+npx opendoc documents delete <document-id>
+npx opendoc documents trash
+npx opendoc documents restore <restore-id>
+```
+
+`rename` changes the library name, not the PDF title in source. A duplicate copies saved source, data, media, comments, and tags, and starts with its own history and no status; omit the options for `<document-id>-copy` in the same project. `delete` moves the document, with its history, comments, tags, and status, to Trash and prints its restore command; report it. Confirm before deleting several documents or one whose ID is uncertain. `trash` lists restore IDs; `restore` also accepts a document ID when Trash holds one copy. Never move, edit, or empty folders in `.opendoc/trash/` by hand.
+
+**Ready:** each requested document is renamed, copied, in Trash with its restore command, or restored.
+
+## 7. Report
+
+Confirm the result with `tags show`, `tags find`, `themes list`, `projects list`, or `documents trash`. Tags, folders, projects, and these document commands never change a document's source, rendering, or exports, so no check, review, or re-export is needed.
+
+**Done:** the user has the found items or a concise list of every tag, folder, project, assignment, and document that changed, including restore commands for deleted documents, with anything left unchanged and why.

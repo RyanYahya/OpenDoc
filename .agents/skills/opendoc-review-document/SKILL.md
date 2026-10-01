@@ -1,6 +1,6 @@
 ---
 name: opendoc-review-document
-description: Review OpenDoc documents and presentations before delivery or when the user requests an audit, including PDF pages, editable PowerPoint exports, and theme or template specimens.
+description: Review OpenDoc documents and presentations before delivery or when the user requests an audit, including PDF pages, editable PowerPoint exports, and theme or template specimens, and export finished files when the user asks to export a document again, send the PDF or PowerPoint of a document, export everything, or leave review findings as comments.
 ---
 
 Use the user's OpenDoc workspace as the working directory. `documents/`, `templates/`, `themes/`, `assets/`, and `.opendoc/` are workspace paths; guide links are relative to this installed skill. Use `npx opendoc` for commands and keep authoring changes out of `node_modules/opendoc`. In Headless, follow [the remote workflow](../../../docs/HEADLESS.md); these commands and imports stay the same, and no browser or recipient-side installation is needed.
@@ -31,6 +31,8 @@ Use `pages[].elements` to inspect actual element bounds, parent coordinates, cli
 - **Supplied PDF:** inspect the caller's file directly with available PDF tools; it does not need importing into OpenDoc.
 
 Read render warnings and relevant feedback. Reuse a just-produced export when its source is unchanged. Rendering/error states may leave an older PDF visible.
+
+A request only for the files again ("export this again", "send me the PDF of X") still starts from a current render: run `npx opendoc review <document-id> --json`, inspect at least the pages in `changes.changedPages` (a first review lists every page), then export and deliver as above. To export everything, run `npx opendoc export --all --json` for every PDF, find presentations in the `formats` map of `npx opendoc projects list --json` (each has the value `presentation`), and export their PowerPoint with `npx opendoc export <id...> --format pptx --json`. Inspect each batch result, report failures by ID, and review any document changed since its last review before delivering it.
 
 **Ready:** the exact current files, page/slide count, brief, and review scope are known.
 
@@ -64,7 +66,13 @@ If export rejects an unsupported effect or font, resolve it within the user's de
 
 ## 5. Close the review
 
-For review-only requests, report findings without editing. When revision is in scope, fix material defects, re-export every requested format from the same final source, and inspect changed pages/slides and adjacent breaks. Repeat broader checks only when the change affects them. Shared themes/templates need representative short and long cases and affected-instance checks.
+For review-only requests, report findings without editing. When the user wants findings left in the document, add each as a comment on its block, using block IDs from the review manifest; it works in both editions, with or without a running service:
+
+```sh
+npx opendoc comments add <document-id> <block-id> "Finding and suggested fix"
+```
+
+Leave these comments open for the user or [opendoc-apply-comments](../opendoc-apply-comments/SKILL.md). When revision is in scope, fix material defects, re-export every requested format from the same final source, and inspect changed pages/slides and adjacent breaks. Repeat broader checks only when the change affects them. Shared themes/templates need representative short and long cases and affected-instance checks.
 
 Return verified changes to the calling workflow, which owns feedback resolution. Preserve IDs and comment history during revisions.
 

@@ -2,3 +2,5 @@ interface:
   display_name: "OpenDoc: History"
   short_description: "Compare earlier versions and restore wording or comments."
   default_prompt: "Use $opendoc-history in this OpenDoc workspace."
+policy:
+  allow_implicit_invocation: true

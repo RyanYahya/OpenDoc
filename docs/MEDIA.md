@@ -101,11 +101,11 @@ The installed renderer prepares cropped/rounded frames as bounded PNGs, leaving 
 
 For starting compositions, read workspace-root `templates/image-story/AGENTS.md` and view its real PDF in **Templates**. It demonstrates full bleed, vertical/horizontal halves, panoramas with insets, diptychs, collage, and floating text panels. You can use the primitives without using that template. Generate or choose images for their intended aspect ratio and quiet text areas; never crop away a face, important object, label, or evidence merely to match a frame. Always inspect the rendered PDF for image visibility, crop, contrast, caption placement, and text extraction. A successful export is not a visual review.
 
-## Browse and continue with Codex
+## Browse and continue with your agent
 
 The **Media** tab in **Media & Assets** lists visuals across documents, searchable by title, description, kind, and document. Existing Media links keep working. Byte-identical images share one browser card; ownership, metadata, and source relationships stay separate. A filename match alone never merges images. The detail view shows their document, current PDF usage, prepared files, and optional source notes.
 
-File downloads are limited to document-owned media files. Original references are shown only as source notes. Selecting a media item updates `.opendoc/current.json` with its folder, metadata, and input status so Codex can work on the right item. Selection remains observed context, never an instruction to change the document. Metadata is editable in the app or through ordinary local files and the coding agent; prepared data, recipes, and regeneration remain agent work.
+File downloads are limited to document-owned media files. Original references are shown only as source notes. Selecting a media item updates `.opendoc/current.json` with its folder, metadata, and input status (`selectedMedia`) so your agent can work on the right item. Selection remains observed context, never an instruction to change the document. Metadata is editable in the app or through ordinary local files and the coding agent; prepared data, recipes, and regeneration remain agent work.
 
 ## Existing projects
 
