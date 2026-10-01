@@ -196,3 +196,26 @@ test('history folders never trigger rendering, copying, or packaging', async () 
     assert.equal(packaging.forbiddenPackagePath('starter/documents/welcome/index.tsx'), false);
   } finally { await workspace.close(); await f.cleanup(); }
 });
+
+test('the history CLI lists, compares, and restores with structured output', { timeout: 60_000 }, async () => {
+  const f = await fixture();
+  const output: string[] = [];
+  const log = console.log;
+  console.log = (value: unknown) => { output.push(String(value)); };
+  try {
+    const store = new HistoryStore(f.root);
+    const first = (await store.capture('proof', 'external')).version!;
+    await writeFile(f.entry, source().replace('A stable paragraph', 'An agent paragraph'));
+    const { runHistoryCli } = await import('../src/server/history-cli');
+    await runHistoryCli(['list', 'proof', '--json'], f.root);
+    assert.equal(JSON.parse(output.pop()!).versions.length, 1, 'Listing is read-only; it does not record the pending change.');
+    await runHistoryCli(['show', 'proof', first.id, '--json'], f.root);
+    assert.deepEqual(JSON.parse(output.pop()!).blocks.map((block: { id: string }) => block.id), ['target']);
+    await runHistoryCli(['restore', 'proof', first.id, '--block', 'target', '--json'], f.root);
+    const result = JSON.parse(output.pop()!);
+    assert.equal(result.scope, 'block');
+    assert.match(await readFile(f.entry, 'utf8'), /A stable paragraph/);
+    assert.deepEqual((await store.list('proof')).map(version => version.origin), ['restore', 'external', 'baseline'], 'The replaced state was recorded before restoring.');
+    await assert.rejects(runHistoryCli(['restore', 'proof', first.id, '--block', 'title-x', '--section', 'title'], f.root), /not both/);
+  } finally { console.log = log; await f.cleanup(); }
+});

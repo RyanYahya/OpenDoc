@@ -21,6 +21,7 @@
     "projects": "tsx src/server/projects-cli.ts",
     "export": "tsx src/server/export.ts",
     "comments": "tsx src/server/comments-cli.ts",
+    "history": "tsx src/server/history-cli.ts",
     "media": "tsx src/server/media-cli.ts",
     "check": "tsc --noEmit",
     "build": "vite build",

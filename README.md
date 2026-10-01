@@ -185,6 +185,7 @@ Updates preserve your edition, documents, templates, themes, assets, and feedbac
 | Tag and filter documents, themes, and templates | [Tags](docs/TAGS.md) |
 | Work with images, fonts, and logos | [Media](docs/MEDIA.md) · [Assets](docs/ASSETS.md) |
 | Apply precise corrections and feedback | [Selection](docs/SELECTION.md) |
+| Restore earlier wording, sections, or versions | [Version history](docs/HISTORY.md) |
 | Contribute to the framework | [Contributing](CONTRIBUTING.md) · [Validation](VALIDATION.md) |
 
 For development, use Node.js 24+ and the pnpm version pinned in `package.json`:

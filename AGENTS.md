@@ -73,4 +73,6 @@ Export documents with `npx opendoc export <id>`. For presentations, also run `np
 
 Resolve comments through `npx opendoc comments` only after making and verifying the change. Keep their history. Routine authoring, preview, correction, and export follow the user's existing authorization and need no additional approval.
 
+Each document keeps [version history](docs/HISTORY.md) in `documents/<id>/.history/`, recorded automatically for the user. Never edit, prune, or delete it. When the user asks to recover earlier wording, use `npx opendoc history list|show|block <doc>` to find it and `npx opendoc history restore <doc> <version> --block <id>` (or `--section`, or no flag for the whole version) to restore it; report the printed Undo command.
+
 `.opendoc/current.json` is generated active context; do not edit it by hand. Use the launch URL printed by the server. `.opendoc/server.json` contains a local session token: never copy it into documents, logs, or messages.

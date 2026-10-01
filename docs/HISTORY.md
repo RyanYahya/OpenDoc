@@ -1,0 +1,72 @@
+# Version history
+
+OpenDoc keeps a version history for every document and presentation, so you can go back to earlier wording without losing later work. You can restore a single paragraph or heading, one section with everything inside it, or a whole earlier version. Restoring only replaces what you choose; the rest of the document stays as it is.
+
+History is recorded automatically and kept for 90 days. It is stored inside each document's own folder, so it travels with the document when the folder is synced, copied, or backed up.
+
+## What is recorded
+
+OpenDoc records a version whenever a document's text sources change:
+
+- **Your edit**: a text correction saved from the reader with Save all.
+- **Undo**: Undo saved changes in the reader.
+- **Agent change**: any change made outside the reader, usually by your coding agent or an editor. OpenDoc waits for writes to settle for a few seconds, so one save or one burst of agent writes becomes one version.
+- **Restored**: a block, section, or version restored from history. The state being replaced is recorded first, so every restore can be undone.
+- **Earliest saved state**: the first version OpenDoc saw, recorded when the service starts or the document first appears.
+
+Changes made while OpenDoc is closed are recorded as one Agent change the next time it starts. In OpenDoc Headless there is no running service; `npx opendoc history restore` records the current state before it restores, and earlier states exist only where an earlier session or restore recorded them.
+
+Text sources are the files the document owns in `documents/<id>/`: `index.tsx`, `theme.tsx`, `assets.json`, and local data or code such as JSON, CSV, and TypeScript files. Feedback in `comments.json` keeps its own history and is not part of document versions. Files in `media/` and other binary or very large files are identified by their hash only: they are never copied into history, and restoring never changes them. Use [Media](MEDIA.md) to regenerate or replace visuals.
+
+## Restore from the reader
+
+Choose the **History** button in the reader toolbar. Versions are listed newest first and grouped by day, each with its time, where it came from, and a short summary such as "3 blocks changed". Select a version to see how it differs from the current source: every changed block shows its kind, its earlier and current wording, and its stable ID. Changed blocks are highlighted on the page; hovering or focusing an entry highlights it more strongly, and **Show on page** scrolls to it.
+
+- **Restore block** replaces one paragraph, heading, callout, table, or other block with its wording from that version.
+- **Restore block only** on a section restores the section's own title or lead and keeps the current blocks inside it.
+- **Restore section** restores a section, slide, or other container together with everything inside it.
+- **Restore whole version** returns every text source to that version. Files created since are kept, and media is not changed.
+
+Each restore asks for confirmation and then offers **Undo**. To see one block's earlier wording, select it on the page and choose the History icon in the selection bar. Each distinct earlier wording is listed once; restoring it replaces that block or section only.
+
+Restoring changes the saved source, so OpenDoc asks you to save or discard unsaved text edits first, as Export does.
+
+## When a restore is refused
+
+OpenDoc identifies blocks by the literal `id` written in the source, such as `<Paragraph id="welcome-introduction">`. It checks every restore before writing anything and leaves the file untouched when the result would be unsafe:
+
+- **Generated IDs.** A block whose ID is produced by code, for example inside a `map` over data, has no source position of its own. Restore its containing section or the whole version, or ask your agent to give it a literal ID. Child IDs created by composite blocks, such as `<id>-heading` from a `Section`, belong to the block that creates them.
+- **Duplicate IDs.** When an ID appears more than once in either version, OpenDoc cannot tell which copy to restore.
+- **Moved, added, or removed blocks.** A block that moved to another file, or did not exist in one of the versions, can be restored through its containing section or the whole version.
+- **Changed contents.** Restore block only needs the same blocks inside the section; otherwise restore the whole section.
+- **Rendering.** The restored source is rendered first. If it does not render, for example because a citation or media item it used no longer exists, nothing is written.
+- **Newer changes.** If the document changes after you opened a version, OpenDoc asks you to review the latest changes before restoring.
+
+## Recently deleted comments
+
+Deleting a comment keeps its record and history. The comments panel lists comments deleted in the last 90 days under **Recently deleted**, each with **Restore**, which brings it back with its identity, anchor, earlier open or resolved status, and history. From the command line, `npx opendoc comments restore <doc> <comment-id>` does the same; `comments list` includes deleted comments with their status.
+
+## Commands
+
+```sh
+npx opendoc history list <doc> [--json]
+npx opendoc history show <doc> <version> [--json]
+npx opendoc history block <doc> <block-id> [--json]
+npx opendoc history restore <doc> <version> [--block <id> | --section <id>] [--json]
+```
+
+`list` prints versions newest first. `show` compares one version with the current source, block by block. `block` lists the earlier wording of one block. `restore` restores the whole version, or with `--block` or `--section` only that block; it prints the command that undoes it. Restore refuses while the running reader holds unsaved text edits for the document.
+
+## Storage
+
+History lives in `documents/<id>/.history/`:
+
+- `versions/` holds one small JSON manifest per version: its time, origin, the hash of each text source, the hash of each media file, and a summary of what changed. Manifests are written once and never edited.
+- `blobs/` holds the text sources, compressed with gzip and named by the SHA-256 hash of their contents. Unchanged files are stored once, however many versions use them.
+- `history.json` records the storage format.
+
+A version of the welcome document whose `index.tsx` changed adds about 8 KB: a 6 KB compressed source and a 2 KB manifest. A restore back to earlier wording usually adds only the manifest.
+
+Because manifests are never rewritten, two synced computers do not edit the same file. Sync conflict copies of a manifest are recognised by the version ID inside them, and a partially synced manifest is skipped until it is complete. Versions older than 90 days are removed when a version is recorded and when OpenDoc starts; the latest version is always kept. Compressed sources no longer used by any version are then removed, unless a manifest is still incomplete.
+
+The `.history` folder is ignored by the renderer, the file watcher, exports, the media library, and packaging. Duplicating a document starts a new history; deleting it moves its history to the recovery folder with the rest of the document. Do not edit or delete history files by hand.

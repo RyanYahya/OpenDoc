@@ -90,6 +90,8 @@ Creation makes a minimal draft, its project assignment, exact asset selections i
 
 In the reader, select a component and choose **Edit** or **Comment**. Text edits preview as a browser draft; **Save all** writes the group to local source. Drafts survive navigation and reload in the same tab. Formatting, calculations, and structural changes belong with your agent. Comments save independently, retain their history, and stay attached through reflow when block identities are preserved. Each comment shows whether it is open or resolved; while any are open, the comments dock can copy a prompt asking your agent to apply them. [Selection and corrections](SELECTION.md) explains supported edits and conflict recovery.
 
+The **History** button keeps every saved edit, agent change, and restore for 90 days. Restore one paragraph, one section, or a whole earlier version and leave the rest as it is; every restore offers Undo. Deleted comments stay under **Recently deleted** in the comments panel. [Version history](HISTORY.md) explains what is recorded and when a restore is refused.
+
 Use the document **…** menu to rename, duplicate, move, or delete it. Rename changes the library name, while the PDF title remains authored content. Duplicate copies saved source, local data, media, and feedback. Delete offers Undo and keeps a recovery folder in `.opendoc/trash/`; existing exports remain in `output/`. [Projects](PROJECTS.md) covers membership and recovery.
 
 ## Use media, logos, and fonts
@@ -146,6 +148,7 @@ For development and pull requests, read [Contributing](../CONTRIBUTING.md). Revi
 | First agent task or source conventions | [AGENTS.md](../AGENTS.md) |
 | Produce finished files remotely without a GUI | [OpenDoc Headless](HEADLESS.md) |
 | Write a document or use PDF primitives | [Authoring](AUTHORING.md) |
+| Restore earlier wording or deleted comments | [Version history](HISTORY.md) |
 | Resolve the active document or feedback | [Current document skill](../.agents/skills/opendoc-current-document/SKILL.md), [Selection](SELECTION.md) |
 | Create or adapt a reusable layout | [Templates](TEMPLATES.md) |
 | Create or apply a design system | [Themes](THEMES.md) |
@@ -170,7 +173,7 @@ Before opening a pull request, run `pnpm verify` for typechecking, the full test
 
 ## Workspace boundaries
 
-`documents/` holds authored work; `templates/` holds reusable layouts and data contracts; `themes/` holds executable visual systems; `assets/` holds shared local resources. `projects.json` records document membership. The optional `tags.json` labels documents, themes, and templates for filtering ([Tags](TAGS.md)), and the optional `themes/folders.json` groups themes into folders without moving them. `.opendoc/` holds generated context, previews, recovery records, and session state; `output/` holds exported PDFs and PowerPoint files. Generated state and exports are ignored by Git.
+`documents/` holds authored work, with each document's version history in its own `.history/` folder; `templates/` holds reusable layouts and data contracts; `themes/` holds executable visual systems; `assets/` holds shared local resources. `projects.json` records document membership. The optional `tags.json` labels documents, themes, and templates for filtering ([Tags](TAGS.md)), and the optional `themes/folders.json` groups themes into folders without moving them. `.opendoc/` holds generated context, previews, recovery records, and session state; `output/` holds exported PDFs and PowerPoint files. Generated state and exports are ignored by Git.
 
 Authoring uses the public imports `opendoc`, `opendoc/template`, `opendoc/assets`, and `opendoc/themes`. Keep references to your editable local catalogs relative to the workspace. The pinned application dependency lives in `node_modules/opendoc`; ordinary document work does not change it. The workspace's `package.json`, lockfile, and `.opendoc/workspace.json` identify its installation and format.
 

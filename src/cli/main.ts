@@ -19,6 +19,7 @@ ${edition === 'headless'
   npx opendoc assets                Manage fonts, logos, and bindings
   npx opendoc media                 Manage document-owned media
   npx opendoc comments              Read and resolve feedback
+  npx opendoc history               Review and restore earlier versions
   npx opendoc export <id...>         Export PDF or editable PowerPoint
   npx opendoc review <id>            Generate page images, text, and review issues
   npx opendoc check                 Typecheck workspace authoring
@@ -97,6 +98,7 @@ export async function main(rawArgs = process.argv.slice(2)) {
         case 'assets': await (await import('../server/assets-cli')).runAssetsCli(flags, root); break;
         case 'media': await (await import('../server/media-cli')).runMediaCli(flags, root); break;
         case 'comments': await (await import('../server/comments-cli')).runCommentsCli(flags, root, { mode: identity.edition === 'headless' ? 'direct' : 'auto' }); break;
+        case 'history': await (await import('../server/history-cli')).runHistoryCli(flags, root); break;
         case 'export': await (await import('../server/export')).runExportCli(flags, root, { mode: identity.edition === 'headless' ? 'direct' : 'preview' }); break;
         case 'review': await (await import('../server/review-cli')).runReviewCli(flags, root); break;
         case 'update': await (await import('./update')).runUpdate(flags, root); break;

@@ -1,4 +1,4 @@
-import { readComments, changeComment, addComment } from './comments';
+import { readComments, changeComment, addComment, restoreComment } from './comments';
 import { readJSON } from './files';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -8,7 +8,7 @@ import { renderOnce, validId } from './render';
 import { captureExportInputs } from './export-inputs';
 import { getBlock, type DocumentState } from '../shared/types';
 
-const usage = 'Usage: npx opendoc comments list <doc> [--json]\n       npx opendoc comments resolve <doc> <comment-id> [--json]\n       npx opendoc comments reopen <doc> <comment-id> [--json]\n       npx opendoc comments add <doc> <block-id> "text" [--json]';
+const usage = 'Usage: npx opendoc comments list <doc> [--json]\n       npx opendoc comments resolve <doc> <comment-id> [--json]\n       npx opendoc comments reopen <doc> <comment-id> [--json]\n       npx opendoc comments restore <doc> <comment-id> [--json]\n       npx opendoc comments add <doc> <block-id> "text" [--json]';
 
 async function request<T>(origin: string, path: string, init?: RequestInit): Promise<T> {
   let response: Response;
@@ -32,6 +32,13 @@ export async function runCommentsCli(args: string[], root = process.cwd(), optio
     if (!comment) throw new Error('Comment not found.');
     const comments = await changeComment(root, doc, target, action === 'resolve' ? 'resolved' : 'open', comment.version);
     console.log(values.json ? JSON.stringify(comments.find(c => c.id === target), null, 2) : `${action === 'resolve' ? 'Resolved' : 'Reopened'} ${target}`);
+  } else if (action === 'restore' && target && positionals.length === 3) {
+    // Deleted feedback keeps its record; restoring returns it with its identity, anchor, and history.
+    const comment = (await readComments(root, doc)).find(c => c.id === target);
+    if (!comment) throw new Error('Comment not found.');
+    if (comment.status !== 'deleted') throw new Error('That comment is not deleted.');
+    const comments = await restoreComment(root, doc, target, comment.version);
+    console.log(values.json ? JSON.stringify(comments.find(c => c.id === target), null, 2) : `Restored ${target}`);
   } else if (action === 'add' && target && words.length) {
     if (options.mode === 'direct') {
       const unchanged = await captureExportInputs(root, doc);

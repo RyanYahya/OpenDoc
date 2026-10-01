@@ -21,6 +21,8 @@ For a PDF selection, open the reported source and match its stable block ID. Sou
 
 For a template instance, `provenance.dataFile` owns local content and `provenance.template` owns shared layout. Establish which the request concerns before editing.
 
+When the user refers to earlier wording ("what it said yesterday", "before the agent's change"), find it with `npx opendoc history block <doc> <block-id>` or `history show <doc> <version>`; see [Version history](../../../docs/HISTORY.md). History is the user's record: read and restore from it only on request, and never delete it.
+
 Load [context fields](references/context-fields.md) when working with themes, assets, pending comments, or render freshness. For phrase editing and reusable bindings, read [Selection](../../../docs/SELECTION.md).
 
 **Ready:** the target is matched to current source, its freshness is understood, and local versus shared ownership is clear.
