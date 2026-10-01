@@ -36,6 +36,7 @@ import { handleThemeFoldersRequest } from './theme-folders-http';
 import { TagsError, tagsFile } from './tags';
 import { handleTagsRequest } from './tags-http';
 import { sourceLanguage } from './language';
+import { coverImage } from './covers';
 
 import { readAssetHead as selectedAssetHead, readAssetRevision as selectedAssetRevision } from '../assets/files';
 import type { SelectedAsset } from '../shared/assets';
@@ -347,7 +348,7 @@ const server = createServer(async (req, res) => {
       }
       json(res, { error: 'Not found.' }, 404); return;
     }
-    const match = url.pathname.match(/^\/api\/documents\/([^/]+)\/(pdf|export|comments)(?:\/([^/]+)(?:\/(restore))?)?$/);
+    const match = url.pathname.match(/^\/api\/documents\/([^/]+)\/(pdf|cover|export|comments)(?:\/([^/]+)(?:\/(restore))?)?$/);
     if (!match || !validId(match[1])) { json(res, { error: 'Not found.' }, 404); return; }
     const [, id, action, commentId, commentAction] = match;
     const state = workspace.states.get(id);
@@ -357,6 +358,13 @@ const server = createServer(async (req, res) => {
       if (!output) { json(res, { error: 'This preview was replaced. Reload the document.' }, 409); return; }
       const bytes = await readFile(resolve(output.directory, 'document.pdf'));
       res.writeHead(200, { 'Content-Type': 'application/pdf', 'Content-Length': bytes.length, 'Cache-Control': 'no-store' }); res.end(bytes); return;
+    }
+    if (action === 'cover' && req.method === 'GET') {
+      const output = workspace.output(id, url.searchParams.get('hash') ?? '');
+      if (!output) { json(res, { error: 'This preview was replaced. Reload the document.' }, 409); return; }
+      const bytes = await coverImage(output.directory);
+      // The URL names one exact render, so its cover never changes.
+      res.writeHead(200, { 'Content-Type': 'image/webp', 'Content-Length': bytes.length, 'Cache-Control': 'private, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff' }); res.end(bytes); return;
     }
     if (action === 'export' && req.method === 'POST') {
       const { hash, format: requestedFormat } = await body(req);

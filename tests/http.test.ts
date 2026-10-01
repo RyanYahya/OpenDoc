@@ -35,6 +35,12 @@ test('local HTTP loop: discovery, watch, errors, exact export, and request bound
     assert.equal((await fetch(`${origin}/api/documents/missing`)).status, 404);
     const previewResponse = await fetch(`${origin}/api/documents/proof/pdf?hash=${hash}`);
     const preview = new Uint8Array(await previewResponse.arrayBuffer());
+    const cover = await fetch(`${origin}/api/documents/proof/cover?hash=${hash}`);
+    assert.equal(cover.status, 200);
+    assert.equal(cover.headers.get('content-type'), 'image/webp');
+    assert.match(cover.headers.get('cache-control') ?? '', /immutable/, 'A cover URL names one exact render.');
+    assert.equal(Buffer.from(await cover.arrayBuffer()).subarray(8, 12).toString('ascii'), 'WEBP');
+    assert.equal((await fetch(`${origin}/api/documents/proof/cover?hash=replaced`)).status, 409);
     const headers = { 'Content-Type': 'application/json', 'X-OpenDoc-Token': token, Origin: origin };
     const exported = await fetch(`${origin}/api/documents/proof/export`, { method: 'POST', headers, body: JSON.stringify({ hash }) });
     assert.equal(exported.status, 200);

@@ -1,6 +1,6 @@
 import { documentName, documentFormat, formatLabel, pageUnit, type DocumentSummary } from "../shared/types";
 import { DocumentMenu, type DocumentActionHandler } from './DocumentActions';
-import { CoverPreview } from "./Pdf";
+import { CoverPreview } from "./CoverPreview";
 import { Icon } from "./ui/Icon";
 import type { DocumentView } from './DocumentViewControl';
 import { StatusBadge, useDocumentDetails } from './Tags';
@@ -9,8 +9,8 @@ import { textLang } from '../shared/language';
 
 /**
  * The title is a real link, so a card opens in a new tab and its address can be copied; the link
- * stretches over the whole card while the heading stays outside any button. PDF.js renders the
- * actual document cover.
+ * stretches over the whole card while the heading stays outside any button. The cover is the
+ * actual first page, rendered by the service.
  */
 export function DocumentCard({
   document,

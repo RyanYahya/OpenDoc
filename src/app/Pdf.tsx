@@ -11,16 +11,16 @@ import {
   type CSSProperties,
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
-  type RefObject,
 } from "react";
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask, TextLayer } from "pdfjs-dist";
 import worker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-import { getBlock, type Fragment, type ArtifactSummary, type RenderArtifact } from "../shared/types";
+import { getBlock, type Fragment, type RenderArtifact } from "../shared/types";
 import type { DocumentSelection, TextTarget } from "../shared/selection";
 import { nearestBox, phraseSelection, wordRange, type TextRange } from './phraseSelection';
 import { mapPdfTextSpans, pdfSpanRangeForSelection, type PdfSpanMapping } from "./pdfSelection";
 import { loadPdfWithDeadline } from './pdfLoading';
 import { componentName, componentNavigation, isWithin, moveComponentFocus, navigationMove } from './componentNavigation';
+import { useNearViewport } from './nearViewport';
 
 let pdfJs: Promise<typeof import('pdfjs-dist')> | undefined;
 function loadPdfJs() {
@@ -77,7 +77,7 @@ function acquirePdf(key: string) {
 function releasePdf(key: string, entry: CachedPdf) {
   entry.readers -= 1;
   if (entry.readers) return;
-  // Keep the worker alive briefly when moving between a cover and its reader.
+  // Keep the worker alive briefly when moving between a thumbnail and its full preview.
   entry.release = setTimeout(() => {
     if (entry.readers || pdfs.get(key) !== entry) return;
     pdfs.delete(key);
@@ -129,53 +129,6 @@ export function usePdf(id: string, hash?: string, enabled = true, collection: 'd
   return key && state.key === key
     ? { pdf: state.pdf, error: state.error, retry }
     : { pdf: null, error: "", retry };
-}
-
-function useNearViewport(
-  ref: RefObject<HTMLDivElement | null>,
-  key: unknown,
-  rootMargin: string,
-  { once = true, enabled = true }: { once?: boolean; enabled?: boolean } = {},
-) {
-  const [visibility, setVisibility] = useState<{
-    key: unknown;
-    nearby: boolean;
-  } | null>(null);
-  const nearby =
-    !enabled || (visibility !== null && visibility.key === key && visibility.nearby);
-  useEffect(() => {
-    const element = ref.current;
-    if (!enabled || !element) return;
-    if (!("IntersectionObserver" in window)) {
-      setVisibility({ key, nearby: true });
-      return;
-    }
-    let active = true;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (!active) return;
-        const intersects = entries.some((entry) => entry.isIntersecting);
-        if (intersects || !once) {
-          setVisibility((current) =>
-            current !== null && current.key === key && current.nearby === intersects
-              ? current
-              : { key, nearby: intersects },
-          );
-          if (once) observer.disconnect();
-        }
-      },
-      {
-        root: element.closest(".reader-scroll, .page-rail"),
-        rootMargin,
-      },
-    );
-    observer.observe(element);
-    return () => {
-      active = false;
-      observer.disconnect();
-    };
-  }, [enabled, key, once, ref, rootMargin]);
-  return nearby;
 }
 
 type PdfPageProps = {
@@ -661,45 +614,3 @@ export const PdfPage = memo(function PdfPage({
     </div>
   );
 });
-
-export function CoverPreview({
-  format = 'document',
-  id,
-  artifact,
-  compact = false,
-}: {
-  id: string;
-  artifact?: ArtifactSummary;
-  format?: 'document' | 'presentation';
-  compact?: boolean;
-}) {
-  const cover = useRef<HTMLDivElement>(null);
-  const nearby = useNearViewport(cover, `${id}:${artifact?.hash}`, "320px 0px");
-  const { pdf, error } = usePdf(id, artifact?.hash, nearby);
-  const page = artifact?.pages[0] ?? (format === 'presentation' ? {width:960,height:540} : undefined);
-  const [width, setWidth] = useState(compact ? 40 : 238);
-  useEffect(() => {
-    if (!cover.current) return;
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry.contentRect.width > 0) setWidth(entry.contentRect.width);
-    });
-    observer.observe(cover.current);
-    return () => observer.disconnect();
-  }, []);
-  return (
-    <div
-      ref={cover}
-      className="cover-preview"
-      aria-hidden="true"
-      style={{ '--cover-ratio': (page?.width ?? 595.28) / (page?.height ?? 841.89), aspectRatio: `${page?.width ?? 595.28} / ${page?.height ?? 841.89}`, width: compact ? Math.min(40, 56 * (page?.width ?? 595.28) / (page?.height ?? 841.89)) : undefined } as CSSProperties}
-    >
-      {pdf ? (
-        <PdfPage pdf={pdf} number={1} width={width} thumbnail />
-      ) : (
-        <div className="cover-placeholder">
-          {compact ? <Icon name="document" size={18} /> : error ? "Preview unavailable" : "Preparing preview…"}
-        </div>
-      )}
-    </div>
-  );
-}
