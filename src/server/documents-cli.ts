@@ -16,9 +16,9 @@ const usage = `Usage: npx opendoc documents rename <id> "New title"
        Add --json for structured results.
 
 rename changes the name shown in OpenDoc; the ID, source, and PDF title stay the same.
-duplicate copies the saved source, data, media, and tags into a new document with its own history
-and no status, in the original's project unless --project chooses another.
-delete moves the document, with its history and comments, to Trash and prints its restore command.
+duplicate copies the saved source, data, media, comments, and tags into a new document with its own
+history and no status, in the original's project unless --project chooses another.
+delete moves the document, with its history, comments, tags, and status, to Trash and prints its restore command.
 restore accepts the restore ID from delete or trash, or the document ID when one copy is in Trash.`;
 
 const time = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
