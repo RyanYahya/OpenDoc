@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Menu } from '@base-ui/react/menu';
-import { documentName, type DocumentSummary } from '../shared/types';
+import { documentName, documentFormat, type DocumentSummary } from '../shared/types';
 import { api } from './api';
 import { Button, Dialog, Input } from './ui';
 import { Icon } from './ui/Icon';
 
 export type DocumentAction = 'rename' | 'duplicate' | 'move' | 'delete' | 'exports';
 export type DocumentActionHandler = (document: DocumentSummary, action: DocumentAction) => void;
+/** A document and presentation may share a title; their controls still need distinct names. */
+export const documentLabel = (document: DocumentSummary) => `${documentName(document)} (${documentFormat(document)})`;
 
 export function DocumentMenuItems({ document, disabled, onAction }: { document: DocumentSummary; disabled?: boolean; onAction: DocumentActionHandler }) {
   return <>
@@ -21,7 +23,7 @@ export function DocumentMenuItems({ document, disabled, onAction }: { document: 
 }
 
 export function DocumentMenu({ document, disabled, onAction }: { document: DocumentSummary; disabled?: boolean; onAction: DocumentActionHandler }) {
-  return <Menu.Root><Menu.Trigger render={<Button className="icon-button document-menu-trigger" aria-label={`Options for ${documentName(document)}`} />}><Icon name="more" size={14} /></Menu.Trigger>
+  return <Menu.Root><Menu.Trigger render={<Button className="icon-button document-menu-trigger" aria-label={`Options for ${documentLabel(document)}`} />}><Icon name="more" size={14} /></Menu.Trigger>
     <Menu.Portal><Menu.Positioner sideOffset={5} align="end" className="document-menu-positioner"><Menu.Popup className="ui-menu-popup"><DocumentMenuItems document={document} disabled={disabled} onAction={onAction} /></Menu.Popup></Menu.Positioner></Menu.Portal>
   </Menu.Root>;
 }

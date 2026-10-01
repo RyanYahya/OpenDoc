@@ -1,5 +1,5 @@
 import { documentName, documentFormat, type DocumentSummary } from "../shared/types";
-import { DocumentMenu, type DocumentActionHandler } from './DocumentActions';
+import { DocumentMenu, documentLabel, type DocumentActionHandler } from './DocumentActions';
 import { CoverPreview } from "./Pdf";
 import { Button, IconButton } from "./ui";
 import { Icon } from "./ui/Icon";
@@ -21,6 +21,7 @@ export function DocumentCard({
 }) {
   const { id, artifact, status } = document;
   const titleId = `document-title-${id}`;
+  const formatId = `document-format-${id}`;
   const presentation = documentFormat(document) === 'presentation';
   const pageCount = artifact?.pages.length ?? 0;
   const cover = artifact?.pages[0];
@@ -34,7 +35,7 @@ export function DocumentCard({
       static
       className={`document-card ${view === 'list' ? 'document-card-list' : ''}`}
       onClick={onOpen}
-      aria-labelledby={titleId}
+      aria-labelledby={`${titleId} ${formatId}`}
       aria-describedby={statusId}
     >
       <div
@@ -44,7 +45,8 @@ export function DocumentCard({
         {view === 'gallery' && <span id={statusId} className="card-preview-status">{statusLabel}</span>}
       </div>
       <h2 id={titleId} title={documentName(document)}>{documentName(document)}</h2>
+      <span id={formatId} className="sr-only">({documentFormat(document)})</span>
       {view === 'list' && <span id={statusId} className="card-meta">{statusLabel}</span>}
-    </Button><IconButton className="document-history-trigger" label={`Previous exports for ${documentName(document)}`} disabled={disabled} onClick={() => onAction(document, 'exports')}><Icon name="history" size={14} /></IconButton><DocumentMenu document={document} onAction={onAction} disabled={disabled} /></div>
+    </Button><IconButton className="document-history-trigger" label={`Previous exports for ${documentLabel(document)}`} disabled={disabled} onClick={() => onAction(document, 'exports')}><Icon name="history" size={14} /></IconButton><DocumentMenu document={document} onAction={onAction} disabled={disabled} /></div>
   );
 }
