@@ -24,6 +24,6 @@ export async function renderDocumentSource(source: string, entry: string, overri
   await resolveAllSources(doc as unknown as Record<string, unknown>, directory);
   const result = await renderPdfWithLayout(JSON.stringify(doc));
   // Generic engine defect notes stay internal; characters that no font in a
-  // fontFamily list can draw are reported, since they print as empty boxes.
+  // fontFamily list can draw are reported, since they print as question marks.
   return { ...result, doc, scriptFallback, warnings: result.warnings.filter(message => message.startsWith('Missing glyphs:')) };
 }

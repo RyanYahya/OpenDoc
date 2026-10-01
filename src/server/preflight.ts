@@ -195,10 +195,10 @@ export function missingGlyphIssues(warnings: string[], layout: LayoutInfo, block
     found.forEach(character => located.add(character));
     issues.push({ code: 'missing-glyphs', severity: 'warning', page: index + 1, blockId: first.blockId, source: first.blockId ? blocks[first.blockId]?.source : undefined,
       bounds: boundsOf(first.node), characters: [...found],
-      message: `Missing glyphs on page ${index + 1}: no font covers ${glyphList([...found])}. They print as empty boxes; add a font that covers them to the fontFamily fallback list.` });
+      message: `Missing glyphs on page ${index + 1}: no font covers ${glyphList([...found])}. They print as question marks (?); add a font that covers them to the fontFamily fallback list.` });
   }
   const elsewhere = [...characters].filter(character => !located.has(character));
   if (elsewhere.length) issues.push({ code: 'missing-glyphs', severity: 'warning', characters: elsewhere,
-    message: `Missing glyphs: no font covers ${glyphList(elsewhere)}. They print as empty boxes; add a font that covers them to the fontFamily fallback list.` });
+    message: `Missing glyphs: no font covers ${glyphList(elsewhere)}. They print as question marks (?); add a font that covers them to the fontFamily fallback list.` });
   return issues;
 }

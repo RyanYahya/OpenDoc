@@ -728,7 +728,7 @@ export function Reader({
         <div className="render-banner glyph-notice" role="status">
           <strong>Some characters can’t be displayed.</strong>
           <span>
-            {glyphs.characters.length > 0 && <>No font covers {glyphs.characters.map(({ character, code }, index) => <React.Fragment key={code}>{index > 0 && ", "}<bdi className="glyph-character">{character}</bdi> <span className="glyph-code">{code}</span></React.Fragment>)}{glyphs.more > 0 && ` and ${glyphs.more} more`}{glyphs.pages.length > 0 && ` on ${pageList(pageLabel, glyphs.pages)}`}, so {glyphs.characters.length + glyphs.more === 1 ? "it prints" : "they print"} as {glyphs.characters.length + glyphs.more === 1 ? "an empty box" : "empty boxes"}. </>}
+            {glyphs.characters.length > 0 && <>No font covers {glyphs.characters.map(({ character, code }, index) => <React.Fragment key={code}>{index > 0 && ", "}<bdi className="glyph-character">{character}</bdi> <span className="glyph-code">{code}</span></React.Fragment>)}{glyphs.more > 0 && ` and ${glyphs.more} more`}{glyphs.pages.length > 0 && ` on ${pageList(pageLabel, glyphs.pages)}`}, so {glyphs.characters.length + glyphs.more === 1 ? "it prints" : "they print"} as {glyphs.characters.length + glyphs.more === 1 ? "a question mark" : "question marks"}. </>}
             Add a font that covers these characters, or ask your agent.
           </span>
           {glyphs.first && <Button className="text-button" onClick={() => glyphs.first!.blockId ? findBlock(glyphs.first!.blockId) : goPage(glyphs.first!.page!)}>Show {pageLabel.toLowerCase()}{glyphs.first.page ? ` ${glyphs.first.page}` : ""}</Button>}
