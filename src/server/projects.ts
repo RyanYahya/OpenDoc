@@ -1,10 +1,8 @@
-import { constants, lstatSync, readFileSync, unlinkSync } from 'node:fs';
-import { lstat, mkdir, open, readFile, realpath, unlink } from 'node:fs/promises';
+import { lstat, readFile, realpath } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { setTimeout } from 'node:timers/promises';
 import { readTheme } from './themes';
 import { emptyProjects, type Project, type ProjectsManifest } from '../shared/projects';
-import { atomicWrite } from './files';
+import { atomicWrite, withLocalLock } from './files';
 import { documentEntry, validId } from './render';
 
 export class ProjectError extends Error {
@@ -15,24 +13,6 @@ function record(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }
 
-/** A terminated CLI must not leave all later project changes permanently busy. */
-function releaseDeadProjectLock(lock: string) {
-  try {
-    const before = lstatSync(lock);
-    if (!before.isFile() || before.isSymbolicLink() || before.size > 128) return;
-    let pid: number | undefined;
-    try { pid = (JSON.parse(readFileSync(lock, 'utf8')) as { pid?: number } | null)?.pid; }
-    catch (error) { if (!(error instanceof SyntaxError)) throw error; }
-    if (Number.isSafeInteger(pid) && pid! > 0) {
-      try { process.kill(pid!, 0); return; }
-      catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') return; }
-    } else if (Date.now() - before.mtimeMs < 30_000) return;
-    const current = lstatSync(lock);
-    if (current.dev === before.dev && current.ino === before.ino && current.mtimeMs === before.mtimeMs) unlinkSync(lock);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-  }
-}
 function projectName(value: unknown) {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > 120 || /[\u0000-\u001f\u007f\u2028\u2029]/u.test(value)) throw new ProjectError('Give the project a name of 120 characters or fewer, on one line.');
   return value.trim();
@@ -104,28 +84,13 @@ export async function readProjects(root: string): Promise<ProjectsManifest> {
 /** Serialize browser and CLI changes, including document publication and its assignment. */
 export async function withProjects<T>(root: string, change: (manifest: ProjectsManifest, save: () => Promise<void>) => Promise<T>): Promise<T> {
   const workspace = await realpath(root);
-  const runtime = resolve(workspace, '.opendoc');
-  await mkdir(runtime, { recursive: true });
-  const lock = resolve(runtime, 'projects.lock');
-  let handle;
-  const started = Date.now();
-  while (!handle) {
-    try { handle = await open(lock, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600); }
-    catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
-      releaseDeadProjectLock(lock);
-      if (Date.now() - started > 5000) throw new ProjectError('Project files are busy. Try again when the other operation finishes.', 409);
-      await setTimeout(25);
-    }
-  }
-  try {
-    await handle.writeFile(JSON.stringify({ pid: process.pid }));
+  return withLocalLock(workspace, 'projects.lock', () => new ProjectError('Project files are busy. Try again when the other operation finishes.', 409), async () => {
     const manifest = await readProjects(workspace);
-    return await change(manifest, async () => {
+    return change(manifest, async () => {
       const { file } = await manifestFile(workspace);
       await atomicWrite(file, `${JSON.stringify(parseManifest(manifest), null, 2)}\n`);
     });
-  } finally { await handle.close(); await unlink(lock); }
+  });
 }
 
 export function requireProject(manifest: ProjectsManifest, id: unknown): Project {
