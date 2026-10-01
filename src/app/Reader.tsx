@@ -5,6 +5,8 @@ import { PdfPage } from "./Pdf";
 import { useReaderPreview } from "./useReaderPreview";
 import { useTextEditing } from "./useTextEditing";
 import { CommentDock } from "./CommentDock";
+import { DeletedComments } from "./DeletedComments";
+import { HistoryPanel, type HistoryTarget } from "./HistoryPanel";
 import { applyCommentsPrompt } from "./agentPrompts";
 import { api } from "./api";
 import { ExportMenu } from "./ExportMenu";
@@ -104,6 +106,9 @@ export function Reader({
   const [changing, setChanging] = useState<string | null>(null);
   const mutationPending = useRef(false);
   const [commentError, setCommentError] = useState("");
+  const [history, setHistory] = useState<HistoryTarget | null>(null);
+  const historyTrigger = useRef<HTMLButtonElement>(null);
+  const historyReturn = useRef<HTMLElement | null>(null);
   const scroll = useRef<HTMLDivElement>(null);
   const commentsTrigger = useRef<HTMLButtonElement>(null);
   const navigationTrigger = useRef<HTMLButtonElement>(null);
@@ -627,6 +632,20 @@ export function Reader({
     const resolved = resolveCommentAnchor(artifact, comment);
     return resolved.status === 'attached' && resolved.selection?.targetId ? [resolved.selection] : [];
   }), [unresolvedComments, artifact]);
+  function openHistory(target: HistoryTarget) {
+    historyReturn.current = document.activeElement instanceof HTMLElement ? document.activeElement : historyTrigger.current;
+    setHistory(target);
+  }
+  const closeHistory = useCallback(() => {
+    setHistory(null);
+    requestAnimationFrame(() => (historyReturn.current?.isConnected ? historyReturn.current : historyTrigger.current)?.focus({ preventScroll: true }));
+  }, []);
+  function showHistoryBlock(ids: string[]) {
+    // A section's own ID may not render; derived and nested blocks still locate it.
+    const found = ids.flatMap(item => ['', '-heading', '-title', '-lead'].map(suffix => item + suffix)).find(item => getBlock(artifact, item) && pages.some(page => page.fragments.some(fragment => fragment.id === item)))
+      ?? ids.find(item => artifact?.textTargets?.some(target => target.blockId === item));
+    if (found) findBlock(found);
+  }
   const undoDisabled = editPending || undoPending || (editing.savedId ? !state.manualEdit?.canUndo || !connected : !editError && !editing.canUndo && (editing.count > 0 || !state.manualEdit?.canUndo || !connected));
   const composingComment = commentsOpen && commentMode === 'compose';
   const showWorkbench = !!selection || !!editor || composingComment || editing.count > 0 || editing.canRedo || editing.saved || !!editing.savedId || !!editing.error;
@@ -667,6 +686,7 @@ export function Reader({
           </Popover.Root>
         </div>
         <div className="reader-actions">
+          <IconButton ref={historyTrigger} label="Version history" aria-expanded={history?.kind === 'document'} aria-controls="reader-history" onClick={() => history?.kind === 'document' ? closeHistory() : openHistory({ kind: 'document' })}><Icon name="history" size={18} /></IconButton>
           <SkillIndex />
           <ExportMenu state={state} connected={connected} ready={ready && !!pdf && !readerPreview.loading && artifact?.hash === state.artifact?.hash} unsaved={editing.count} saving={editPending || undoPending} correctionError={editError || editing.error || (editStale ? 'Refresh your draft before saving and exporting.' : '')} canSave={!!editing.count && ready && !editPending && !undoPending && !editStale && !editError && !editing.savedId} onSave={saveAll} onShowExports={onShowExports} />
           <Menu.Root>
@@ -814,7 +834,12 @@ export function Reader({
         onEdit={comment => setCommentEditor({ id: comment.id, text: comment.text, version: comment.version })}
         onEditText={text => setCommentEditor(current => current ? { ...current, text } : null)}
         onSaveEdit={comment => updateSavedComment(comment, 'edit')} onCancelEdit={() => setCommentEditor(null)}
-        onDelete={comment => updateSavedComment(comment, 'delete')} onJump={goToComment} onOpen={showCommentList} onClose={closeComments} />
+        onDelete={comment => updateSavedComment(comment, 'delete')} onJump={goToComment} onOpen={showCommentList} onClose={closeComments}
+        footer={<DeletedComments documentId={id} blockId={selected} connected={connected} refreshKey={comments}
+          onRestored={value => { ++commentRequest.current; commentAbort.current?.abort(); setComments(value); notify.success('Comment restored'); }} onError={notify.error} />} />
+      {history && <HistoryPanel key={history.kind === 'block' ? `block:${history.blockId}` : 'document'} documentId={id} target={history} generation={generation} connected={connected} pageLabel={pageLabel}
+        unsaved={editing.count} saving={editPending || undoPending} onSave={saveAll} onDiscard={discardChanges} onJump={showHistoryBlock}
+        onShowDocument={() => setHistory({ kind: 'document' })} onClose={closeHistory} />}
       {showWorkbench && <div className="edit-workbench">
         {(editor || composingComment) && <section className="text-edit-panel" id="selection-panel" role="dialog" aria-modal="false" aria-labelledby="correction-title">
           {composingComment ? <form key="comment" onSubmit={submitComment} onKeyDown={event => {
@@ -848,6 +873,7 @@ export function Reader({
         <div className="edit-session-bar" role="toolbar" aria-label="Component actions">
           <div className="selection-actions">
             <IconButton ref={editAction} label="Edit selected text" hint={editUnavailable} focusableWhenDisabled={!!editUnavailable} aria-pressed={!!editor} aria-controls="selection-panel" disabled={!canEditText(selection?.targetId)} onClick={() => { if (editor) closeEditor(); else if (selection) openTextComponent(selection); }}><Icon name="edit" size={16} /></IconButton>
+            <IconButton label="History for this block" aria-pressed={history?.kind === 'block' && history.blockId === selection?.blockId} aria-controls="reader-history" disabled={!selectedBlock || editPending || submitting} onClick={() => selection && (history?.kind === 'block' && history.blockId === selection.blockId ? closeHistory() : openHistory({ kind: 'block', blockId: selection.blockId }))}><Icon name="history" size={16} /></IconButton>
             <IconButton ref={commentAction} label={selectedPhrase && !editor ? 'Comment on selected phrase' : 'Comment on selection'} aria-pressed={composingComment} aria-controls="selection-panel" disabled={!selectedBlock || editPending || submitting || !!editError} onClick={composingComment ? closeComments : openComments}><Icon name="comment" size={16} /></IconButton>
           </div>
           <div className="edit-session-status" role="status"><Icon name={editing.saved ? 'check' : 'edit'} size={15} /><span>{editPending ? 'Saving changes…' : editing.saved ? 'All changes saved' : editing.count ? `${editing.count} unsaved ${editing.count === 1 ? 'change' : 'changes'}` : 'No unsaved changes'}</span>{(editing.previewing || readerPreview.loading) && editing.count > 0 && !editPending && <span className="draft-preview-status">Updating preview…</span>}</div>

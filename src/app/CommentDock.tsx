@@ -1,4 +1,4 @@
-import { useEffect, useRef, type Ref } from 'react';
+import { useEffect, useRef, type ReactNode, type Ref } from 'react';
 import type { Comment } from '../shared/types';
 import { Button, IconButton } from './ui';
 import { Icon } from './ui/Icon';
@@ -41,6 +41,8 @@ export interface CommentDockProps {
   onOpen: () => void;
   onClose: () => void;
   triggerRef?: Ref<HTMLButtonElement>;
+  /** Extra content after the list, such as recently deleted comments. */
+  footer?: ReactNode;
 }
 
 /** The reader owns selection, drafts, and writes; this dock only presents them. */
@@ -49,7 +51,7 @@ export function CommentDock({
   filtered = false, openCount = 0, agentPrompt,
   open, heading, count, items, error, connected, changing, editing,
   onEdit, onEditText, onSaveEdit, onCancelEdit, onDelete, onJump, onOpen, onClose,
-  triggerRef,
+  triggerRef, footer,
 }: CommentDockProps) {
   const editField = useRef<HTMLTextAreaElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
@@ -119,6 +121,7 @@ export function CommentDock({
           <p><strong>{filtered ? 'No comments on this component' : 'No comments yet'}</strong></p>
           <p>{filtered ? 'Choose the Comment icon in the bar below to add one.' : `Select a component on the ${pageLabel.toLowerCase()}, or drag across words to choose a phrase, then choose the Comment icon in the bar that appears.`} Your agent applies open comments and marks them resolved.</p>
         </div>}
+        {footer}
       </div>
       {openCount > 0 && agentPrompt && <CommentHandoff openCount={openCount} prompt={agentPrompt} />}
     </section>}
