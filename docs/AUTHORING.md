@@ -6,7 +6,7 @@ The authoring API, full starter library, and commands below are shared by normal
 
 Every document needs a project. Create its initial source and assignment with `npx opendoc create <id> --project <project-id> --title "Title"`, then develop the generated source. Add `--template <template-id>` when using a catalog layout; an ordinary document needs neither a template nor a starter. For imported document folders, use `npx opendoc projects assign <document-id> <project-id>`. See [Projects](PROJECTS.md) for defaults and membership.
 
-Use English, local assets, and a pure TSX component. OpenDoc owns a small set of document primitives; Forme provides the underlying page layout. Arbitrary HTML, browser CSS, React hooks, and asynchronous component effects do not belong inside document source.
+Use English, local assets, and a pure TSX component. For Arabic and mixed Arabic and English text, see [Arabic and right-to-left text](#arabic-and-right-to-left-text). OpenDoc owns a small set of document primitives; Forme provides the underlying page layout. Arbitrary HTML, browser CSS, React hooks, and asynchronous component effects do not belong inside document source.
 
 ## A complete small document
 
@@ -151,6 +151,29 @@ Lists use ordinary text rows because the current engine mismeasures native wrapp
 For a chip or other label, use `<Paragraph id="status" maxLines={1}>In progress</Paragraph>`. `maxLines` is a positive integer review expectation, not a truncation or sizing instruction: all text remains in the PDF. If the rendered paragraph exceeds the limit (including continuation pages), `line-limit-exceeded` reports its source and bounds. Ordinary paragraphs have no line limit.
 
 `CodeBlock` accepts a literal string, optional `language`/`caption`, and `tabSize` (2, 4, or 8). It uses the bundled monospace face and preserves indentation. Long source lines can wrap; inspect code where wrapping could change how a reader interprets it. Keep executable examples accurate. `Strong` and `Em` use real weight and italic faces from the selected family. Explicitly unavailable styles fail instead of being synthesized.
+
+## Arabic and right-to-left text
+
+Bind the bundled Noto Naskh Arabic family for Arabic body text, and for headings when they are also Arabic:
+
+```sh
+npx opendoc assets bind my-report body-font noto-naskh-arabic
+npx opendoc assets bind my-report heading-font noto-naskh-arabic
+```
+
+It has regular, medium, semibold, and bold faces, so `Strong` works. It has no italics: avoid `Em` and italic styles in Arabic text, because an unavailable style fails instead of being synthesized. The family also contains Latin letters and digits, so a sentence such as “قمنا بتحديث نظام Microsoft Office في المكتب الرئيسي يوم الأحد.” uses one font. See [Assets](ASSETS.md) for its provenance.
+
+Paragraph direction is set with the `direction` text style: `'ltr'`, `'rtl'`, or `'auto'`, where `auto` follows the first strong letter of the paragraph. This is the intended API of the PDF engine's bidirectional text support; review the rendered PDF, not only the source, to confirm letter joining, word order, and the position of English words, numbers, and punctuation.
+
+```tsx
+<Paragraph id="update" style={{ direction: 'rtl', textAlign: 'right' }}>
+  قمنا بتحديث نظام Microsoft Office في المكتب الرئيسي يوم الأحد.
+</Paragraph>
+```
+
+In PowerPoint exports, a paragraph is right-to-left when its `direction` style is `rtl`, or when it has no explicit direction and its first strong letter is Arabic or Hebrew. Such paragraphs export with PowerPoint's right-to-left paragraph setting and an Arabic (`ar-SA`) or Hebrew (`he-IL`) language tag, with the same font in the Latin and complex-script slots, so PowerPoint orders and shapes mixed text itself. PowerPoint alignment is physical. `right` and `center` are kept; otherwise a right-to-left paragraph follows its reviewed PDF lines, exporting right-aligned (its start edge) unless those lines are visibly flush left. Left-to-right paragraphs are unchanged. Justified text remains unsupported. Because PowerPoint shapes Arabic itself, check the editable deck in PowerPoint when native rendering is available.
+
+In the browser, comments, text corrections, search, and name fields follow the direction of the text you type, and Arabic titles and comments display right-to-left within the left-to-right app.
 
 ## Evidence and references
 
