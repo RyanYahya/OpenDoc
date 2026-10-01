@@ -79,7 +79,7 @@ export function ExportMenu({ state, connected, ready, unsaved, saving, correctio
     working.current = true; setBusy(true); setCopying(true); setError(''); setNotice('');
     try {
       await api(`/api/exports/${result.id}/copy`, { method: 'POST', signal: AbortSignal.timeout(12_000) });
-      setNotice(`${formatLabel} file copied. Paste it into Finder or an app that accepts file attachments.`);
+      setNotice(`${formatLabel} file copied. Paste it into ${navigator.platform.includes('Mac') ? 'Finder' : 'your file manager'} or an app that accepts file attachments.`);
     } catch (failure) { setError(failure instanceof ApiError ? failure.message : 'OpenDoc could not confirm the copy. Check your connection and try again.'); }
     finally { working.current = false; setBusy(false); setCopying(false); }
   }
