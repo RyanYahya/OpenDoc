@@ -9,6 +9,8 @@ export interface TextSlotProps {
   slot: string;
   /** A literal prop on the calling component. */
   from?: string;
+  /** Within the `from` prop: record IDs and property names, as for `field`, such as `[{ id: item.id }, 'children']`. */
+  path?: TextFieldPath;
   /** A string in the instance's provenance.dataFile; arrays use record IDs. */
   field?: TextFieldPath;
   /** Internal offset when a native block groups its authored children. */
@@ -16,19 +18,28 @@ export interface TextSlotProps {
   /** Set false for a generated slot whose identity depends on array position. */
   stable?: boolean;
   reason?: string;
+  /** Why text that cannot be traced to one authored value stays read-only. Unlike `reason`, it never protects traced text. */
+  readOnlyReason?: string;
   children?: ReactNode;
 }
 
 /** Transparent source provenance. It introduces no text, styles, or PDF nodes. */
 export function TextSlot({ children }: TextSlotProps) { return <>{children}</>; }
 
+/**
+ * Generated decoration drawn as its own text, such as a list bullet or number. It renders
+ * and exports normally but is never a text target, so it cannot be selected, edited, or
+ * anchored as separate text; selecting it selects the enclosing component.
+ */
+export function Decoration({ children }: { children?: ReactNode }) { return <>{children}</>; }
+
 /** `frames` starts at the rendered element, then each component instance that created the previous frame. */
-export type TextResolution = (frames: SourceLocation[], slot: string, childIndex?: number, text?: string) => TextSourceValue | undefined;
+export type TextResolution = (frames: SourceLocation[], slot: string, childIndex?: number, text?: string, path?: TextFieldPath) => TextSourceValue | undefined;
 export type TextGlobals = typeof globalThis & {
   __opendocResolveTextSource?: TextResolution;
   __opendocResolveTextField?: (field: TextFieldPath) => TextSourceValue | undefined;
 };
-type Binding = { slot?: string; source?: TextSourceValue; origin?: SourceLocation[]; from?: string; childIndex?: number; stable?: boolean; protected?: boolean; reason?: string };
+type Binding = { slot?: string; source?: TextSourceValue; origin?: SourceLocation[]; from?: string; path?: TextFieldPath; childIndex?: number; stable?: boolean; protected?: boolean; reason?: string; readOnlyReason?: string; decoration?: boolean };
 const textTypes = new Set<unknown>([F.Text, F.H1, F.H2, F.H3, F.H4, F.H5, F.H6]);
 
 function rawText(node: ReactNode): string {
@@ -53,9 +64,14 @@ export class TextCapture {
     if (typeof props.slot !== 'string' || !props.slot.trim()) throw new Error('TextSlot needs a nonempty stable content name.');
     const globals = globalThis as TextGlobals;
     const source = props.field ? globals.__opendocResolveTextField?.(props.field)
-      : props.from && props.from !== 'children' && caller?.length ? globals.__opendocResolveTextSource?.(caller, props.from, undefined, rawText(children)) : undefined;
+      : props.from && props.from !== 'children' && caller?.length ? globals.__opendocResolveTextSource?.(caller, props.from, undefined, rawText(children), props.path) : undefined;
     const marker = createElement(React.Fragment, {}, children);
-    this.bindings.set(marker, { slot: props.slot, source, origin: caller, from: props.from, childIndex: props.childIndex, stable: props.stable, reason: props.reason, protected: !!props.reason });
+    this.bindings.set(marker, { slot: props.slot, source, origin: caller, from: props.from, path: props.path, childIndex: props.childIndex, stable: props.stable, reason: props.reason, protected: !!props.reason, readOnlyReason: props.readOnlyReason });
+    return marker;
+  }
+  decorate(children: ReactNode): ReactElement {
+    const marker = createElement(React.Fragment, {}, children);
+    this.bindings.set(marker, { decoration: true });
     return marker;
   }
   protect(children: ReactNode, reason: string): ReactElement {
@@ -70,7 +86,7 @@ export class TextCapture {
     const used = new Set<string>();
     const identities = new Map<TextTarget, { named: boolean; key: string }>();
     const globals = globalThis as TextGlobals;
-    const resolve = (frames: SourceLocation[] | undefined, slot: string, childIndex: number, text: string) => frames?.length ? globals.__opendocResolveTextSource?.(frames, slot, childIndex, text) : undefined;
+    const resolve = (frames: SourceLocation[] | undefined, slot: string, childIndex: number, text: string, path?: TextFieldPath) => frames?.length ? globals.__opendocResolveTextSource?.(frames, slot, childIndex, text, path) : undefined;
     const containsProtected = (node: ReactNode): boolean => {
       if (Array.isArray(node)) return node.some(containsProtected);
       if (!isValidElement<{ children?: ReactNode }>(node)) return false;
@@ -84,7 +100,7 @@ export class TextCapture {
         const writable = !inherited?.protected && candidate?.value === text ? candidate : undefined;
         const start = buffer.text.length; buffer.text += text;
         runs.push({ start, end: buffer.text.length, ...(writable ? { source: writable } : {}),
-          ...(!writable ? { protected: !!inherited?.protected, reason: inherited?.reason ?? generatedTextReason } : {}) });
+          ...(!writable ? { protected: !!inherited?.protected, reason: inherited?.reason ?? inherited?.readOnlyReason ?? generatedTextReason } : {}) });
         return;
       }
       if (Array.isArray(node)) { node.forEach(child => gather(child, runs, buffer, inherited)); return; }
@@ -102,7 +118,7 @@ export class TextCapture {
       const from = own?.from ?? 'children';
       const children = Array.isArray(node.props.children) ? node.props.children : [node.props.children];
       children.forEach((child, index) => gather(child, runs, buffer, binding,
-        typeof child === 'string' || typeof child === 'number' ? resolve(origin, from, index + (own?.childIndex ?? 0), String(child)) : undefined));
+        typeof child === 'string' || typeof child === 'number' ? resolve(origin, from, index + (own?.childIndex ?? 0), String(child), own?.path) : undefined));
     };
     const descendantSlot = (node: ReactNode): Binding | undefined => {
       if (Array.isArray(node)) {
@@ -123,7 +139,8 @@ export class TextCapture {
       if (node.type === React.Fragment) return clean(node.props.children, id, withinText, binding);
       const textRoot = !withinText && textTypes.has(node.type);
       let target: TextTarget | undefined;
-      if (textRoot && id) {
+      // Decorations, such as list markers, draw text that is not its own target.
+      if (textRoot && id && !binding?.decoration) {
         const count = (counts.get(id) ?? 0) + 1; counts.set(id, count);
         const named = binding?.slot ? binding : descendantSlot(node.props.children);
         const slot = named?.slot ?? (count === 1 ? 'children' : `text-${count}`);

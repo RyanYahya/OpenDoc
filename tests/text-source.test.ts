@@ -275,3 +275,44 @@ test('props shared with identity or logic, escaped components, spreads and mutat
   const exported = `export function line(text) { return <Paragraph>{text}</Paragraph>; }\nexport default () => <Document>{line('Readable')}</Document>;`;
   assert.equal(scoped(exported)('<Paragraph', [], 'Readable'), undefined, 'An exported helper can receive values from other files.');
 });
+
+test('List records resolve by record ID, and mapped records only when their wording identifies one value', () => {
+  const head = `import { List, Strong } from 'opendoc';\n`;
+  const record = (body: string) => {
+    const source = head + body, parsed = createTextSourceResolver('documents/proof/index.tsx', source);
+    return (id: string, text: string, childIndex = 0, needle = '<List') => {
+      const before = source.slice(0, source.indexOf(needle));
+      return parsed.resolveAt(before.split('\n').length, before.length - before.lastIndexOf('\n'), 'items', childIndex, { text, path: [{ id }, 'children'] });
+    };
+  };
+  const literal = record(`export default () => <List id="steps" items={[{ id: 'one', children: 'Same' }, { id: 'two', children: 'Same' }, { id: 'three', children: <>Mixed <Strong>bold</Strong> end</> }]}/>;`);
+  const one = literal('one', 'Same')!, two = literal('two', 'Same')!;
+  assert.deepEqual([one.value, one.kind, two.value], ['Same', 'string', 'Same']);
+  assert.notEqual(one.start, two.start, 'Literal record IDs separate equal wording.');
+  assert.equal(literal('three', 'Mixed ', 0)?.value, 'Mixed ');
+  assert.equal(literal('three', ' end', 2)?.value, ' end');
+  assert.equal(literal('three', 'bold', 1), undefined, 'A formatted child is bound through its own component.');
+  assert.equal(literal('four', 'Same'), undefined);
+  assert.equal(literal('one', 'Other'), undefined, 'The rendered text must match the authored value.');
+  assert.equal(record(`const steps = [{ id: 'a', children: 'Alpha' }];\nexport default () => <List id="steps" items={steps}/>;`)('a', 'Alpha')?.value, 'Alpha');
+
+  const mapped = record(`const rows = [{ id: 'a', text: 'Alpha' }, { id: 'b', text: 'Twice' }, { id: 'c', text: 'Twice' }];
+export default () => <List id="rows" items={rows.map(row => ({ id: row.id, children: row.text }))}/>;`);
+  assert.deepEqual([mapped('a', 'Alpha')?.value, mapped('a', 'Alpha')?.kind], ['Alpha', 'string']);
+  assert.equal(mapped('b', 'Twice'), undefined, 'Equal mapped wording is ambiguous and stays read-only.');
+  const updated = replaceSourceValue(head + `const rows = [{ id: 'a', text: 'Alpha' }, { id: 'b', text: 'Twice' }, { id: 'c', text: 'Twice' }];
+export default () => <List id="rows" items={rows.map(row => ({ id: row.id, children: row.text }))}/>;`, mapped('a', 'Alpha')!, 'Revised');
+  assert.match(updated, /\{ id: 'a', text: "Revised" \}/, 'A mapped record saves to its own literal.');
+
+  for (const body of [
+    `export default () => <List id="steps" {...rest} items={[{ id: 'a', children: 'Alpha' }]}/>;`,
+    `const label = 'alpha';\nexport default () => <List id="steps" items={[{ id: 'a', children: label.toUpperCase() }]}/>;`,
+    `const steps = [{ id: 'a', children: 'Alpha' }]; const first = steps.find(step => step.children === 'Alpha');\nexport default () => <List id="steps" items={steps}/>;`,
+    `const rows = [{ text: 'Alpha' }];\nexport default () => <List id="rows" items={rows.map(row => ({ id: row.text, children: row.text }))}/>;`,
+    `const rows = [{ id: 'a', text: 'Alpha' }];\nexport default () => <List id="rows" items={rows.map(row => { if (row.id) return { id: row.id, children: row.text }; })}/>;`,
+  ]) assert.equal(record(body)('a', 'Alpha'), undefined, body);
+  const foreign = `import { List } from './mine';\nconst steps = [{ id: 'a', children: 'Alpha' }];\nexport default () => <List id="steps" items={steps}/>;`;
+  const before = foreign.slice(0, foreign.indexOf('<List'));
+  assert.equal(createTextSourceResolver('documents/proof/index.tsx', foreign).resolveAt(before.split('\n').length, before.length - before.lastIndexOf('\n'), 'items', 0, { text: 'Alpha', path: [{ id: 'a' }, 'children'] }), undefined,
+    "Another component's items may be used as logic, so its records stay read-only.");
+});

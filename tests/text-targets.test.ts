@@ -158,3 +158,50 @@ function shout(text: string) { return text.toUpperCase(); }`));
     assert.ok(canCorrectComponent(saved.find(value => value.blockId === 'beta-when')));
   } finally { await f.cleanup(); }
 });
+
+test('list items are editable at their own records, while markers are never text targets', async () => {
+  const f = await fixture();
+  try {
+    await writeFile(f.entry, document(`<List id="plain" items={[{ id: 'one', children: 'First item' }, { id: 'two', children: 'First item' }]}/>
+      <List id="steps" ordered start={3} items={[{ id: 'mixed', children: <>Mixed <Strong>bold</Strong> ending</> }, { id: 'plain', children: 'Ordered item' }]}/>
+      <List id="mapped" items={rows.map(row => ({ id: row.id, children: row.text }))}/>
+      <List id="code" items={[{ id: 'computed', children: shout('loud') }]}/>`,
+    `import { List } from '../../src/document';
+const rows = [{ id: 'alpha', text: 'Mapped alpha' }, { id: 'twice-a', text: 'Twice' }, { id: 'twice-b', text: 'Twice' }];
+function shout(text: string) { return text.toUpperCase(); }`));
+    const artifact = (await renderOnce(f.root, 'proof')).artifact;
+    const targets = artifact.textTargets!;
+    const target = (blockId: string) => targets.find(value => value.blockId === blockId)!;
+    const items = ['plain-one', 'plain-two', 'steps-mixed', 'steps-plain', 'mapped-alpha', 'mapped-twice-a', 'mapped-twice-b', 'code-computed'];
+    for (const id of items) {
+      const own = targets.filter(value => value.blockId === id);
+      assert.deepEqual(own.map(value => [value.slot, value.stable]), [['children', true]], `${id}: one stable text target, without its marker`);
+    }
+    assert.ok(targets.every(value => !/^(•|\d+\.)$/.test(value.text.trim())), 'Bullets and generated numbers are not text targets');
+    assert.ok(targets.every(value => !value.text.startsWith('•') && !/^\d+\./.test(value.text)), 'Markers are not part of item text');
+    for (const id of ['plain-one', 'plain-two', 'steps-plain', 'mapped-alpha']) assert.ok(canCorrectComponent(target(id)), id);
+    assert.notEqual(target('plain-one').runs[0].source!.start, target('plain-two').runs[0].source!.start, 'Equal literal wording keeps each record separate');
+    const mixed = target('steps-mixed');
+    assert.equal(mixed.text, 'Mixed bold ending');
+    assert.deepEqual(mixed.runs.map(run => run.source?.value), ['Mixed ', 'bold', ' ending']);
+    for (const id of ['mapped-twice-a', 'mapped-twice-b', 'code-computed']) {
+      assert.equal(canCorrectComponent(target(id)), false, id);
+      assert.match(target(id).reason!, /list item's text is produced by the document's code/, id);
+    }
+    assert.ok(artifact.pages.some(page => page.fragments.some(fragment => fragment.id === 'steps-plain')), 'The item remains a selectable component');
+
+    const state = { id: 'proof', status: 'ready' as const, revision: 1, artifact };
+    const service = new TextEditService(f.root);
+    const before = await readFile(f.entry, 'utf8');
+    const second = target('plain-two');
+    await service.apply('proof', { targetId: second.id, start: 0, end: second.text.length, replacement: 'Second item', revision: 1, hash: artifact.hash }, state);
+    const afterLiteral = await readFile(f.entry, 'utf8');
+    assert.equal(afterLiteral, before.replace(`{ id: 'two', children: 'First item' }`, `{ id: 'two', children: "Second item" }`));
+    const saved = (await renderOnce(f.root, 'proof')).artifact;
+    const alpha = saved.textTargets!.find(value => value.blockId === 'mapped-alpha')!;
+    await service.apply('proof', { targetId: alpha.id, start: 0, end: alpha.text.length, replacement: 'Revised alpha', revision: 2, hash: saved.hash }, { ...state, revision: 2, artifact: saved });
+    assert.equal(await readFile(f.entry, 'utf8'), afterLiteral.replace(`text: 'Mapped alpha'`, `text: "Revised alpha"`));
+    const final = (await renderOnce(f.root, 'proof')).artifact.textTargets!;
+    assert.deepEqual(['plain-one', 'plain-two', 'mapped-alpha'].map(id => final.find(value => value.blockId === id)!.text), ['First item', 'Second item', 'Revised alpha']);
+  } finally { await f.cleanup(); }
+});

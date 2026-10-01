@@ -37,7 +37,7 @@ function documentFile(file: string) {
     return absolute.startsWith(documentDirectory + sep) ? absolute : undefined;
   } catch { return undefined; }
 }
-globalState.__opendocResolveTextSource = ([location, ...callers], slot, childIndex, text) => {
+globalState.__opendocResolveTextSource = ([location, ...callers], slot, childIndex, text, path) => {
   const absolute = location && documentFile(location.file);
   if (!absolute || !/\.[cm]?[jt]sx?$/.test(absolute)) return undefined;
   let resolver = resolvers.get(absolute);
@@ -45,7 +45,7 @@ globalState.__opendocResolveTextSource = ([location, ...callers], slot, childInd
   // Props are followed only through component instances in the same file.
   const foreign = callers.findIndex(frame => frame.file !== location.file);
   const owners = foreign < 0 ? callers : callers.slice(0, foreign);
-  return originalBinding(resolver.resolveAt(location.line, location.column, slot, childIndex, { owners, text }), overrides.get(absolute));
+  return originalBinding(resolver.resolveAt(location.line, location.column, slot, childIndex, { owners, text, path }), overrides.get(absolute));
 };
 globalState.__opendocResolveTextField = field => {
   const absolute = globalState.__opendocDataFile && documentFile(globalState.__opendocDataFile);

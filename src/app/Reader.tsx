@@ -16,7 +16,7 @@ import { PageNumberInput } from "./PageNumberInput";
 import { commentDraftKey, componentCommentDraftKey, commentDrafts, type CommentDrafts } from "./commentDrafts";
 import type { DocumentSelection, TextAnchor } from "../shared/selection";
 import { anchorForSelection, getTextTarget, resolveCommentAnchor, selectionReason } from "../shared/anchors";
-import { canCorrectComponent, correctionUnavailableReason } from "./componentCorrection";
+import { canCorrectComponent, correctionUnavailableReason, selectedTextTarget } from "./componentCorrection";
 import { carryRange, isPhrase, phraseFromText, savedPhrase, type TextRange } from './phraseSelection';
 import { missingGlyphs, pageList } from "./missingGlyphs";
 import { sessionForDocument, sourceIdentity } from './editSession';
@@ -125,7 +125,8 @@ export function Reader({
   const editorTarget = editing.target(editor?.selection.targetId);
   const editorWritable = canCorrectComponent(editorTarget);
   // A selected component explains why Edit is unavailable instead of a silent disabled control.
-  const editUnavailable = selection ? correctionUnavailableReason(editing.target(selection.targetId)) : undefined;
+  const editTargetId = selectedTextTarget(artifact?.textTargets, selection);
+  const editUnavailable = selection ? correctionUnavailableReason(editing.target(editTargetId)) : undefined;
   const editStale = editing.stale;
   const ready = state.status === "ready" && connected;
   const width =
@@ -872,7 +873,7 @@ export function Reader({
         </div>}
         <div className="edit-session-bar" role="toolbar" aria-label="Component actions">
           <div className="selection-actions">
-            <IconButton ref={editAction} label="Edit selected text" hint={editUnavailable} focusableWhenDisabled={!!editUnavailable} aria-pressed={!!editor} aria-controls="selection-panel" disabled={!canEditText(selection?.targetId)} onClick={() => { if (editor) closeEditor(); else if (selection) openTextComponent(selection); }}><Icon name="edit" size={16} /></IconButton>
+            <IconButton ref={editAction} label="Edit selected text" hint={editUnavailable} focusableWhenDisabled={!!editUnavailable} aria-pressed={!!editor} aria-controls="selection-panel" disabled={!canEditText(editTargetId)} onClick={() => { if (editor) closeEditor(); else if (selection) openTextComponent({ ...selection, targetId: editTargetId }); }}><Icon name="edit" size={16} /></IconButton>
             <IconButton label="History for this block" aria-pressed={history?.kind === 'block' && history.blockId === selection?.blockId} aria-controls="reader-history" disabled={!selectedBlock || editPending || submitting} onClick={() => selection && (history?.kind === 'block' && history.blockId === selection.blockId ? closeHistory() : openHistory({ kind: 'block', blockId: selection.blockId }))}><Icon name="history" size={16} /></IconButton>
             <IconButton ref={commentAction} label={selectedPhrase && !editor ? 'Comment on selected phrase' : 'Comment on selection'} aria-pressed={composingComment} aria-controls="selection-panel" disabled={!selectedBlock || editPending || submitting || !!editError} onClick={composingComment ? closeComments : openComments}><Icon name="comment" size={16} /></IconButton>
           </div>

@@ -183,11 +183,11 @@ Direct local image paths resolve relative to the document folder; managed `Media
 </Figure>
 ```
 
-`List` takes `items: { id, children }[]`, with optional `ordered` and `start`. Record IDs survive reordering. Omit empty lists. Items remain together and the list flows between items; a single item must fit on a page.
+`List` takes `items: { id, children }[]`, with optional `ordered` and `start`. Record IDs survive reordering. Omit empty lists. Items remain together and the list flows between items; a single item must fit on a page. Lists do not nest; write a nested point as its own list or paragraph. Write item text as literals in the `items` array, a local constant array, or a `.map` over one, so each item stays editable in the browser (see [Selection](SELECTION.md#binding-reusable-content)).
 
 For continuous essay text with first-line indentation, use `Prose` as described in [Continuous prose](PROSE.md). It preserves ordinary paragraph IDs and source bindings.
 
-Lists use ordinary text rows because the current engine mismeasures native wrapped list items. Their text and numbering remain selectable, but the PDF does not carry native list structure tags.
+Lists use ordinary text rows because the current engine mismeasures native wrapped list items. Selecting an item selects its text; bullets and generated numbers are drawn beside it but are never separately selectable or editable. The PDF does not carry native list structure tags.
 
 `Callout` accepts inline or block children and an optional title. Use it when the reader needs to notice a limitation, decision, or instruction, not as a container for every paragraph.
 

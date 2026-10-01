@@ -35,6 +35,17 @@ function Entry({ id, title, dates }: { id: string; title: string; dates?: string
 
 The renderer follows each rendered string back through the component instance that produced it, to a literal prop, child, constant, or array element in the same file. A correction changes that instance's call site. Values passed through `props.title`, destructured props with literal defaults, `.map`, `.filter`, `.slice`, literal array indexes, and same-file helper functions are followed. When a mapped array contains the same wording twice, neither copy is editable, because the rendered text cannot identify its source.
 
+`List` items follow the same rules. Each item's text saves to its own record, which is found by its `id`, so two literal items with the same wording stay separately editable:
+
+```tsx
+const steps = [{ id: 'draft', text: 'Draft the plan' }, { id: 'review', text: 'Review it' }];
+
+<List id="actions" items={[{ id: 'call', children: 'Call the vendor' }, { id: 'sign', children: <>Sign <Strong>both</Strong> copies</> }]} />
+<List id="steps" ordered items={steps.map(step => ({ id: step.id, children: step.text }))} />
+```
+
+Bullets and numbers are generated markers, never text of their own: selecting one selects its item, and Edit opens the item's text. An item whose text is computed, imported, also used as an ID or in logic, or repeated within a mapped array stays read-only, and the Edit tooltip says so.
+
 Text stays read-only, with a reason in the Edit tooltip, when its value is computed or transformed, imported from another file, forwarded with a spread, reaches a component or helper that is also used another way, or is also used as an ID, key, link, lookup, comparison, or other logic. A presence check such as `{dates && …}` and reading `.length` are allowed. Keep IDs as separate props instead of deriving them from visible text.
 
 Shared components in other files, such as templates, declare a caller-owned prop with the transparent `TextSlot` helper:
@@ -62,6 +73,8 @@ For a validated data template, bind a string in the instance's `provenance.dataF
   </TextSlot>
 </Paragraph>)}
 ```
+
+A component that displays records from a caller-owned prop names the record and field with `path`, as `List` does: `<TextSlot slot="children" from="items" path={[{ id: item.id }, 'children']}>{item.children}</TextSlot>`. An optional `readOnlyReason` replaces the general Edit tooltip when the slot's text cannot be traced to one written value.
 
 Slots and record IDs must remain stable through edits and reordering. TextSlot adds no PDF node, style, or text. Bind the original string, not a formatted or computed representation. Data corrections run the existing template parser before saving; import `bindTemplate` from `opendoc/template` for template instances, or `validateTemplateInput` from the same module to wrap an existing parser for optional data components.
 

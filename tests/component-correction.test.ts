@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canCorrectComponent, componentCorrection, correctionUnavailableReason } from '../src/app/componentCorrection';
+import { canCorrectComponent, componentCorrection, correctionUnavailableReason, selectedTextTarget } from '../src/app/componentCorrection';
 import { generatedTextReason, type TextTarget } from '../src/shared/selection';
 
 function target(parts: (string | { generated: string })[]): TextTarget {
@@ -40,4 +40,15 @@ test('an unavailable Edit action states why instead of staying silently disabled
   assert.equal(correctionUnavailableReason(target([{ generated: '42' }])), generatedTextReason);
   assert.equal(correctionUnavailableReason({ ...target([{ generated: '[1]' }]), reason: 'Generated reference content. Ask your agent to change its inputs.' }), 'Generated reference content. Ask your agent to change its inputs.');
   assert.match(correctionUnavailableReason(undefined)!, /no text to edit/);
+});
+
+test('selecting a component edits its only text, such as a list item selected by its marker', () => {
+  const item = { ...target(['First item']), id: 'steps-one:children', blockId: 'steps-one' };
+  const callout = [{ ...target(['Title']), id: 'note:title', blockId: 'note' }, { ...target(['Body']), id: 'note:children', blockId: 'note' }];
+  const targets = [item, ...callout];
+  assert.equal(selectedTextTarget(targets, { blockId: 'steps-one' }), 'steps-one:children');
+  assert.equal(selectedTextTarget(targets, { blockId: 'note', targetId: 'note:title' }), 'note:title', 'Selected text wins.');
+  assert.equal(selectedTextTarget(targets, { blockId: 'note' }), undefined, 'A component with several texts needs one chosen.');
+  assert.equal(selectedTextTarget(targets, { blockId: 'steps' }), undefined);
+  assert.equal(selectedTextTarget(targets, null), undefined);
 });

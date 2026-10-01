@@ -38,6 +38,8 @@ export interface TextSourceContext {
   owners?: { line: number; column: number }[];
   /** The rendered text. It selects within a closed set of authored values; it never searches the file. */
   text?: string;
+  /** Within the slot's prop: record IDs and property names, such as a List item's `[{ id }, 'children']`. */
+  path?: (string | { id: string })[];
 }
 
 export interface TextSourceResolver {
@@ -61,6 +63,7 @@ const unknown: Flow = { values: [], complete: false };
 const partial = (flow: Flow): Flow => ({ values: flow.values, complete: false });
 const absent: Flow = { values: [], complete: true, absent: true };
 const callbacks = new Set(['map', 'filter']);
+const maps = new Set(['map']);
 const subsets = new Set(['filter', 'slice']);
 const arrayMethods = new Set([...callbacks, ...subsets]);
 
@@ -221,7 +224,11 @@ export function createTextSourceResolver(file: string, source: string): TextSour
     } finally { visiting.delete(depth); }
   }
   function evaluate(node: ts.Expression, scope: Scope, seen: Seen): Flow {
-    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isObjectLiteralExpression(node) || ts.isArrayLiteralExpression(node)) return { values: [{ node, scope }], complete: true };
+    // JSX content is a value; its text rows are read only where a slot asks for them.
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isObjectLiteralExpression(node) || ts.isArrayLiteralExpression(node)
+      || ts.isJsxElement(node) || ts.isJsxFragment(node)) return { values: [{ node, scope }], complete: true };
+    // A mapped array stands for the values its inline callback returns.
+    if (mapCallback(node)) return { values: [{ node, scope }], complete: true };
     if (ts.isIdentifier(node)) {
       const declarations = referenceSymbol(node)?.declarations;
       const declaration = declarations?.length === 1 && declarations[0].getSourceFile() === tree ? declarations[0] : undefined;
@@ -277,9 +284,29 @@ export function createTextSourceResolver(file: string, source: string): TextSour
     if (spread >= 0 && spread <= index) return partial(merge(call.arguments.slice(spread).map(item => flow(ts.isSpreadElement(item) ? item.expression : item, scope, seen))));
     return index < call.arguments.length ? flow(call.arguments[index], scope, seen) : absent;
   }
+  /** The inline callback of `array.map(callback)`, whose returns are the new array's elements. */
+  function mapCallback(node: ts.Node) {
+    if (!isArrayCall(node, maps)) return undefined;
+    const callback = node.arguments[0] && unwrap(node.arguments[0]);
+    return callback && (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback)) ? callback : undefined;
+  }
+  function returned(fn: ts.ArrowFunction | ts.FunctionExpression, scope: Scope, seen: Seen): Flow {
+    if (!ts.isBlock(fn.body)) return flow(fn.body, scope, seen);
+    const flows: Flow[] = [];
+    function visit(node: ts.Node) {
+      if (ts.isFunctionLike(node)) return;
+      if (ts.isReturnStatement(node)) flows.push(node.expression ? flow(node.expression, scope, seen) : unknown);
+      ts.forEachChild(node, visit);
+    }
+    fn.body.statements.forEach(visit);
+    // A body that can finish without returning yields undefined elements.
+    return flows.length ? partial(merge(flows)) : unknown;
+  }
   function elements(container: Flow, seen: Seen): Flow {
     const flows: Flow[] = container.complete ? [] : [unknown];
     for (const { node, scope } of container.values) {
+      const callback = mapCallback(node);
+      if (callback) { flows.push(returned(callback, scope, seen)); continue; }
       if (!ts.isArrayLiteralExpression(node)) { flows.push(unknown); continue; }
       for (const element of node.elements) {
         if (ts.isOmittedExpression(element)) continue;
@@ -303,9 +330,25 @@ export function createTextSourceResolver(file: string, source: string): TextSour
         else if (index === undefined) flows.push(unknown);
         else flows.push(index >= node.elements.length || ts.isOmittedExpression(node.elements[index]) ? absent : flow(node.elements[index], scope, seen));
       } else if (isOpening(node)) flows.push(prop(node, key, scope, seen));
+      else if (mapCallback(node) && (key === undefined || /^\d+$/.test(key))) flows.push(partial(elements({ values: [{ node, scope }], complete: true }, seen)));
       else flows.push(unknown);
     }
     return merge(flows);
+  }
+  /**
+   * The elements of an array that can be the record with this ID. A record whose `id` is a
+   * literal is kept only when it matches; any other element may still be it, so the rendered
+   * text must then identify one value among them.
+   */
+  function record(container: Flow, id: string, seen: Seen): Flow {
+    const items = elements(container, seen);
+    return { values: items.values.filter(({ node }) => { const own = ts.isObjectLiteralExpression(node) ? literalId(node) : undefined; return own === undefined || own === id; }), complete: items.complete };
+  }
+  function literalId(node: ts.ObjectLiteralExpression): string | undefined {
+    if (node.properties.some(item => !propertyValue(item) || !item.name || propertyName(item.name) === undefined)) return undefined;
+    const ids = node.properties.filter(item => propertyName(item.name!) === 'id');
+    const value = ids.length === 1 ? unwrap(propertyValue(ids[0])!) : undefined;
+    return value && (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value)) ? value.text : undefined;
   }
   /** Read a prop at one component instance; JSX children replace a children attribute. */
   function prop(opening: Opening, key: string | undefined, scope: Scope, seen: Seen): Flow {
@@ -343,8 +386,41 @@ export function createTextSourceResolver(file: string, source: string): TextSour
     while ((ts.isParenthesizedExpression(node.parent) || ts.isAsExpression(node.parent) || ts.isTypeAssertionExpression(node.parent) || ts.isNonNullExpression(node.parent) || ts.isSatisfiesExpression(node.parent)) && node.parent.expression === node) node = node.parent;
     return node;
   }
+  /** A List from the document runtime, which displays each record's children and uses its id only as identity. */
+  function runtimeList(opening: Opening): boolean {
+    const declaration = tagSymbol(opening)?.declarations?.[0];
+    if (!declaration || !ts.isImportSpecifier(declaration) || (declaration.propertyName ?? declaration.name).text !== 'List') return false;
+    const module = declaration.parent.parent.parent.moduleSpecifier;
+    return ts.isStringLiteral(module) && (module.text === 'opendoc' || /(^|\/)src\/document(\/index(\.tsx)?)?$/.test(module.text));
+  }
+  /** An expression passed as a runtime List's items, directly or through a const used only that way. */
+  function listItems(input: ts.Node): boolean {
+    const node = outerExpression(input), parent = node.parent;
+    if (ts.isJsxExpression(parent) && parent.expression === node && ts.isJsxAttribute(parent.parent)) {
+      return parent.parent.name.getText(tree) === 'items' && runtimeList(parent.parent.parent.parent as Opening);
+    }
+    if (ts.isVariableDeclaration(parent) && parent.initializer === node && ts.isIdentifier(parent.name) && ts.isVariableDeclarationList(parent.parent) && parent.parent.flags & ts.NodeFlags.Const) {
+      const symbol = checker.getSymbolAtLocation(parent.name);
+      const uses = symbol ? (references.get(symbol) ?? []).filter(use => use !== parent.name) : [];
+      return uses.length > 0 && uses.every(use => listItems(use));
+    }
+    return false;
+  }
+  /** A record literal of a runtime List: an element of its items array, or returned by the callback that maps them. */
+  function listRecord(object: ts.Node): boolean {
+    const node = outerExpression(object), parent = node.parent;
+    if (ts.isArrayLiteralExpression(parent)) return listItems(parent);
+    const fn = ts.isArrowFunction(parent) && parent.body === node ? parent
+      : ts.isReturnStatement(parent) ? ts.findAncestor(parent, ts.isFunctionLike) : undefined;
+    if (!fn || !(ts.isArrowFunction(fn) || ts.isFunctionExpression(fn))) return false;
+    const call = outerExpression(fn).parent;
+    return mapCallback(call) === fn && listItems(call);
+  }
   function textConsumer(input: ts.Expression): boolean {
     const node = outerExpression(input), parent = node.parent;
+    // A List record's children are displayed text; its id stays structural.
+    if (((ts.isPropertyAssignment(parent) && parent.initializer === node) || (ts.isShorthandPropertyAssignment(parent) && parent.name === node))
+      && propertyName(parent.name) === 'children' && listRecord(parent.parent)) return true;
     if (ts.isVariableDeclaration(parent)) {
       // A direct const alias or destructuring is checked at all of its own uses below.
       if (parent.initializer !== node) return false;
@@ -352,7 +428,7 @@ export function createTextSourceResolver(file: string, source: string): TextSour
     }
     if (ts.isJsxExpression(parent) && parent.expression === node) {
       // A local component's props are checked where its body uses them.
-      return ts.isJsxAttribute(parent.parent) ? component(parent.parent.parent.parent) || textProps.has(parent.parent.name.getText(tree))
+      return ts.isJsxAttribute(parent.parent) ? component(parent.parent.parent.parent) || textProps.has(parent.parent.name.getText(tree)) || listItems(node)
         : ts.isJsxElement(parent.parent) || ts.isJsxFragment(parent.parent);
     }
     // `{value && <Paragraph>{value}</Paragraph>}` only tests whether optional text is present.
@@ -398,6 +474,7 @@ export function createTextSourceResolver(file: string, source: string): TextSour
       } else if (ts.isArrayLiteralExpression(node)) {
         for (const element of node.elements) if (!ts.isOmittedExpression(element)) protect(flow(ts.isSpreadElement(element) ? element.expression : element, scope).values, true, visited);
       } else if (isOpening(node)) protect(prop(node, undefined, scope, new Map()).values, true, visited);
+      else if (mapCallback(node)) protect(elements({ values: [{ node, scope }], complete: true }, new Map()).values, true, visited);
     }
   }
   for (const node of nodes) {
@@ -452,6 +529,27 @@ export function createTextSourceResolver(file: string, source: string): TextSour
     return children[index] ? bind(rowFlow(children[index], scope), text) : undefined;
   }
 
+  /** A value inside a prop, such as one List record's children: a string, or one child of a JSX fragment. */
+  function nested(opening: Opening, slot: string, path: (string | { id: string })[], childIndex: number, scope?: Scope, text?: string): TextSourceValue | undefined {
+    if (opening.attributes.properties.some(ts.isJsxSpreadAttribute)) return undefined;
+    const matches = opening.attributes.properties.filter(item => ts.isJsxAttribute(item) && item.name.getText(tree) === slot);
+    if (matches.length !== 1 || !ts.isJsxAttribute(matches[0])) return undefined;
+    const seen: Seen = new Map();
+    let current = attributeFlow(matches[0], scope, seen);
+    for (const part of path) {
+      if (typeof part === 'string') current = member(current, part, seen);
+      else if (part && typeof part.id === 'string') current = record(current, part.id, seen);
+      else return undefined;
+    }
+    // A fragment's children render as the slot's children; React drops the same whitespace rows.
+    const [only] = current.values;
+    if (current.complete && current.values.length === 1 && ts.isJsxFragment(only.node)) {
+      const rows = only.node.children.filter(row => ts.isJsxText(row) ? !!jsx(row, false) : !ts.isJsxExpression(row) || !!row.expression);
+      return rows[childIndex] ? bind(rowFlow(rows[childIndex], only.scope), text) : undefined;
+    }
+    return childIndex === 0 ? bind(current, text) : undefined;
+  }
+
   // Count linked authored occurrences by token identity, not matching visible text.
   const occurrenceCounts = new Map<string, number>();
   const identity = (value: TextSourceValue) => `${value.start}:${value.end}`;
@@ -473,6 +571,7 @@ export function createTextSourceResolver(file: string, source: string): TextSour
         if (!instance) break;
         scope.push(instance);
       }
+      if (context.path) return linked(nested(opening, slot, context.path, childIndex, scope, context.text));
       return linked(slot === 'children' ? child(opening, childIndex, scope, context.text) : attribute(opening, slot, scope, context.text));
     },
   };

@@ -11,7 +11,7 @@ import { neutral, themePage, themeType, validateTheme, withFontFallbacks, type D
 import { fontFamilies, languageTag } from '../themes/types';
 import type { BlockInfo, SourceLocation, DocumentFormat, SlideInfo } from '../shared/types';
 import { Page } from './page';
-import { TextCapture, TextSlot, type TextSlotProps } from './text-targets';
+import { Decoration, TextCapture, TextSlot, type TextSlotProps } from './text-targets';
 export { TextSlot, type TextSlotProps, type TextFieldPath } from './text-targets';
 
 export type { DocumentMeta } from '../shared/types';
@@ -138,6 +138,7 @@ export function prepareDocument(input: ReactNode) {
       const props = el.props as TextSlotProps;
       return textCapture.wrap(visit(props.children, parentId, caller, resolving), props, componentOwners.get(el));
     }
+    if (el.type === Decoration) return textCapture.decorate(visit(el.props.children, parentId, caller, resolving));
     const nativeChart = nativeCharts.get(el.type);
     if (nativeChart) throw new Error(`${parentId ? `${parentId}: ` : ''}${nativeChart} is not supported by the current PDF engine with OpenDoc fonts: chart labels are encoded incorrectly. Generate a local chart asset inside Figure and review its labels, units, scale, and legend.`);
     const ownSource = map.get(el);
@@ -497,6 +498,7 @@ export const Callout = block(function Callout({ title, children, style, keepToge
   </F.View>;
 }, 'callout');
 
+const listItemReason = "This list item's text is produced by the document's code, or repeats another mapped item's wording, so it cannot be traced to one written value. Ask your agent to change it, or comment instead.";
 const ListEntry = block(function ListEntry({ id, children, ordered, number }: Props & { ordered: boolean; number: number }) {
   if (!plainText(children).trim()) throw new Error(`List item ${id} needs nonempty text.`);
   // Native Forme lists mismeasure wrapped items and can panic on page breaks.
@@ -504,7 +506,7 @@ const ListEntry = block(function ListEntry({ id, children, ordered, number }: Pr
   const design = runtime.theme.design?.list;
   const markerWidth = Math.max(design?.markerWidth ?? 18, String(number).length * runtime.theme.fontSize * 0.7);
   return <F.View wrap={false} style={{ flexDirection: 'row', gap: design?.gap ?? 8, marginBottom: 7, ...design?.item }}>
-    <F.Text style={{ width: markerWidth, flexShrink: 0 }}>{ordered ? `${number}.` : '•'}</F.Text>
+    <Decoration><F.Text style={{ width: markerWidth, flexShrink: 0 }}>{ordered ? `${number}.` : '•'}</F.Text></Decoration>
     <F.Text style={{ flex: 1, minWidth: 0, minWidowLines: 2, minOrphanLines: 2, lineBreaking: 'greedy' }}>{children}</F.Text>
   </F.View>;
 }, 'list-item');
@@ -513,7 +515,13 @@ export const List = block(function List({ id, items, ordered = false, start = 1,
 }) {
   if (!Array.isArray(items) || !items.length) throw new Error(`List ${id} needs at least one item. Omit the List when there is nothing to show.`);
   if (!Number.isSafeInteger(start) || start < 1) throw new Error(`List ${id} start must be a positive integer.`);
-  const children = items.map((item, index) => { checkId(item.id, `List ${id} item`); return <ListEntry id={`${id}-${item.id}`} key={item.id} ordered={ordered} number={start + index}>{item.children}</ListEntry>; });
+  const children = items.map((item, index) => {
+    checkId(item.id, `List ${id} item`);
+    // Each item's text belongs to its record in the caller's items, found by record ID.
+    return <ListEntry id={`${id}-${item.id}`} key={item.id} ordered={ordered} number={start + index}>
+      <TextSlot slot="children" from="items" path={[{ id: item.id }, 'children']} readOnlyReason={listItemReason}>{item.children}</TextSlot>
+    </ListEntry>;
+  });
   // Right-to-left rows already start at the right; indent from that edge.
   const indent = runtime.direction === 'rtl' ? { paddingRight: 18 } : { paddingLeft: 18 };
   const listStyle: F.Style = { marginBottom: runtime.theme.paragraphGap, ...indent, ...runtime.theme.design?.list?.block, ...style };
