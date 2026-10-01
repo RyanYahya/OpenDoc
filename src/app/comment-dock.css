@@ -16,6 +16,8 @@
 .ui-button.comment-dock-trigger:hover { background: var(--control-hover); }
 .ui-button.comment-dock-trigger[aria-expanded="true"] { color: var(--accent-ink); }
 .comment-dock-count { font-size: var(--caption-size); font-weight: 500; font-variant-numeric: tabular-nums; line-height: 1; }
+.comment-dock-panel .comment-time { margin-inline-start: auto; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.comment-dock-panel .comment-status + .comment-time { margin-inline-start: 0; }
 
 .correction-editor.comment-dock-panel {
   top: auto;

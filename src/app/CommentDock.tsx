@@ -3,6 +3,7 @@ import type { Comment } from '../shared/types';
 import { Button, IconButton } from './ui';
 import { Icon } from './ui/Icon';
 import { CommentHandoff } from './CommentHandoff';
+import { CommentTime } from './CommentTime';
 import './comment-dock.css';
 
 export interface CommentDockItem {
@@ -100,6 +101,7 @@ export function CommentDock({
               <span className="comment-location">
                 {page !== undefined ? <><span>{pageLabel} {page}</span><span aria-hidden="true">·</span><span className="comment-kind">{kind}</span>{canJump && <Icon name="arrow" size={12} />}</> : 'Component unavailable'}
                 <span className="comment-status">{comment.status === 'resolved' ? <><Icon name="check" size={11} />Resolved</> : 'Open'}</span>
+                <CommentTime value={comment.createdAt} />
               </span>
               <span className="comment-text">{comment.text}</span>
             </Button>
