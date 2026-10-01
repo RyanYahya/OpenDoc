@@ -285,7 +285,7 @@ export default function Proof(){return <Presentation title={meta.title}>
       assert.ok(lists.includes(name), `${name} in ${lists.join(', ')}`);
     assert.ok(lists.indexOf('steps-call marker') < lists.indexOf('steps-call'), 'Names follow drawing order; the marker is drawn first');
     const tables = names(2);
-    for (const name of ['costs caption', 'costs column-item', 'costs column-1', 'costs row-paper-column-0', 'costs row-ink-column-1', 'costs background'])
+    for (const name of ['costs caption', 'costs column-item', 'costs column-1', 'costs row-paper-column-item', 'costs row-ink-column-1', 'costs background'])
       assert.ok(tables.includes(name), `${name} in ${tables.join(', ')}`);
     const cards = names(3);
     for (const name of ['alpha background', 'alpha top border', 'alpha-title', 'alpha-body', 'beta background', 'beta-title', 'beta-body'])

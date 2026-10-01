@@ -4,8 +4,16 @@ import type { SourceLocation } from '../shared/types';
 import { generatedTextReason, sharedTextReason, type TextRun, type TextSourceValue, type TextTarget } from '../shared/selection';
 
 export type TextFieldPath = (string | { id: string })[];
+/**
+ * One record within a `path`. `{ id }` is the record whose own `id` is that value; without an
+ * `id`, any record, which the displayed text must then identify. A record with no `id` field,
+ * such as a DataTable row, names `ids`, a sibling prop listing record IDs in the same order, to
+ * be found by position. `values` lists what the record displays, `undefined` where unknown; only
+ * records that could display them remain.
+ */
+export type TextRecord = { id?: string; ids?: string; values?: (string | undefined)[] };
 /** Like a field path; a record without an `id` stands for any record, which the displayed text must then identify. */
-export type TextRecordPath = (string | { id?: string })[];
+export type TextRecordPath = (string | TextRecord)[];
 export interface TextSlotProps {
   /** Stable content name, independent of pagination and array order. */
   slot: string;

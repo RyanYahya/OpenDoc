@@ -352,6 +352,49 @@ test('DataTable column labels resolve by column ID, else only when their wording
     "Another component's columns may be used as logic, so their labels stay read-only.");
 });
 
+test('DataTable cells resolve at their row, by row ID position or a row whose wording is unique, then by column position', () => {
+  const head = `import { DataTable } from 'opendoc';\n`;
+  const table = (body: string) => {
+    const source = head + body, parsed = createTextSourceResolver('documents/proof/index.tsx', source);
+    const resolve = (row: { id?: string; ids?: string; values?: (string | undefined)[] }, column: number) => {
+      const before = source.slice(0, source.indexOf('<DataTable'));
+      return parsed.resolveAt(before.split('\n').length, before.length - before.lastIndexOf('\n'), 'rows', 0, { text: row.values?.[column], path: [row, String(column)] });
+    };
+    return Object.assign(resolve, { source });
+  };
+  const columns = `columns={[{ label: 'Item' }, { label: 'Hours' }]}`;
+  const keyed = table(`export default () => <DataTable id="t" ${columns} rows={[['Same', 4], ['Same', 4], ['Other', -2.5]]} rowIds={['a', 'b', 'c']}/>;`);
+  const [first, second] = [keyed({ id: 'a', ids: 'rowIds', values: ['Same', '4'] }, 0)!, keyed({ id: 'b', ids: 'rowIds', values: ['Same', '4'] }, 0)!];
+  assert.deepEqual([first.value, second.value], ['Same', 'Same']);
+  assert.notEqual(first.start, second.start, 'Row IDs separate rows with equal wording.');
+  assert.equal(keyed({ id: 'a', ids: 'rowIds', values: ['Same', '4'] }, 1)?.kind, 'number');
+  assert.equal(keyed({ id: 'c', ids: 'rowIds', values: ['Other', '-2.5'] }, 1)?.value, '-2.5', 'A negative number keeps its sign.');
+  assert.equal(replaceSourceValue(keyed.source, keyed({ id: 'b', ids: 'rowIds', values: ['Same', '4'] }, 1)!, '12.5'), keyed.source.replace(`['Same', 4], ['Other'`, `['Same', 12.5], ['Other'`),
+    'A number saves as a number literal at its own row.');
+  for (const next of ['1,250', '12 h', '12.50', '', 'NaN']) assert.throws(() => replaceSourceValue(keyed.source, keyed({ id: 'a', ids: 'rowIds', values: ['Same', '4'] }, 1)!, next), /holds a number/, next);
+  assert.equal(keyed({ values: ['Same', '4'] }, 0), undefined, 'Without row IDs, rows with equal wording are ambiguous.');
+  assert.equal(keyed({ values: ['Other', '-2.5'] }, 0)?.value, 'Other', 'A row with unique wording is found without its ID.');
+
+  const unique = table(`const rows = [['Draft', 'Done'], ['Review', 'Done']];\nexport default () => <DataTable id="t" ${columns} rows={rows}/>;`);
+  assert.notEqual(unique({ values: ['Draft', 'Done'] }, 1)!.start, unique({ values: ['Review', 'Done'] }, 1)!.start, 'Equal cells in distinct rows stay separate.');
+  assert.equal(unique({ values: ['Draft', 'Other'] }, 1), undefined, 'The rendered text must match the authored value.');
+  const ordered = table(`const ids = ['one', 'two'] as const;\nexport default () => <DataTable id="t" ${columns} rows={[['A', 'x'], ['A', 'x']]} rowIds={[...ids]}/>;`);
+  assert.equal(ordered({ id: 'two', ids: 'rowIds', values: ['A', 'x'] }, 1)?.start, ordered.source.lastIndexOf(`'x'`), 'Spread constant IDs keep their positions.');
+  const mapped = table(`const stages = [{ key: 'draft', name: 'Draft', hours: 3 }, { key: 'review', name: 'Review', hours: 3 }];\nexport default () => <DataTable id="t" ${columns} rows={stages.map(stage => [stage.name, stage.hours])} rowIds={stages.map(stage => stage.key)}/>;`);
+  assert.equal(mapped({ id: 'review', ids: 'rowIds', values: ['Review', '3'] }, 0)?.value, 'Review', 'Mapped rows bind when their wording identifies one value.');
+  assert.equal(mapped({ id: 'review', ids: 'rowIds', values: ['Review', '3'] }, 1), undefined, 'Mapped values that repeat stay read-only.');
+
+  for (const body of [
+    `const total = 7;\nexport default () => <DataTable id="t" ${columns} rows={[['Total', total * 2]]}/>;`,
+    `const hours = 14;\nexport default () => <DataTable id="t" ${columns} rows={[['Total', hours]]}/>;\nexport const doubled = hours * 2;`,
+    `const rows = [['Total', 14]];\nexport const sum = rows.reduce((value, row) => value + Number(row[1]), 0);\nexport default () => <DataTable id="t" ${columns} rows={rows}/>;`,
+    `export default () => <DataTable id="t" ${columns} rows={[['Total', \`\${14}\`]]}/>;`,
+    `export default () => <DataTable id="t" {...rest} ${columns} rows={[['Total', 14]]}/>;`,
+  ]) assert.equal(table(body)({ values: ['Total', '14'] }, 1), undefined, body);
+  const mutated = table(`const ids = ['a', 'b'];\nids.reverse();\nexport default () => <DataTable id="t" ${columns} rows={[['A', 'x'], ['A', 'x']]} rowIds={ids}/>;`);
+  assert.equal(mutated({ id: 'a', ids: 'rowIds', values: ['A', 'x'] }, 1), undefined, 'Reordered IDs cannot locate a row by position.');
+});
+
 test('a correction keeps a plain JSX attribute or text plain when it can hold the new value exactly', () => {
   const edit = (source: string, needle: string, slot: string, next: string) => {
     const updated = replaceSourceValue(source, resolver(source)(needle, slot)!, next);

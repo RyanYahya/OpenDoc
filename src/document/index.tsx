@@ -569,7 +569,8 @@ export const Figure = block(function Figure({ id, children, caption, sourceNote,
 /** `id` gives a column a stable identity, so its heading keeps its own text target and saves to its own record. */
 export type TableColumn = { id?: string; label: string; width?: number; align?: 'left' | 'center' | 'right' };
 const columnLabelReason = "This column heading is produced by the document's code, or repeats another column's wording, so it cannot be traced to one written value. Ask your agent to change it, or comment instead.";
-const tableCellReason = "This table cell is not linked to a value that can be edited here. Ask your agent to change it, or comment instead.";
+const tableCellReason = "This table cell is computed by the document's code, repeats wording the table cannot tell apart, or is also used in its logic, so it cannot be traced to one written value. Ask your agent to change it, or comment instead.";
+const repeatedRowReason = "This row repeats another row's wording, so its cells cannot be traced to one written value. Ask your agent to give the table rowIds, which make every row editable, or comment instead.";
 export const DataTable = block(function DataTable({ id, columns, rows, rowIds, caption, sourceNote, emptyMessage = 'No records to display.', style }: {
   id: string; columns: TableColumn[]; rows: (string | number | ReactElement<TextSlotProps>)[][]; rowIds?: string[]; caption?: string; sourceNote?: string; emptyMessage?: string; style?: F.Style;
 }) {
@@ -599,10 +600,15 @@ export const DataTable = block(function DataTable({ id, columns, rows, rowIds, c
   const design = t.design?.table;
   const alternate = design?.alternate === false ? '#ffffff' : design?.alternate ?? t.paper;
   // Each heading belongs to its record in the caller's columns, found by column id or else by its wording.
+  // A plain cell belongs to its row in the caller's rows, found at its rowIds position or else by the
+  // row's wording, and to the element at its column's position.
+  const shown = rows.map(row => row.map(cell => isValidElement(cell) ? undefined : String(cell)));
+  const wording = shown.map(row => JSON.stringify(row));
+  const repeated = rowIds ? [] : wording.map(row => wording.indexOf(row) !== wording.lastIndexOf(row));
   return <F.Table columns={columns.map(c => ({ width: { fraction: (c.width ?? 1) / total } }))} style={{ marginTop: 8, marginBottom: 16, ...design?.block, ...style }}>
     {caption && <F.Row header><F.Cell colSpan={columns.length} style={{ paddingBottom: 8 }}><F.Text style={{ ...noteStyle, color: t.ink, fontWeight: 600 }}>{numberedCaption(id, caption)}</F.Text></F.Cell></F.Row>}
     <F.Row header style={{ backgroundColor: t.accent, ...design?.header }}>{columns.map((col, i) => <F.Cell key={col.id ?? i} style={{ padding: 9, ...design?.cell, ...design?.header }}><F.Text style={{ fontFamily: tableFont, fontSize: 9, color: '#ffffff', fontWeight: 600, ...design?.headerText, textAlign: alignments[i] }}><TextSlot slot={`column-${col.id ?? i}`} stable={col.id !== undefined} from="columns" path={[{ id: col.id }, 'label']} readOnlyReason={columnLabelReason}>{col.label}</TextSlot></F.Text></F.Cell>)}</F.Row>
-    {rows.length ? rows.map((row, i) => <F.Row key={rowIds?.[i] ?? i} style={{ backgroundColor: i % 2 === 0 ? alternate : '#ffffff' }}>{row.map((cell, j) => <F.Cell key={j} style={{ padding: 9, borderBottomWidth: 0.4, borderColor: t.line, ...design?.cell }}><F.Text style={{ fontFamily: tableFont, fontSize: 10, ...design?.text, textAlign: alignments[j] }}>{isValidElement(cell) ? cell : <TextSlot slot={`row-${rowIds?.[i] ?? i}-column-${j}`} stable={false} readOnlyReason={tableCellReason}>{typeof cell === 'number' ? String(cell) : cell}</TextSlot>}</F.Text></F.Cell>)}</F.Row>) : <F.Row><F.Cell colSpan={columns.length} style={{ padding: 12, backgroundColor: t.paper }}><F.Text style={noteStyle}>{emptyMessage}</F.Text></F.Cell></F.Row>}
+    {rows.length ? rows.map((row, i) => <F.Row key={rowIds?.[i] ?? i} style={{ backgroundColor: i % 2 === 0 ? alternate : '#ffffff' }}>{row.map((cell, j) => <F.Cell key={j} style={{ padding: 9, borderBottomWidth: 0.4, borderColor: t.line, ...design?.cell }}><F.Text style={{ fontFamily: tableFont, fontSize: 10, ...design?.text, textAlign: alignments[j] }}>{isValidElement(cell) ? cell : <TextSlot slot={`row-${rowIds?.[i] ?? i}-column-${columns[j].id ?? j}`} stable={!!rowIds} from="rows" path={[rowIds ? { id: rowIds[i], ids: 'rowIds', values: shown[i] } : { values: shown[i] }, String(j)]} readOnlyReason={repeated[i] ? repeatedRowReason : tableCellReason}>{shown[i][j]}</TextSlot>}</F.Text></F.Cell>)}</F.Row>) : <F.Row><F.Cell colSpan={columns.length} style={{ padding: 12, backgroundColor: t.paper }}><F.Text style={noteStyle}>{emptyMessage}</F.Text></F.Cell></F.Row>}
     {sourceNote && <F.Row><F.Cell colSpan={columns.length} style={{ paddingTop: 8 }}><F.Text style={noteStyle}><TextSlot slot="sourceNote" from="sourceNote">{sourceNote}</TextSlot></F.Text></F.Cell></F.Row>}
   </F.Table>;
 }, 'table');

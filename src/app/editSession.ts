@@ -1,4 +1,4 @@
-import type { TextEditInput, TextSourceValue, TextTarget } from '../shared/selection';
+import { numberSourceError, numberSourceText, type TextEditInput, type TextSourceValue, type TextTarget } from '../shared/selection';
 import { componentCorrection } from './componentCorrection';
 
 export type PendingTextEdit = Pick<TextEditInput, 'targetId' | 'start' | 'end' | 'replacement'>;
@@ -79,6 +79,7 @@ export function updateComponent(session: EditSession, targetId: string, text: st
   if (correction.replacement.length > MAX_REPLACEMENT) return { session, error: 'Keep each text value under 8,000 characters.' };
   const run = target.runs.find(run => run.source && !run.protected && run.start === correction.start && run.end === correction.end);
   if (!run?.source) return { session, error: 'This text value is no longer editable.' };
+  if (run.source.kind === 'number' && !numberSourceText(correction.replacement)) return { session, error: numberSourceError };
   const sourceId = sourceIdentity(run.source);
   const binding = sourceBindings(session.targets).get(sourceId);
   if (!binding) return { session, error: 'This text value is no longer editable.' };
@@ -160,7 +161,7 @@ function optionalBoolean(value: unknown) { return value === undefined || typeof 
 function validSource(value: unknown): value is TextSourceValue {
   return record(value) && typeof value.file === 'string' && value.file.length > 0 && typeof value.digest === 'string' && value.digest.length > 0
     && integer(value.start) && integer(value.end) && value.end > value.start
-    && ['jsx-text', 'jsx-attribute', 'string', 'json-string'].includes(value.kind as string) && typeof value.value === 'string'
+    && ['jsx-text', 'jsx-attribute', 'string', 'json-string', 'number'].includes(value.kind as string) && typeof value.value === 'string'
     && optionalString(value.bindingId) && (value.linkedOccurrences === undefined || integer(value.linkedOccurrences));
 }
 

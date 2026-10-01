@@ -6,6 +6,7 @@ import { renderOnce } from '../src/server/render';
 import { TextEditService } from '../src/server/edits';
 import { canCorrectComponent } from '../src/app/componentCorrection';
 import { generatedTextReason } from '../src/shared/selection';
+import { anchorForSelection, resolveCommentAnchor } from '../src/shared/anchors';
 import { fixture } from './helpers';
 import { attachTextLines } from '../src/server/text-layout';
 import type { LayoutInfo } from '@formepdf/core';
@@ -111,7 +112,7 @@ test('positional and colliding text identities cannot become durable phrase anch
     assert.ok(after.filter(target => target.blockId === 'plain').every(target => target.stable === false));
     assert.ok(after.filter(target => target.blockId === 'duplicate').every(target => target.stable === false));
     assert.ok(after.filter(target => target.blockId === 'named').every(target => target.stable === true));
-    assert.equal(after.find(target => target.slot === 'row-stable-row-column-0')?.stable, false);
+    assert.equal(after.find(target => target.slot === 'row-stable-row-column-0')?.stable, true, 'A row ID gives a plain cell a durable identity');
     assert.equal(after.find(target => target.slot === 'stable-row-description')?.stable, true);
     assert.equal(new Set(after.map(target => target.id)).size, after.length);
   } finally { await f.cleanup(); }
@@ -233,7 +234,6 @@ function shout(text: string) { return text.toUpperCase(); }`));
       assert.match(heading(blockId, slot).reason!, /column heading is produced by the document's code, or repeats another column's wording/);
     }
     assert.match(heading('shared', 'column-0').reason!, /placed by themes\/shared-table\.tsx/, 'An imported heading names the file that holds it');
-    assert.match(heading('plain', 'row-0-column-0').reason!, /table cell is not linked/, 'Plain cells keep their documented read-only behavior');
 
     const service = new TextEditService(f.root);
     const before = await readFile(f.entry, 'utf8');
@@ -245,5 +245,91 @@ function shout(text: string) { return text.toUpperCase(); }`));
     const high = next.textTargets!.find(target => target.blockId === 'keyed' && target.slot === 'column-high')!;
     await service.apply('proof', { targetId: high.id, start: 0, end: high.text.length, replacement: 'Raised', revision: 2, hash: next.hash }, { id: 'proof', status: 'ready', revision: 2, artifact: next });
     assert.equal(await readFile(f.entry, 'utf8'), saved.replace(`{ id: 'high', label: 'Bound' }`, `{ id: 'high', label: "Raised" }`));
+  } finally { await f.cleanup(); }
+});
+
+test('plain DataTable cells save to their own row and column, and cells that cannot say why', async () => {
+  const f = await fixture();
+  try {
+    await writeFile(resolve(f.root, 'themes/shared-table.tsx'), `import { DataTable } from '../src/document';
+export function SharedTable() { return <DataTable id="shared" columns={[{ label: 'Heading' }]} rows={[['Shared cell']]}/>; }`);
+    const columns = `columns={[{ label: 'Item' }, { label: 'Hours' }]}`;
+    await writeFile(f.entry, document(`<DataTable id="keyed" ${columns} rows={[['Same', 4], ['Same', 4]]} rowIds={['first', 'second']}/>
+      <DataTable id="unique" ${columns} rows={[['Draft', 'Done'], ['Review', 'Done']]}/>
+      <DataTable id="twins" ${columns} rows={[['Twin', 'x'], ['Twin', 'x']]}/>
+      <DataTable id="computed" ${columns} rows={[['Total', total], ['Share', \`\${total}%\`]]}/>
+      <DataTable id="constant" ${columns} rows={rows} rowIds={['one', 'two']}/>
+      <DataTable id="mapped" ${columns} rows={stages.map(stage => [stage.name, stage.hours])} rowIds={stages.map(stage => stage.key)}/>
+      <Block id="primitive"><F.View><F.Text>Primitive cell</F.Text></F.View></Block>
+      <SharedTable/>`, `import { SharedTable } from '../../themes/shared-table';
+const parts = [2, 3];
+const total = parts.reduce((sum, part) => sum + part, 0);
+const rows = [['Constant', 'One'], ['Other', 'Two']];
+const stages = [{ key: 'draft', name: 'Drafting', hours: 3 }, { key: 'review', name: 'Reviewing', hours: 3 }];`));
+    // A primitive Forme table cell is ordinary literal text inside a block.
+    await writeFile(f.entry, (await readFile(f.entry, 'utf8')).replace('<F.View><F.Text>Primitive cell</F.Text></F.View>', '<F.Table columns={[{ width: { fraction: 1 } }]}><F.Row><F.Cell><F.Text>Primitive cell</F.Text></F.Cell></F.Row></F.Table>'));
+    const artifact = (await renderOnce(f.root, 'proof')).artifact;
+    const cell = (blockId: string, slot: string) => artifact.textTargets!.find(value => value.blockId === blockId && value.slot === slot)!;
+    const editable = [['keyed', 'row-first-column-0'], ['keyed', 'row-second-column-0'], ['keyed', 'row-first-column-1'], ['unique', 'row-0-column-1'], ['unique', 'row-1-column-1'],
+      ['constant', 'row-one-column-0'], ['mapped', 'row-review-column-0'], ['primitive', 'children']];
+    for (const [blockId, slot] of editable) {
+      assert.ok(canCorrectComponent(cell(blockId, slot)), `${blockId} ${slot}`);
+      assert.ok(cell(blockId, slot).lines.length, `${blockId} ${slot} keeps its PDF geometry`);
+    }
+    assert.notEqual(cell('keyed', 'row-first-column-0').runs[0].source!.start, cell('keyed', 'row-second-column-0').runs[0].source!.start, 'Row IDs separate rows with equal wording');
+    assert.notEqual(cell('unique', 'row-0-column-1').runs[0].source!.start, cell('unique', 'row-1-column-1').runs[0].source!.start, 'Rows with unique wording separate equal cells');
+    assert.equal(cell('keyed', 'row-first-column-1').runs[0].source!.kind, 'number');
+    assert.deepEqual([cell('keyed', 'row-first-column-0').stable, cell('unique', 'row-0-column-0').stable], [true, false], 'Only a row ID makes a cell durable');
+    for (const [blockId, slot] of [['twins', 'row-0-column-0'], ['twins', 'row-1-column-1']]) assert.match(cell(blockId, slot).reason!, /repeats another row's wording.*rowIds/, `${blockId} ${slot}`);
+    for (const [blockId, slot] of [['computed', 'row-0-column-1'], ['computed', 'row-1-column-1'], ['mapped', 'row-draft-column-1']]) {
+      assert.equal(canCorrectComponent(cell(blockId, slot)), false, `${blockId} ${slot}`);
+      assert.match(cell(blockId, slot).reason!, /table cell is computed by the document's code/, `${blockId} ${slot}`);
+    }
+    assert.match(cell('shared', 'row-0-column-0').reason!, /placed by themes\/shared-table\.tsx/, 'A cell placed by a shared file names it');
+
+    const service = new TextEditService(f.root);
+    let current = artifact, revision = 1, expected = await readFile(f.entry, 'utf8');
+    const save = async (blockId: string, slot: string, replacement: string, from: string, to: string) => {
+      const value = current.textTargets!.find(target => target.blockId === blockId && target.slot === slot)!;
+      await service.apply('proof', { targetId: value.id, start: 0, end: value.text.length, replacement, revision, hash: current.hash }, { id: 'proof', status: 'ready', revision, artifact: current });
+      const at = expected.indexOf(from);
+      assert.ok(at >= 0 && expected.indexOf(from, at + 1) < 0, from);
+      expected = expected.slice(0, at) + to + expected.slice(at + from.length);
+      assert.equal(await readFile(f.entry, 'utf8'), expected, `${blockId} ${slot}`);
+      current = (await renderOnce(f.root, 'proof')).artifact; revision++;
+      assert.equal(current.textTargets!.find(target => target.blockId === blockId && target.slot === slot)!.text, replacement);
+    };
+    await save('keyed', 'row-second-column-0', 'Changed', `['Same', 4]]`, `["Changed", 4]]`);
+    await save('keyed', 'row-first-column-1', '12.5', `['Same', 4], ["Changed"`, `['Same', 12.5], ["Changed"`);
+    await save('unique', 'row-1-column-1', 'Pending', `['Review', 'Done']`, `['Review', "Pending"]`);
+    await save('constant', 'row-two-column-1', 'Second', `['Other', 'Two']`, `['Other', "Second"]`);
+    await save('mapped', 'row-review-column-0', 'Approving', `name: 'Reviewing'`, `name: "Approving"`);
+    await save('primitive', 'children', 'Primitive text', `<F.Text>Primitive cell</F.Text>`, `<F.Text>Primitive text</F.Text>`);
+    const number = current.textTargets!.find(target => target.blockId === 'keyed' && target.slot === 'row-second-column-1')!;
+    await assert.rejects(service.apply('proof', { targetId: number.id, start: 0, end: number.text.length, replacement: '1,250', revision, hash: current.hash }, { id: 'proof', status: 'ready', revision, artifact: current }), /holds a number/);
+    assert.equal(await readFile(f.entry, 'utf8'), expected, 'A rejected number leaves the source unchanged');
+  } finally { await f.cleanup(); }
+});
+
+test('phrase comments anchor in cells of rows with IDs and follow them when rows reorder', async () => {
+  const f = await fixture();
+  try {
+    const table = (rows: string) => document(`<DataTable id="plan" columns={[{ label: 'Task' }, { id: 'note', label: 'Note' }]} rows={${rows}} rowIds={['a', 'b']}/>
+      <DataTable id="loose" columns={[{ label: 'Task' }]} rows={[['Write the brief']]}/>`);
+    await writeFile(f.entry, table(`[['Draft', 'Write the opening section'], ['Review', 'Check every figure']]`));
+    const artifact = (await renderOnce(f.root, 'proof')).artifact;
+    const target = (value: typeof artifact, blockId: string, slot: string) => value.textTargets!.find(item => item.blockId === blockId && item.slot === slot)!;
+    const note = target(artifact, 'plan', 'row-b-column-note');
+    const anchor = anchorForSelection(artifact, { blockId: 'plan', targetId: note.id, start: 6, end: 18, quote: 'every figure', page: 1 });
+    assert.equal(anchor?.quote, 'every figure');
+    const loose = target(artifact, 'loose', 'row-0-column-0');
+    assert.equal(anchorForSelection(artifact, { blockId: 'loose', targetId: loose.id, start: 0, end: 5, quote: 'Write', page: 1 }), undefined, 'A positional cell keeps block-level feedback');
+
+    await writeFile(f.entry, table(`[['Review', 'Check every figure'], ['Draft', 'Write the opening section']]`).replace(`rowIds={['a', 'b']}`, `rowIds={['b', 'a']}`));
+    const reordered = (await renderOnce(f.root, 'proof')).artifact;
+    const resolved = resolveCommentAnchor(reordered, { blockId: 'plan', anchor, quote: 'every figure' });
+    assert.equal(resolved.status, 'attached');
+    assert.equal(resolved.selection?.targetId, note.id);
+    assert.equal(target(reordered, 'plan', 'row-b-column-note').text.slice(resolved.selection!.start, resolved.selection!.end), 'every figure');
   } finally { await f.cleanup(); }
 });

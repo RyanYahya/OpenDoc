@@ -1,6 +1,6 @@
 import ts from 'typescript';
 import { createHash } from 'node:crypto';
-import type { TextSourceValue } from '../shared/selection';
+import { numberSourceError, numberSourceText, type TextSourceValue } from '../shared/selection';
 
 export const textDigest = (text: string) => createHash('sha256').update(text).digest('hex');
 export const textSourceBindingId = (file: string, digest: string, start: number, end: number) => textDigest(JSON.stringify([file, digest, start, end]));
@@ -8,6 +8,11 @@ export const textSourceBindingId = (file: string, digest: string, start: number,
 function unwrap(node: ts.Expression): ts.Expression {
   while (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isTypeAssertionExpression(node) || ts.isNonNullExpression(node) || ts.isSatisfiesExpression(node)) node = node.expression;
   return node;
+}
+
+/** A number literal, optionally negative, such as a DataTable cell's `24` or `-3.5`. */
+function isNumberLiteral(node: ts.Node): node is ts.NumericLiteral | ts.PrefixUnaryExpression {
+  return ts.isNumericLiteral(node) || (ts.isPrefixUnaryExpression(node) && node.operator === ts.SyntaxKind.MinusToken && ts.isNumericLiteral(node.operand));
 }
 
 function propertyName(node: ts.PropertyName): string | undefined {
@@ -41,9 +46,12 @@ export interface TextSourceContext {
   /**
    * Within the slot's prop: record IDs and property names, such as a List item's `[{ id }, 'children']`.
    * A record without an `id` stands for any element, which the rendered text must then identify.
+   * A record with `ids` is found at the position of its `id` in that sibling prop, such as a
+   * DataTable row in `rowIds`; `values` keeps only the records that could display those values.
    */
-  path?: (string | { id?: string })[];
+  path?: (string | TextRecordPart)[];
 }
+type TextRecordPart = { id?: string; ids?: string; values?: (string | undefined)[] };
 
 export interface TextSourceResolver {
   resolveAt(line: number, column: number, slot?: string, childIndex?: number, context?: TextSourceContext): TextSourceValue | undefined;
@@ -228,7 +236,7 @@ export function createTextSourceResolver(file: string, source: string): TextSour
   }
   function evaluate(node: ts.Expression, scope: Scope, seen: Seen): Flow {
     // JSX content is a value; its text rows are read only where a slot asks for them.
-    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isObjectLiteralExpression(node) || ts.isArrayLiteralExpression(node)
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || isNumberLiteral(node) || ts.isObjectLiteralExpression(node) || ts.isArrayLiteralExpression(node)
       || ts.isJsxElement(node) || ts.isJsxFragment(node)) return { values: [{ node, scope }], complete: true };
     // A mapped array stands for the values its inline callback returns.
     if (mapCallback(node)) return { values: [{ node, scope }], complete: true };
@@ -385,8 +393,13 @@ export function createTextSourceResolver(file: string, source: string): TextSour
   }
 
   const textProps = new Set(['children', 'title', 'subtitle', 'eyebrow', 'byline', 'caption', 'lead', 'body', 'footer', 'description', 'author', 'label']);
-  /** Runtime props holding records, and the one field of each record that is displayed text. */
-  const runtimeRecords: Record<string, Record<string, string>> = { List: { items: 'children' }, DataTable: { columns: 'label' } };
+  /**
+   * Runtime props holding records, and the one field of each record that is displayed text, or
+   * `true` when every element of an array record is, as in a DataTable row.
+   */
+  const runtimeRecords: Record<string, Record<string, string | true>> = { List: { items: 'children' }, DataTable: { columns: 'label', rows: true } };
+  /** Runtime props that only identify records, such as DataTable row IDs; never displayed or used as logic. */
+  const runtimeIdentities: Record<string, string[]> = { DataTable: ['rowIds'] };
   const protectedTokens = new Set<ts.Node>();
   function outerExpression(node: ts.Node) {
     while ((ts.isParenthesizedExpression(node.parent) || ts.isAsExpression(node.parent) || ts.isTypeAssertionExpression(node.parent) || ts.isNonNullExpression(node.parent) || ts.isSatisfiesExpression(node.parent)) && node.parent.expression === node) node = node.parent;
@@ -404,7 +417,7 @@ export function createTextSourceResolver(file: string, source: string): TextSour
    * The record field a runtime array prop displays, such as `[{ id, children }]` passed as a
    * List's items. The id identifies the record and the other fields are layout; neither is text.
    */
-  function recordField(input: ts.Node): string | undefined {
+  function recordField(input: ts.Node): string | true | undefined {
     const node = outerExpression(input), parent = node.parent;
     if (ts.isJsxExpression(parent) && parent.expression === node && ts.isJsxAttribute(parent.parent)) {
       const component = runtimeComponent(parent.parent.parent.parent as Opening), name = parent.parent.name.getText(tree);
@@ -421,7 +434,7 @@ export function createTextSourceResolver(file: string, source: string): TextSour
     return undefined;
   }
   /** For a record literal of a runtime array prop: an element of the array, or returned by the callback that maps it. */
-  function recordOf(object: ts.Node): string | undefined {
+  function recordOf(object: ts.Node): string | true | undefined {
     const node = outerExpression(object), parent = node.parent;
     if (ts.isArrayLiteralExpression(parent)) return recordField(parent);
     const fn = ts.isArrowFunction(parent) && parent.body === node ? parent
@@ -430,13 +443,20 @@ export function createTextSourceResolver(file: string, source: string): TextSour
     const call = outerExpression(fn).parent;
     return mapCallback(call) === fn ? recordField(call) : undefined;
   }
+  function identityProp(attribute: ts.JsxAttribute) {
+    const component = runtimeComponent(attribute.parent.parent);
+    return !!component && Object.hasOwn(runtimeIdentities, component) && runtimeIdentities[component].includes(attribute.name.getText(tree));
+  }
   function textConsumer(input: ts.Expression): boolean {
     const node = outerExpression(input), parent = node.parent;
-    // A List record's children and a DataTable column's label are displayed text; ids stay structural.
+    // A List record's children, a DataTable column's label, and a DataTable row's cells are displayed text; ids stay structural.
     if (((ts.isPropertyAssignment(parent) && parent.initializer === node) || (ts.isShorthandPropertyAssignment(parent) && parent.name === node))) {
       const field = recordOf(parent.parent);
       if (field !== undefined && propertyName(parent.name) === field) return true;
     }
+    if (ts.isArrayLiteralExpression(parent) && recordOf(parent) === true) return true;
+    // Spread elements are copied into the new array, which is used however that array is.
+    if (ts.isSpreadElement(parent) && ts.isArrayLiteralExpression(parent.parent)) return exposure(parent.parent) === undefined;
     if (ts.isVariableDeclaration(parent)) {
       // A direct const alias or destructuring is checked at all of its own uses below.
       if (parent.initializer !== node) return false;
@@ -444,7 +464,7 @@ export function createTextSourceResolver(file: string, source: string): TextSour
     }
     if (ts.isJsxExpression(parent) && parent.expression === node) {
       // A local component's props are checked where its body uses them.
-      return ts.isJsxAttribute(parent.parent) ? component(parent.parent.parent.parent) || textProps.has(parent.parent.name.getText(tree)) || recordField(node) !== undefined
+      return ts.isJsxAttribute(parent.parent) ? component(parent.parent.parent.parent) || textProps.has(parent.parent.name.getText(tree)) || recordField(node) !== undefined || identityProp(parent.parent)
         : ts.isJsxElement(parent.parent) || ts.isJsxFragment(parent.parent);
     }
     // `{value && <Paragraph>{value}</Paragraph>}` only tests whether optional text is present.
@@ -482,7 +502,7 @@ export function createTextSourceResolver(file: string, source: string): TextSour
     for (const { node, scope } of values) {
       if (visited.has(node)) continue;
       visited.add(node);
-      if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isJsxText(node)) protectedTokens.add(node);
+      if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isJsxText(node) || isNumberLiteral(node)) protectedTokens.add(node);
       else if (!deep) continue;
       else if (ts.isObjectLiteralExpression(node)) for (const item of node.properties) {
         const value = propertyValue(item) ?? (ts.isSpreadAssignment(item) ? item.expression : undefined);
@@ -505,17 +525,28 @@ export function createTextSourceResolver(file: string, source: string): TextSour
     if (level) protect(flow(node as ts.Expression, undefined).values, level === 'deep');
   }
 
-  function textValue({ node }: Value): TextSourceValue | undefined {
+  /** The text a number literal displays; legacy octal and other unusual spellings are not followed. */
+  function numberText(node: ts.NumericLiteral | ts.PrefixUnaryExpression) {
+    const raw = node.getText(tree).replace(/_/g, ''), digits = raw.replace(/^-\s*/, '');
+    if (/^0\d/.test(digits) || /n$/.test(digits)) return undefined;
+    const value = Number(digits) * (raw.startsWith('-') ? -1 : 1);
+    return Number.isFinite(value) ? String(value) : undefined;
+  }
+  function textValue({ node }: Value, numbers = false): TextSourceValue | undefined {
+    if (isNumberLiteral(node)) { const value = numbers ? numberText(node) : undefined; return value === undefined ? undefined : descriptor(node, 'number', value); }
     if (ts.isJsxText(node)) { const value = jsx(node, false); return value ? descriptor(node, 'jsx-text', value) : undefined; }
     if (ts.isStringLiteral(node) && ts.isJsxAttribute(node.parent)) { const value = jsx(node, true); return value === undefined ? undefined : descriptor(node, 'jsx-attribute', value); }
     return ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) ? descriptor(node, 'string', node.text) : undefined;
   }
-  /** One unprotected authored token, only when every possible value is known and the rendered text identifies exactly one. */
-  function bind(result: Flow, text?: string): TextSourceValue | undefined {
+  /**
+   * One unprotected authored token, only when every possible value is known and the rendered text
+   * identifies exactly one. Number literals are text only where a component displays them as such.
+   */
+  function bind(result: Flow, text?: string, numbers = false): TextSourceValue | undefined {
     if (!result.complete) return undefined;
     const candidates = new Map<ts.Node, TextSourceValue>();
     for (const value of result.values) {
-      const source = textValue(value);
+      const source = textValue(value, numbers);
       if (!source) return undefined;
       if (text === undefined || source.value === text) candidates.set(value.node, source);
     }
@@ -545,17 +576,81 @@ export function createTextSourceResolver(file: string, source: string): TextSour
     return children[index] ? bind(rowFlow(children[index], scope), text) : undefined;
   }
 
+  /** The elements of an array literal, or a safe const holding one, in order; undefined when any position is unknown. */
+  function ordered(input: ts.Expression, scope: Scope): Value[] | undefined {
+    const node = unwrap(input);
+    if (ts.isIdentifier(node)) {
+      const declarations = referenceSymbol(node)?.declarations;
+      const declaration = declarations?.length === 1 && declarations[0].getSourceFile() === tree ? declarations[0] : undefined;
+      return declaration && ts.isVariableDeclaration(declaration) && ts.isIdentifier(declaration.name) && safeDeclaration(declaration) ? ordered(declaration.initializer!, scope) : undefined;
+    }
+    if (!ts.isArrayLiteralExpression(node)) return undefined;
+    const result: Value[] = [];
+    for (const element of node.elements) {
+      if (ts.isOmittedExpression(element)) return undefined;
+      if (!ts.isSpreadElement(element)) { result.push({ node: element, scope }); continue; }
+      const inner = ordered(element.expression, scope);
+      if (!inner) return undefined;
+      result.push(...inner);
+    }
+    return result;
+  }
+  /** What a literal displays; undefined for anything else, which could display any text. */
+  function displayed(node: ts.Node) {
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text;
+    return isNumberLiteral(node) ? numberText(node) : undefined;
+  }
+  /** Whether an array record could display these values. Anything not proven different could. */
+  function couldDisplay({ node, scope }: Value, values: (string | undefined)[], seen: Seen) {
+    if (!ts.isArrayLiteralExpression(node) || node.elements.some(element => ts.isSpreadElement(element) || ts.isOmittedExpression(element))) return true;
+    if (node.elements.length !== values.length) return false;
+    return node.elements.every((element, index) => {
+      const value = values[index];
+      if (typeof value !== 'string') return true;
+      const shown = displayed(unwrap(element as ts.Expression));
+      if (shown !== undefined) return shown === value;
+      const result = flow(element as ts.Expression, scope, seen);
+      return !result.complete || result.values.some(item => { const own = displayed(item.node); return own === undefined || own === value; });
+    });
+  }
+  /**
+   * The records of an array that can be one runtime record without an `id` field of its own, such
+   * as a DataTable row. It is found at the position of its ID in the sibling `ids` prop when both
+   * arrays are written in order, the ID there is a literal, and the runtime validates that IDs are
+   * unique. Otherwise only the records that could display its `values` remain.
+   */
+  function positional(opening: Opening, records: ts.JsxAttribute | undefined, container: Flow, part: TextRecordPart, scope: Scope, seen: Seen): Flow {
+    if (records && typeof part.id === 'string' && typeof part.ids === 'string') {
+      const owner = opening.attributes.properties.filter((item): item is ts.JsxAttribute => ts.isJsxAttribute(item) && item.name.getText(tree) === part.ids);
+      const order = (attribute: ts.JsxAttribute) => attribute.initializer && ts.isJsxExpression(attribute.initializer) && attribute.initializer.expression ? ordered(attribute.initializer.expression, scope) : undefined;
+      const ids = owner.length === 1 ? order(owner[0]) : undefined, list = order(records);
+      if (ids && list && ids.length === list.length) {
+        const matches = ids.flatMap((value, index) => {
+          const result = flow(value.node as ts.Expression, value.scope, seen);
+          const [only] = result.values;
+          return result.complete && result.values.length === 1 && (ts.isStringLiteral(only.node) || ts.isNoSubstitutionTemplateLiteral(only.node)) && !protectedTokens.has(only.node) && only.node.text === part.id ? [index] : [];
+        });
+        if (matches.length === 1) return flow(list[matches[0]].node as ts.Expression, list[matches[0]].scope, seen);
+      }
+    }
+    const items = elements(container, seen);
+    const values = part.values;
+    return Array.isArray(values) ? { values: items.values.filter(value => couldDisplay(value, values, seen)), complete: items.complete } : items;
+  }
+
   /** A value inside a prop, such as one List record's children: a string, or one child of a JSX fragment. */
-  function nested(opening: Opening, slot: string, path: (string | { id?: string })[], childIndex: number, scope?: Scope, text?: string): TextSourceValue | undefined {
+  function nested(opening: Opening, slot: string, path: (string | TextRecordPart)[], childIndex: number, scope?: Scope, text?: string): TextSourceValue | undefined {
     if (opening.attributes.properties.some(ts.isJsxSpreadAttribute)) return undefined;
     const matches = opening.attributes.properties.filter(item => ts.isJsxAttribute(item) && item.name.getText(tree) === slot);
     if (matches.length !== 1 || !ts.isJsxAttribute(matches[0])) return undefined;
     const seen: Seen = new Map();
     let current = attributeFlow(matches[0], scope, seen);
-    for (const part of path) {
+    for (const [index, part] of path.entries()) {
       if (typeof part === 'string') current = member(current, part, seen);
-      else if (part && typeof part === 'object' && (part.id === undefined || typeof part.id === 'string')) current = record(current, part.id, seen);
-      else return undefined;
+      else if (!part || typeof part !== 'object' || (part.id !== undefined && typeof part.id !== 'string')) return undefined;
+      // Only the prop's own elements can be found by their position in a sibling prop.
+      else if (part.ids !== undefined || part.values !== undefined) current = positional(opening, index === 0 ? matches[0] : undefined, current, part, scope, seen);
+      else current = record(current, part.id, seen);
     }
     // A fragment's children render as the slot's children; React drops the same whitespace rows.
     const [only] = current.values;
@@ -563,7 +658,7 @@ export function createTextSourceResolver(file: string, source: string): TextSour
       const rows = only.node.children.filter(row => ts.isJsxText(row) ? !!jsx(row, false) : !ts.isJsxExpression(row) || !!row.expression);
       return rows[childIndex] ? bind(rowFlow(rows[childIndex], only.scope), text) : undefined;
     }
-    return childIndex === 0 ? bind(current, text) : undefined;
+    return childIndex === 0 ? bind(current, text, true) : undefined;
   }
 
   // Count linked authored occurrences by token identity, not matching visible text.
@@ -642,12 +737,18 @@ export function createJsonTextSourceResolver(file: string, source: string): (pat
 }
 
 /**
- * The source token for a corrected value. `original` is the token being replaced. A plain JSX
+ * The source token for a corrected value. `original` is the token being replaced. A number
+ * literal takes only a plain number that displays exactly as typed. A plain JSX
  * attribute string or JSX text stays plain when it can hold the new value exactly: no line
  * breaks, quotes of its own kind, braces, angle brackets, or entities, and compiling it must
  * yield the value. JSX text keeps the line breaks around it. Otherwise it becomes an expression.
  */
 export function serializeSourceValue(value: TextSourceValue, next: string, original?: string): string {
+  // A number stays a number literal, written as it will display.
+  if (value.kind === 'number') {
+    if (!numberSourceText(next)) throw new Error(numberSourceError);
+    return next;
+  }
   const serialized = JSON.stringify(next);
   if (value.kind !== 'jsx-text' && value.kind !== 'jsx-attribute') return serialized;
   if (original !== undefined && !/[\r\n\u2028\u2029{}<>&]/.test(next)) {
