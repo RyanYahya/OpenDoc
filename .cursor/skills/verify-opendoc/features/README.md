@@ -47,3 +47,8 @@ Keep implementation details out of the map. Name only user paths, stable handles
 - [Theme specimen review](./theme-specimen.md) covers catalog discovery and Neutral specimen preview/review.
 - [Comments](./comments.md) covers adding, listing, and resolving feedback on a disposable copy.
 - [Browser library](./browser-library.md) covers the Normal GUI shell: HTML boot, sidebar routes, and library/project JSON.
+- [Document lifecycle](./document-lifecycle.md) covers rename, duplicate, delete to Trash, and restore, in the app and with `documents`.
+- [Projects](./projects.md) covers project settings, per-format default themes, membership, and deletion.
+- [Assets and media](./assets-media.md) covers font and logo imports, the expected-revision guard, bindings, theme defaults, and document media.
+- [Update](./update.md) covers checking for and installing a runtime update.
+- [Headless initialization](./headless-init.md) covers creating a Headless workspace with its skills.

@@ -111,7 +111,8 @@ Prefer existing harnesses, in this order:
    - `pnpm exec tsx src/server/review-cli.ts -- <id> --json`
    - `pnpm exec tsx src/server/review-cli.ts -- --theme <id> --json`
    - `pnpm themes -- preview <id>` / `pnpm themes -- list`
-   - `pnpm comments -- list <id>` / `add` / `resolve` (add requires the live server in Normal)
+   - `pnpm comments -- list <id>` / `add` / `resolve` (add verifies through the live server when one runs, otherwise by rendering saved source)
+   - `pnpm documents -- rename|duplicate|delete|trash|restore` and `pnpm projects -- list|create|update|assign|delete` (mutate only disposable copies)
 3. **Repo tests** for a focused contract: `pnpm exec tsx --test tests/<name>.test.ts`
 4. **Browser** only when the claim is the GUI. Routes are hash URLs; use ARIA names, not coordinates.
 
@@ -211,11 +212,15 @@ Compact proofs for the RTL, editing, history, and organization features. Mutate 
 | Phrase comments | Drag across words in a paragraph, then in a `DataTable` cell with `rowIds`; button `aria-label="Comment"` | `pnpm comments -- list <copy-id>` shows `anchor.targetId`, `quote`, `prefix`/`suffix`; the phrase is underlined. A table without `rowIds` gives block-level feedback |
 | Double-click edit | Double-click a word in an editable paragraph | Editor (`aria-label="Text correction"`) opens with the word selected; on read-only text the double-click only selects |
 | Editable helper, list, and table text | Edit text passed to a same-file helper, a `List` item, a `DataTable` heading and cell; **Save all** | Each saves at its own call site or record; computed cells, repeated rows without `rowIds`, and theme labels stay read-only with an Edit tooltip reason |
-| History panel | Reader button `aria-label="Version history"`; selection bar `aria-label="History for this block"`; restore a block, then Undo | `GET /api/documents/<copy-id>/history` lists a `Your edit` version after **Save all** and a `Restored` version after the restore; Undo returns the source to its prior text |
+| History panel | Reader button `aria-label="Version history"`; selection bar `aria-label="History for this block"`; restore a block, then Undo | `GET /api/documents/<copy-id>/history` lists a version with `origin: "edit"` (label `You`) after **Save all** and one with `origin: "restore"` (label `Restore`) after the restore; Undo returns the source to its prior text |
 | History capture in Headless | Throwaway Headless workspace: edit a document, `npx opendoc check`, `npx opendoc history list <id> --json`; then `history restore <id> <version> --block <block-id>` | A new `external` (Agent change) version after `check`; restore prints `Undo with:` and that command reverts it |
 | Tags, status, and folders | Throwaway Headless workspace: `npx opendoc tags add document welcome memo "Client Acme"`, `tags status welcome draft`, then `tags status welcome final`; `npx opendoc themes folders create Verify`, `themes assign neutral Verify`, `themes folders create Verify/Nested`. In the app, a card's **…** → **Status** and **Details…** | `tags show document welcome` has `type: "brief"`, `status: "final"`, `language: "english"`, and tags `["Client Acme"]`; `tags find --type brief --status final` lists `welcome`; `tags add document welcome final` is refused; `themes list --folder Verify` returns `neutral`; the nested create is refused as single-level and names `Nested` instead; `themes/neutral/` is unchanged; the card shows *Brief* and a *Final* badge, and a version 1 `tags.json` is rewritten as version 2 only after a change |
+| Document lifecycle | Throwaway Headless workspace: `npx opendoc documents rename`, `duplicate --id`, `delete`, `trash`, `restore` ([recipe](features/document-lifecycle.md)) | Copy has fresh history and no status; delete prints a restore command; restore returns the same ID, project, name, tags, and status |
+| Projects and per-format defaults | `npx opendoc projects create <id> --document-theme <a> --presentation-theme <b>`, then create a document and a presentation ([recipe](features/projects.md)) | `themeDefaults` reports both; each `theme.tsx` imports its format's default; `projects delete` refuses a non-empty project |
+| Assets and media | Import a copied bundled OFL face, bind it, review; import a media image ([recipe](features/assets-media.md)) | A stale `--expected-revision` is refused; `assets.json` pins the revision; `media check` reports freshness |
+| Update and Headless init | `init --json` in an empty folder, then `update --check --json` ([init](features/headless-init.md), [update](features/update.md)) | Ten skill stubs and `edition: "headless"`; the check changes no files |
 | Comment restore | `pnpm comments -- delete <copy-id> <comment-id> --json`, then `restore` | `list` shows `deleted`, then the same `id`, anchor, and prior status; the panel's **Recently deleted** (`aria-label="Recently deleted comments"`) offers Restore |
 
 ## After a change
 
-Keep the [feature map](features/README.md) honest as routes and CLIs change. Use `/maintain-verification-skill` for that loop.
+Keep the [feature map](features/README.md) honest as routes and CLIs change: update the matching feature file and the checklist above in the same change as the route or command.
