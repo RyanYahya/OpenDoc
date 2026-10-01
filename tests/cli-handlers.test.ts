@@ -2,6 +2,7 @@ import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { relative, resolve } from 'node:path';
+import { createServer, type AddressInfo } from 'node:net';
 import { fixture } from './helpers';
 import { runCreateCli } from '../src/server/create-cli';
 import { runProjectsCli } from '../src/server/projects-cli';
@@ -120,5 +121,43 @@ test('headless comments verify the rendered block without consulting a server an
     await assert.rejects(addComment(f.root, 'proof', { blockId: 'target', text: 'A stale request', quote: comment.quote }, () => false), /document changed/);
     assert.equal(await readFile(resolve(f.root, 'documents/proof/comments.json'), 'utf8'), before);
     assert.deepEqual((await readComments(f.root, 'proof'))[0].history.map(item => item.action), ['created', 'resolved']);
+  } finally { await f.cleanup(); }
+});
+
+test('without a running service, normal comment addition verifies the target directly', async t => {
+  const f = await fixture();
+  const json = output(t);
+  try {
+    await runCommentsCli(['add', 'proof', 'target', 'No service running', '--json'], f.root);
+    assert.match(json()[0].quote, /A stable paragraph/);
+    // A session file left by a stopped service does not block feedback.
+    await mkdir(resolve(f.root, '.opendoc'), { recursive: true });
+    const closed = createServer();
+    await new Promise<void>(accept => closed.listen(0, '127.0.0.1', accept));
+    const { port } = closed.address() as AddressInfo;
+    await new Promise(accept => closed.close(accept));
+    await writeFile(resolve(f.root, '.opendoc/server.json'), JSON.stringify({ origin: `http://127.0.0.1:${port}`, token: 'stale-token', pid: 2 ** 31 - 2 }));
+    await runCommentsCli(['add', 'proof', 'title', 'After the service stopped', '--json'], f.root);
+    assert.deepEqual(json().map((comment: { blockId: string }) => comment.blockId), ['target', 'title']);
+    await assert.rejects(runCommentsCli(['add', 'proof', 'missing-block', 'Nowhere', '--json'], f.root), /does not exist/);
+  } finally { await f.cleanup(); }
+});
+
+test('comments can be deleted and restored from the command line with their history', async t => {
+  const f = await fixture();
+  const json = output(t);
+  try {
+    await runCommentsCli(['add', 'proof', 'target', 'Remove this later', '--json'], f.root, { mode: 'direct' });
+    const [comment] = json();
+    await runCommentsCli(['resolve', 'proof', comment.id, '--json'], f.root);
+    json();
+    await runCommentsCli(['delete', 'proof', comment.id, '--json'], f.root);
+    assert.equal(json().status, 'deleted');
+    await assert.rejects(runCommentsCli(['delete', 'proof', comment.id, '--json'], f.root), /not found/);
+    await runCommentsCli(['restore', 'proof', comment.id, '--json'], f.root);
+    const restored = json();
+    assert.equal(restored.status, 'resolved', 'Restoring returns the earlier resolved status.');
+    assert.equal(restored.id, comment.id);
+    assert.deepEqual((await readComments(f.root, 'proof'))[0].history.map(event => event.action), ['created', 'resolved', 'deleted', 'restored']);
   } finally { await f.cleanup(); }
 });

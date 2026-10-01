@@ -44,7 +44,7 @@ OpenDoc identifies blocks by the literal `id` written in the source, such as `<P
 
 ## Recently deleted comments
 
-Deleting a comment keeps its record and history. The comments panel lists comments deleted in the last 90 days under **Recently deleted**, each with **Restore**, which brings it back with its identity, anchor, earlier open or resolved status, and history. From the command line, `npx opendoc comments restore <doc> <comment-id>` does the same; `comments list` includes deleted comments with their status.
+Deleting a comment keeps its record and history. The comments panel lists comments deleted in the last 90 days under **Recently deleted**, each with **Restore**, which brings it back with its identity, anchor, earlier open or resolved status, and history. From the command line, `npx opendoc comments delete <doc> <comment-id>` deletes a comment the same way and prints the command that restores it, and `npx opendoc comments restore <doc> <comment-id>` restores it; `comments list` includes deleted comments with their status.
 
 ## Commands
 
