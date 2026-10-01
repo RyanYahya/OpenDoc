@@ -150,7 +150,7 @@ try {
       issue.message = `Slide ${slide?.id ?? issue.page}: ${issue.message.replace(/page (\d+)/g, 'slide $1').replace('or allow the content to flow onto another page', 'or split it into explicit slides')}`;
     }
   }
-  for (const message of result.warnings) issues.push({ code: 'renderer-warning', severity: 'warning', message });
+  for (const message of result.warnings) issues.push({ code: message.startsWith('Missing glyphs:') ? 'missing-glyphs' : 'renderer-warning', severity: 'warning', message });
   assertLayoutSafe(issues);
   if (capture.format === 'presentation') issues.push(...inspectPresentationCompatibility(result.doc, result.layout, capture.slides, capture.blocks));
   const artifact: RenderArtifact = { meta: capture.meta, format: capture.format, ...(capture.format === 'presentation' ? { slides: capture.slides } : {}), media: capture.media ?? [], assets: capture.assets ?? [], assetBindings: capture.assetBindings, assetDependencies: capture.assetDependencies ?? [], textTargets, blocks: capture.blocks, pages, provenance, issues, outline, hash: createHash('sha256').update(result.pdf).digest('hex'), renderedAt: new Date().toISOString() };

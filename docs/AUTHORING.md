@@ -6,7 +6,7 @@ The authoring API, full starter library, and commands below are shared by normal
 
 Every document needs a project. Create its initial source and assignment with `npx opendoc create <id> --project <project-id> --title "Title"`, then develop the generated source. Add `--template <template-id>` when using a catalog layout; an ordinary document needs neither a template nor a starter. For imported document folders, use `npx opendoc projects assign <document-id> <project-id>`. See [Projects](PROJECTS.md) for defaults and membership.
 
-Use English, local assets, and a pure TSX component. For Arabic and mixed Arabic and English text, see [Arabic and right-to-left text](#arabic-and-right-to-left-text). OpenDoc owns a small set of document primitives; Forme provides the underlying page layout. Arbitrary HTML, browser CSS, React hooks, and asynchronous component effects do not belong inside document source.
+Write English or Arabic content (see [Arabic and right-to-left text](#arabic-and-right-to-left-text)), and use local assets and a pure TSX component. OpenDoc owns a small set of document primitives; Forme provides the underlying page layout. Arbitrary HTML, browser CSS, React hooks, and asynchronous component effects do not belong inside document source.
 
 ## A complete small document
 
@@ -44,6 +44,49 @@ Use this inside a document created with the command above; retain the generated 
 Import document primitives from `opendoc`, asset adapters from `opendoc/assets`, template contracts from `opendoc/template`, and theme types and helpers from `opendoc/themes`. Keep imports of your own documents, templates, themes, and data relative to those workspace files. Do not import OpenDoc's internal `src/` files.
 
 `meta.kind` is an optional nonempty descriptive label, such as `quotation`. Omit it when a category adds nothing. Metadata describes the document; it does not choose its layout or constrain its structure. Themes are discovered from `themes/<id>/`. Use `npx opendoc themes list` and read only the selected theme’s `design.md`, then the needed component source. New documents import the adapted `theme` from `./theme`, preserving the saved asset choices; `meta.theme` must match the `Document` theme ID. Pass this same theme to any template factory before rendering. Civic Spectrum, Field Manual, McKinsey Consulting, and OpenDoc Neutral supply distinct print systems and reusable compositions. Neutral offers a simpler foundation and is the document fallback. See [Themes](THEMES.md).
+
+## Arabic and right-to-left text
+
+PDF output supports Arabic and other right-to-left scripts, including sentences that mix Arabic with English words and numbers. Set the base direction on the theme (`direction: 'rtl'`, `lang: 'ar'`) or on one document (`<Document direction="rtl" lang="ar">`); a `Document` prop wins over the theme. Every paragraph is laid out with the Unicode Bidirectional Algorithm: Arabic letters join, English words and numbers stay left to right inside the Arabic line, brackets are mirrored, and punctuation sits where an Arabic reader expects it. A wrapped paragraph is reordered line by line, so do not reverse words, insert directional marks, or split a sentence into separate runs to force an order.
+
+Arabic needs a font that has Arabic glyphs. Register one in `theme.fonts` (or bind it from the asset library) and list it in `fontFallbacks`, which OpenDoc appends to its own body, heading, label, caption, code, and table families. Characters the first family lacks then come from the next family in the list, so English words can keep the Latin face:
+
+```tsx
+// Properties inside the theme definition; use a verified local Arabic font.
+direction: 'rtl',
+lang: 'ar',
+fontFallbacks: ['Noto Naskh Arabic'],
+fonts: [{ family: 'Noto Naskh Arabic', src: 'themes/acme/assets/NotoNaskhArabic-Regular.ttf', fontWeight: 400, fontStyle: 'normal' }],
+```
+
+```tsx
+<Paragraph id="update">قمنا بتحديث نظام Microsoft Office في المكتب الرئيسي يوم الأحد.</Paragraph>
+<Paragraph id="price">السعر 250 ريال لعام 2026 (شامل VAT).</Paragraph>
+<Paragraph id="note" style={{ direction: 'ltr' }}>An English paragraph inside an Arabic document.</Paragraph>
+```
+
+Any `fontFamily` may itself be a list of registered families, such as `'Acme Sans, Noto Naskh Arabic'`. A character that no listed font covers prints as an empty box and the review reports a `missing-glyphs` warning naming it; fix the font list rather than accepting the warning.
+
+`direction` is also a native style (`'ltr'`, `'rtl'`, or `'auto'`) for single paragraphs or containers. `auto` takes each paragraph's direction from its first strong letter, which suits mixed collections such as tables of names. Without an explicit `textAlign`, a paragraph aligns to the edge where it starts (right for Arabic); an explicit `textAlign` is kept. `textAlign: 'justify'` widens the spaces between words, never the joins inside Arabic words, and ends with a line aligned to the starting edge. Letter spacing is not applied to Arabic because it would break the joins.
+
+In a right-to-left document, rows start at the right: list markers, table columns (the first column is the rightmost), footer label and page numbers, and other `flexDirection: 'row'` compositions are mirrored. Lists indent and callouts draw their rule on the right. Text columns in `DataTable` default to right alignment and numeric columns to left. `CodeBlock` stays left to right. Padding, margins, borders, and absolute positions remain physical, so a custom composition that relies on `paddingLeft` or `left` should choose the side explicitly; theme components can call `documentDirection()` from `opendoc` inside their render function. Under `auto`, containers keep left-to-right rows while each paragraph follows its own text. Generated labels such as “Figure 1” and “Table 1” remain English. Extracted and copied text follows reading order, although some viewers omit the space where the direction changes; review the exported PDF's page images and extracted text as for any document.
+
+### Bundled Arabic font
+
+Instead of registering a font file, bind the bundled Noto Naskh Arabic family for Arabic body text, and for headings when they are also Arabic:
+
+```sh
+npx opendoc assets bind my-report body-font noto-naskh-arabic
+npx opendoc assets bind my-report heading-font noto-naskh-arabic
+```
+
+It has regular, medium, semibold, and bold faces, so `Strong` works. It has no italics: avoid `Em` and italic styles in Arabic text, because an unavailable style fails instead of being synthesized. The family also contains Latin letters and digits, so a sentence such as “قمنا بتحديث نظام Microsoft Office في المكتب الرئيسي يوم الأحد.” uses one font. See [Assets](ASSETS.md) for its provenance.
+
+### PowerPoint and the browser
+
+In PowerPoint exports, a paragraph is right-to-left when its `direction` style is `rtl`, or when it has no explicit direction and its first strong letter is Arabic or Hebrew. Such paragraphs export with PowerPoint's right-to-left paragraph setting and an Arabic (`ar-SA`) or Hebrew (`he-IL`) language tag, with the same font in the Latin and complex-script slots, so PowerPoint orders and shapes mixed text itself. PowerPoint alignment is physical. `right` and `center` are kept; otherwise a right-to-left paragraph follows its reviewed PDF lines, exporting right-aligned (its start edge) unless those lines are visibly flush left. Left-to-right paragraphs are unchanged. Justified text remains unsupported. Because PowerPoint shapes Arabic itself, check the editable deck in PowerPoint when native rendering is available.
+
+In the browser, comments, text corrections, search, and name fields follow the direction of the text you type, and Arabic titles and comments display right-to-left within the left-to-right app.
 
 ## Page structure and reading rhythm
 
@@ -151,29 +194,6 @@ Lists use ordinary text rows because the current engine mismeasures native wrapp
 For a chip or other label, use `<Paragraph id="status" maxLines={1}>In progress</Paragraph>`. `maxLines` is a positive integer review expectation, not a truncation or sizing instruction: all text remains in the PDF. If the rendered paragraph exceeds the limit (including continuation pages), `line-limit-exceeded` reports its source and bounds. Ordinary paragraphs have no line limit.
 
 `CodeBlock` accepts a literal string, optional `language`/`caption`, and `tabSize` (2, 4, or 8). It uses the bundled monospace face and preserves indentation. Long source lines can wrap; inspect code where wrapping could change how a reader interprets it. Keep executable examples accurate. `Strong` and `Em` use real weight and italic faces from the selected family. Explicitly unavailable styles fail instead of being synthesized.
-
-## Arabic and right-to-left text
-
-Bind the bundled Noto Naskh Arabic family for Arabic body text, and for headings when they are also Arabic:
-
-```sh
-npx opendoc assets bind my-report body-font noto-naskh-arabic
-npx opendoc assets bind my-report heading-font noto-naskh-arabic
-```
-
-It has regular, medium, semibold, and bold faces, so `Strong` works. It has no italics: avoid `Em` and italic styles in Arabic text, because an unavailable style fails instead of being synthesized. The family also contains Latin letters and digits, so a sentence such as “قمنا بتحديث نظام Microsoft Office في المكتب الرئيسي يوم الأحد.” uses one font. See [Assets](ASSETS.md) for its provenance.
-
-Paragraph direction is set with the `direction` text style: `'ltr'`, `'rtl'`, or `'auto'`, where `auto` follows the first strong letter of the paragraph. This is the intended API of the PDF engine's bidirectional text support; review the rendered PDF, not only the source, to confirm letter joining, word order, and the position of English words, numbers, and punctuation.
-
-```tsx
-<Paragraph id="update" style={{ direction: 'rtl', textAlign: 'right' }}>
-  قمنا بتحديث نظام Microsoft Office في المكتب الرئيسي يوم الأحد.
-</Paragraph>
-```
-
-In PowerPoint exports, a paragraph is right-to-left when its `direction` style is `rtl`, or when it has no explicit direction and its first strong letter is Arabic or Hebrew. Such paragraphs export with PowerPoint's right-to-left paragraph setting and an Arabic (`ar-SA`) or Hebrew (`he-IL`) language tag, with the same font in the Latin and complex-script slots, so PowerPoint orders and shapes mixed text itself. PowerPoint alignment is physical. `right` and `center` are kept; otherwise a right-to-left paragraph follows its reviewed PDF lines, exporting right-aligned (its start edge) unless those lines are visibly flush left. Left-to-right paragraphs are unchanged. Justified text remains unsupported. Because PowerPoint shapes Arabic itself, check the editable deck in PowerPoint when native rendering is available.
-
-In the browser, comments, text corrections, search, and name fields follow the direction of the text you type, and Arabic titles and comments display right-to-left within the left-to-right app.
 
 ## Evidence and references
 

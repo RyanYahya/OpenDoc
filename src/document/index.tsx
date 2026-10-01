@@ -7,14 +7,15 @@ import type { MediaUse } from '../shared/media';
 import type { AssetUse, DocumentAssets } from '../shared/assets';
 import { documentThemeAssets, withDocumentAssets, type AppliedDocumentAssets } from '../assets';
 import { assetFile, assetRevisionPath, readAssetRevision } from '../assets/files';
-import { neutral, themePage, themeType, validateTheme, type DocTheme, type ThemeTypeRole } from '../themes/index';
+import { neutral, themePage, themeType, validateTheme, withFontFallbacks, type DocTheme, type TextDirection, type ThemeTypeRole } from '../themes/index';
+import { fontFamilies, languageTag } from '../themes/types';
 import type { BlockInfo, SourceLocation, DocumentFormat, SlideInfo } from '../shared/types';
 import { Page } from './page';
 import { TextCapture, TextSlot, type TextSlotProps } from './text-targets';
 export { TextSlot, type TextSlotProps, type TextFieldPath } from './text-targets';
 
 export type { DocumentMeta } from '../shared/types';
-export type { DocTheme } from '../themes/index';
+export type { DocTheme, TextDirection } from '../themes/index';
 export { Page } from './page';
 export type { PageProps } from './page';
 export type { ImageFrameOptions } from '../media/render';
@@ -31,7 +32,7 @@ type Runtime = {
   format: DocumentFormat; slides: SlideInfo[]; currentSlide?: string; slidePages: WeakSet<object>;
   media: MediaUse[];
   assets: AssetUse[]; managed?: AppliedDocumentAssets; currentBlock?: string;
-  theme: DocTheme; refs: ReferenceMap; cited: string[]; citationStyle: CitationStyle;
+  theme: DocTheme; direction: TextDirection; refs: ReferenceMap; cited: string[]; citationStyle: CitationStyle;
   blocks: Record<string, BlockInfo>; targets: Map<string, Target>; notes: Endnote[];
   figureCount: number; tableCount: number; documentCount: number; referencesCount: number; notesCount: number;
 };
@@ -60,7 +61,7 @@ function requireText(value: unknown, label: string): asserts value is string {
 export function prepareDocument(input: ReactNode) {
   runtime = {
     format: 'document', slides: [], slidePages: new WeakSet(),
-    media: [], assets: [], theme: neutral, refs: {}, cited: [], citationStyle: 'numeric', blocks: Object.create(null), targets: new Map(), notes: [],
+    media: [], assets: [], theme: neutral, direction: 'ltr', refs: {}, cited: [], citationStyle: 'numeric', blocks: Object.create(null), targets: new Map(), notes: [],
     figureCount: 0, tableCount: 0, documentCount: 0, referencesCount: 0, notesCount: 0,
   };
   const map = globals.__formeSourceMap ??= new WeakMap();
@@ -308,8 +309,13 @@ export const Slide = block(function Slide({ id, children, padding = 40, style, .
   return page;
 }, 'slide');
 
-export function Document({ title, author, theme = neutral, references = {}, citationStyle = 'numeric', children }: {
-  title: string; author?: string; theme?: DocTheme; references?: ReferenceMap; citationStyle?: CitationStyle; children: ReactNode;
+export function Document({ title, author, theme = neutral, references = {}, citationStyle = 'numeric', direction, lang, children }: {
+  title: string; author?: string; theme?: DocTheme; references?: ReferenceMap; citationStyle?: CitationStyle;
+  /** Base text direction; overrides the theme. `rtl` for Arabic documents, `auto` per paragraph. */
+  direction?: TextDirection;
+  /** BCP 47 language tag for the PDF; overrides the theme. Defaults to `en`. */
+  lang?: string;
+  children: ReactNode;
 }) {
   runtime.documentCount++;
   if (!documentThemeAssets(theme) && globals.__opendocDocumentAssets) theme = withDocumentAssets(theme, globals.__opendocDocumentAssets);
@@ -319,6 +325,10 @@ export function Document({ title, author, theme = neutral, references = {}, cita
   validateTheme(runtime.managed ? { ...theme, fonts: theme.fonts?.filter(font => !runtime.managed!.fonts.has(font.family)) } : theme);
   requireText(title, 'Document title');
   if (!['numeric', 'author-date'].includes(citationStyle)) throw new Error('citationStyle must be numeric or author-date.');
+  const textDirection = direction ?? theme.direction;
+  if (textDirection !== undefined && !['ltr', 'rtl', 'auto'].includes(textDirection)) throw new Error('Document direction must be ltr, rtl, or auto.');
+  const language = lang ?? theme.lang ?? 'en';
+  if (typeof language !== 'string' || !languageTag.test(language)) throw new Error('Document lang must be a BCP 47 language tag such as ar or en-GB.');
   if (!references || typeof references !== 'object' || Array.isArray(references)) throw new Error('references must be an object of named source records.');
   for (const [key, ref] of Object.entries(references)) {
     checkId(key, 'Reference key');
@@ -334,6 +344,7 @@ export function Document({ title, author, theme = neutral, references = {}, cita
     }
   }
   runtime.theme = theme;
+  runtime.direction = textDirection ?? 'ltr';
   runtime.refs = references;
   runtime.citationStyle = citationStyle;
   const fonts: NonNullable<F.DocumentProps['fonts']> = ['Sans', 'Serif'].flatMap(family => ['Regular', 'Semibold', 'Italic', 'SemiboldItalic'].map(face => ({
@@ -354,23 +365,35 @@ export function Document({ title, author, theme = neutral, references = {}, cita
     fonts.push({ ...font, src: local });
   }
   const registered = new Set(fonts.map(font => font.family));
-  const families = new Set([theme.body, theme.heading]);
+  // A family may be a fallback list, such as "OpenDoc Sans, Noto Naskh Arabic".
+  const families = new Set([...fontFamilies(theme.body), ...fontFamilies(theme.heading), ...(theme.fontFallbacks ?? [])]);
   function collectFonts(value: unknown) {
     if (!value || typeof value !== 'object') return;
     for (const [key, item] of Object.entries(value)) {
-      if (key === 'fontFamily' && typeof item === 'string') families.add(item);
+      if (key === 'fontFamily' && typeof item === 'string') fontFamilies(item).forEach(family => families.add(family));
       else if (item && typeof item === 'object') collectFonts(item);
     }
   }
   collectFonts(theme.design);
   for (const family of families) if (!registered.has(family)) throw new Error(`Theme ${theme.id}: register local font family ${family} in fonts.`);
-  return <F.Document title={title} author={author} lang="en" tagged fonts={fonts} style={{ fontFamily: theme.body, fontSize: theme.fontSize, color: theme.ink, lineHeight: theme.lineHeight }}>{children}</F.Document>;
+  return <F.Document title={title} author={author} lang={language} tagged fonts={fonts} style={{ fontFamily: withFontFallbacks(theme, theme.body), fontSize: theme.fontSize, color: theme.ink, lineHeight: theme.lineHeight, ...(textDirection ? { direction: textDirection } : {}) }}>{children}</F.Document>;
 }
 
-/** Semantic families for theme components. Read inside the component's render function. */
+/** Semantic families for theme components, with the theme's fallbacks. Read inside the component's render function. */
 export function documentFont(role: 'body' | 'heading') {
   if (!runtime?.documentCount) throw new Error('documentFont must be called while rendering an OpenDoc document. Use it inside a component, not at module scope.');
-  return runtime.theme[role];
+  return withFontFallbacks(runtime.theme, runtime.theme[role]);
+}
+
+/** Style for running headers and footers, which do not inherit the document's direction. */
+function fixedDirection(): F.Style {
+  return runtime.direction === 'ltr' ? {} : { direction: runtime.direction };
+}
+
+/** The document's base direction (`ltr` unless the Document or theme sets one). Read inside a component's render function. */
+export function documentDirection(): TextDirection {
+  if (!runtime?.documentCount) throw new Error('documentDirection must be called while rendering an OpenDoc document. Use it inside a component, not at module scope.');
+  return runtime.direction;
 }
 
 export function Pages({ title, children, size, margin, header, footer, pageNumbers = true }: {
@@ -382,9 +405,11 @@ export function Pages({ title, children, size, margin, header, footer, pageNumbe
   const headerText = header === undefined ? (t.runningHeader ? (furniture?.uppercaseHeader === false ? title : title.toUpperCase()) : false) : header;
   const footerText = footer === undefined ? (t.runningFooter ? t.footerLabel : false) : footer;
   const furnitureText = { ...themeType(t, 'small', { fontSize: 8 }), ...furniture?.text };
+  // Running furniture does not inherit document styles, so it repeats the direction.
+  const direction = fixedDirection();
   return <Page {...themePage(t)} size={size ?? t.pageSize} margin={margin ?? themePage(t).margin}>
-    {headerText !== false && <F.Fixed position="header"><F.Text style={{ ...furnitureText, paddingBottom: 18, ...furniture?.header }}>{headerText}</F.Text></F.Fixed>}
-    {footerText !== false && <F.Fixed position="footer"><F.View style={{ borderTopWidth: 0.5, borderColor: t.line, paddingTop: 10, flexDirection: 'row', justifyContent: 'space-between', ...furniture?.footer }}>
+    {headerText !== false && <F.Fixed position="header"><F.Text style={{ ...direction, ...furnitureText, paddingBottom: 18, ...furniture?.header }}>{headerText}</F.Text></F.Fixed>}
+    {footerText !== false && <F.Fixed position="footer"><F.View style={{ ...direction, borderTopWidth: 0.5, borderColor: t.line, paddingTop: 10, flexDirection: 'row', justifyContent: 'space-between', ...furniture?.footer }}>
       <F.Text style={furnitureText}>{footerText}</F.Text>
       {pageNumbers && <F.Text style={furnitureText}>{furniture?.pageNumber === 'page' ? '{{pageNumber}}' : '{{pageNumber}} / {{totalPages}}'}</F.Text>}
     </F.View></F.Fixed>}{children}
@@ -403,7 +428,7 @@ export function Cover({ eyebrow, title, subtitle, footer, idPrefix = 'cover' }: 
       <TextSlot slot="title" from="title"><Heading id={`${idPrefix}-title`} level={1} baseStyle={{ fontSize: 44, lineHeight: 1.1, marginBottom: 26 }} style={t.design?.cover?.title}>{title}</Heading></TextSlot>
       <TextSlot slot="subtitle" from="subtitle"><Paragraph id={`${idPrefix}-subtitle`} style={{ ...themeType(t, 'lead', { fontSize: 16, lineHeight: 1.5, color: t.muted }), ...t.design?.cover?.subtitle }}>{subtitle}</Paragraph></TextSlot>
     </F.View>
-    <F.Fixed position="footer"><TextSlot slot="footer" from="footer"><Paragraph id={`${idPrefix}-footer`} style={{ ...themeType(t, 'small', { fontSize: 10, color: t.accent }), marginBottom: 0, ...t.design?.furniture?.text, ...t.design?.cover?.footer }}>{footer}</Paragraph></TextSlot></F.Fixed>
+    <F.Fixed position="footer"><TextSlot slot="footer" from="footer"><Paragraph id={`${idPrefix}-footer`} style={{ ...fixedDirection(), ...themeType(t, 'small', { fontSize: 10, color: t.accent }), marginBottom: 0, ...t.design?.furniture?.text, ...t.design?.cover?.footer }}>{footer}</Paragraph></TextSlot></F.Fixed>
   </Page>;
 }
 
@@ -461,7 +486,9 @@ export const Callout = block(function Callout({ title, children, style, keepToge
   authored.forEach((child, childIndex) => collect(typeof child === 'string' || typeof child === 'number'
     ? <TextSlot slot="children" from="children" childIndex={childIndex}>{child}</TextSlot> : child));
   flush();
-  return <F.View wrap={keepTogether === undefined ? undefined : !keepTogether} style={{ backgroundColor: t.paper, borderLeftWidth: 2, borderColor: t.accent, padding: 14, marginTop: 6, marginBottom: 18, ...t.design?.callout?.text, ...t.design?.callout?.block, ...style }}>
+  // The accent rule marks the edge where reading starts.
+  const rule = runtime.direction === 'rtl' ? { borderRightWidth: 2 } : { borderLeftWidth: 2 };
+  return <F.View wrap={keepTogether === undefined ? undefined : !keepTogether} style={{ backgroundColor: t.paper, ...rule, borderColor: t.accent, padding: 14, marginTop: 6, marginBottom: 18, ...t.design?.callout?.text, ...t.design?.callout?.block, ...style }}>
     {title && <F.Text style={{ ...themeType(t, 'label', { fontWeight: 600, fontSize: 10, letterSpacing: 0 }), marginBottom: 6, ...t.design?.callout?.title }}><TextSlot slot="title" from="title">{title}</TextSlot></F.Text>}
     {content}
   </F.View>;
@@ -484,7 +511,9 @@ export const List = block(function List({ id, items, ordered = false, start = 1,
   if (!Array.isArray(items) || !items.length) throw new Error(`List ${id} needs at least one item. Omit the List when there is nothing to show.`);
   if (!Number.isSafeInteger(start) || start < 1) throw new Error(`List ${id} start must be a positive integer.`);
   const children = items.map((item, index) => { checkId(item.id, `List ${id} item`); return <ListEntry id={`${id}-${item.id}`} key={item.id} ordered={ordered} number={start + index}>{item.children}</ListEntry>; });
-  const listStyle: F.Style = { marginBottom: runtime.theme.paragraphGap, paddingLeft: 18, ...runtime.theme.design?.list?.block, ...style };
+  // Right-to-left rows already start at the right; indent from that edge.
+  const indent = runtime.direction === 'rtl' ? { paddingRight: 18 } : { paddingLeft: 18 };
+  const listStyle: F.Style = { marginBottom: runtime.theme.paragraphGap, ...indent, ...runtime.theme.design?.list?.block, ...style };
   return <F.View style={listStyle}>{children}</F.View>;
 }, 'list');
 
@@ -498,7 +527,7 @@ export const CodeBlock = block(function CodeBlock({ id, children, language, capt
   const code = children.replace(/\r\n?/g, '\n').replace(/\t/g, ' '.repeat(tabSize));
   return <F.View style={{ marginTop: 8, marginBottom: 18, ...t.design?.code?.block, ...style }}>
     {(caption || language) && <F.Text style={themeType(t, 'caption', { marginBottom: 7 })}><TextSlot slot="caption" from="caption">{caption}</TextSlot>{caption && language ? ' / ' : ''}<TextSlot slot="language" from="language">{language}</TextSlot></F.Text>}
-    <F.View style={{ padding: 14, backgroundColor: t.paper, ...t.design?.code?.panel }}><F.Text style={{ ...themeType(t, 'code'), minWidowLines: 2, minOrphanLines: 2, hyphens: 'none', lineBreaking: 'greedy' }}><TextSlot slot="children" from="children">{code}</TextSlot></F.Text></F.View>
+    <F.View style={{ padding: 14, backgroundColor: t.paper, ...t.design?.code?.panel }}><F.Text style={{ ...themeType(t, 'code'), minWidowLines: 2, minOrphanLines: 2, hyphens: 'none', lineBreaking: 'greedy', ...(runtime.direction === 'ltr' ? {} : { direction: 'ltr' as const }) }}><TextSlot slot="children" from="children">{code}</TextSlot></F.Text></F.View>
   </F.View>;
 }, 'code');
 
@@ -540,14 +569,17 @@ export const DataTable = block(function DataTable({ id, columns, rows, rowIds, c
   }));
   if (rowIds && (rowIds.length !== rows.length || new Set(rowIds).size !== rowIds.length || rowIds.some(value => typeof value !== 'string' || !value))) throw new Error(`Table ${id} rowIds must identify every row uniquely.`);
   requireText(emptyMessage, `Table ${id} emptyMessage`);
-  const alignments = columns.map((column, i) => column.align ?? (rows.length && rows.every(row => typeof row[i] === 'number') ? 'right' : 'left'));
+  // Text starts at the reading edge (each cell's own edge under auto); numbers align to the opposite edge.
+  const [start, end] = runtime.direction === 'rtl' ? ['right', 'left'] as const : runtime.direction === 'auto' ? [undefined, 'right'] as const : ['left', 'right'] as const;
+  const alignments = columns.map((column, i) => column.align ?? (rows.length && rows.every(row => typeof row[i] === 'number') ? end : start));
+  const tableFont = withFontFallbacks(t, 'OpenDoc Sans');
   const noteStyle = themeType(t, 'caption');
   const design = t.design?.table;
   const alternate = design?.alternate === false ? '#ffffff' : design?.alternate ?? t.paper;
   return <F.Table columns={columns.map(c => ({ width: { fraction: (c.width ?? 1) / total } }))} style={{ marginTop: 8, marginBottom: 16, ...design?.block, ...style }}>
     {caption && <F.Row header><F.Cell colSpan={columns.length} style={{ paddingBottom: 8 }}><F.Text style={{ ...noteStyle, color: t.ink, fontWeight: 600 }}>{numberedCaption(id, caption)}</F.Text></F.Cell></F.Row>}
-    <F.Row header style={{ backgroundColor: t.accent, ...design?.header }}>{columns.map((col, i) => <F.Cell key={i} style={{ padding: 9, ...design?.cell, ...design?.header }}><F.Text style={{ fontFamily: 'OpenDoc Sans', fontSize: 9, color: '#ffffff', fontWeight: 600, ...design?.headerText, textAlign: alignments[i] }}>{col.label}</F.Text></F.Cell>)}</F.Row>
-    {rows.length ? rows.map((row, i) => <F.Row key={rowIds?.[i] ?? i} style={{ backgroundColor: i % 2 === 0 ? alternate : '#ffffff' }}>{row.map((cell, j) => <F.Cell key={j} style={{ padding: 9, borderBottomWidth: 0.4, borderColor: t.line, ...design?.cell }}><F.Text style={{ fontFamily: 'OpenDoc Sans', fontSize: 10, ...design?.text, textAlign: alignments[j] }}>{isValidElement(cell) ? cell : <TextSlot slot={`row-${rowIds?.[i] ?? i}-column-${j}`} stable={false}>{typeof cell === 'number' ? String(cell) : cell}</TextSlot>}</F.Text></F.Cell>)}</F.Row>) : <F.Row><F.Cell colSpan={columns.length} style={{ padding: 12, backgroundColor: t.paper }}><F.Text style={noteStyle}>{emptyMessage}</F.Text></F.Cell></F.Row>}
+    <F.Row header style={{ backgroundColor: t.accent, ...design?.header }}>{columns.map((col, i) => <F.Cell key={i} style={{ padding: 9, ...design?.cell, ...design?.header }}><F.Text style={{ fontFamily: tableFont, fontSize: 9, color: '#ffffff', fontWeight: 600, ...design?.headerText, textAlign: alignments[i] }}>{col.label}</F.Text></F.Cell>)}</F.Row>
+    {rows.length ? rows.map((row, i) => <F.Row key={rowIds?.[i] ?? i} style={{ backgroundColor: i % 2 === 0 ? alternate : '#ffffff' }}>{row.map((cell, j) => <F.Cell key={j} style={{ padding: 9, borderBottomWidth: 0.4, borderColor: t.line, ...design?.cell }}><F.Text style={{ fontFamily: tableFont, fontSize: 10, ...design?.text, textAlign: alignments[j] }}>{isValidElement(cell) ? cell : <TextSlot slot={`row-${rowIds?.[i] ?? i}-column-${j}`} stable={false}>{typeof cell === 'number' ? String(cell) : cell}</TextSlot>}</F.Text></F.Cell>)}</F.Row>) : <F.Row><F.Cell colSpan={columns.length} style={{ padding: 12, backgroundColor: t.paper }}><F.Text style={noteStyle}>{emptyMessage}</F.Text></F.Cell></F.Row>}
     {sourceNote && <F.Row><F.Cell colSpan={columns.length} style={{ paddingTop: 8 }}><F.Text style={noteStyle}><TextSlot slot="sourceNote" from="sourceNote">{sourceNote}</TextSlot></F.Text></F.Cell></F.Row>}
   </F.Table>;
 }, 'table');

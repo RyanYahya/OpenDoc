@@ -1,6 +1,6 @@
 # OpenDoc agent guide
 
-OpenDoc is an open-source document production framework for beautiful, consistent English PDFs and presentations, with two editions from one shared engine and starter library. Normal OpenDoc adds a browser interface for preview, corrections, and comments. OpenDoc Headless runs in an agent's environment and produces finished files without a browser or server. The user directs the work; an external coding agent authors TSX. Deliver reviewed documents as PDF and presentations as both PDF and editable PowerPoint unless the user requests otherwise.
+OpenDoc is an open-source document production framework for beautiful, consistent English PDFs and presentations, and PDFs in Arabic or mixed right-to-left text (see [Authoring](docs/AUTHORING.md#arabic-and-right-to-left-text)), with two editions from one shared engine and starter library. Normal OpenDoc adds a browser interface for preview, corrections, and comments. OpenDoc Headless runs in an agent's environment and produces finished files without a browser or server. The user directs the work; an external coding agent authors TSX. Deliver reviewed documents as PDF and presentations as both PDF and editable PowerPoint unless the user requests otherwise.
 
 Keep this product scope: no embedded AI, Markdown document authoring, visual theme editor, or cloud collaboration unless explicitly requested. Ordinary document work does not require changing the app or dependencies.
 
