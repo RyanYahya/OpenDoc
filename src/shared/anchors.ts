@@ -43,6 +43,35 @@ export function anchorForSelection(artifact: RenderArtifact | null | undefined, 
   return { targetId: target.id, start, end, quote: text, prefix: target.text.slice(Math.max(0, start - 40), start), suffix: target.text.slice(end, end + 40) };
 }
 
+/**
+ * Select a phrase by its wording, for commands that cannot select it on the page: the one
+ * occurrence of `phrase` in the block's text fields, or in the field `targetId` names. An
+ * unknown block, a missing phrase, or more than one occurrence is an error that names the
+ * fields to choose from, so the comment never attaches to a guessed occurrence.
+ */
+export function phraseSelection(artifact: RenderArtifact | null | undefined, blockId: string, phrase: string, targetId?: string): DocumentSelection {
+  const block = getBlock(artifact, blockId);
+  if (!block) throw new Error('The target block does not exist in the current document. Inspect its review output to find the block ID.');
+  if (!phrase || phrase.length > 8000) throw new Error('Quote between 1 and 8,000 characters of the block’s current wording.');
+  const fields = artifact!.textTargets?.filter(target => target.blockId === blockId) ?? [];
+  const searched = targetId === undefined ? fields : fields.filter(target => target.id === targetId);
+  if (targetId !== undefined && !searched.length) throw new Error(`${blockId} has no text field ${targetId}.${fields.length ? ` Its fields are ${fields.map(field => field.id).join(', ')}.` : ''}`);
+  const matches = searched.flatMap(target => {
+    const starts: number[] = [];
+    for (let at = target.text.indexOf(phrase); at !== -1; at = target.text.indexOf(phrase, at + 1)) starts.push(at);
+    return starts.map(start => ({ target, start }));
+  });
+  if (!matches.length) throw new Error(`“${phrase}” does not appear in ${targetId ?? blockId}. Quote its current wording exactly, or comment on the whole block.`);
+  if (matches.length > 1) {
+    const where = [...new Set(matches.map(match => match.target.id))];
+    throw new Error(`“${phrase}” appears ${matches.length} times in ${blockId}${where.length > 1 ? `, in ${where.join(', ')}` : ''}. Quote more of the wording${where.length > 1 ? ', or choose one field with --target' : ''}.`);
+  }
+  const [{ target, start }] = matches;
+  const page = target.lines.find(line => line.start <= start && line.end > start)?.page
+    ?? (artifact!.pages.findIndex(item => item.fragments.some(fragment => fragment.id === blockId)) + 1 || 1);
+  return { blockId, targetId: target.id, start, end: start + phrase.length, quote: phrase, page, renderHash: artifact!.hash };
+}
+
 export interface ResolvedCommentAnchor {
   status: 'attached' | 'changed' | 'missing';
   selection?: DocumentSelection;

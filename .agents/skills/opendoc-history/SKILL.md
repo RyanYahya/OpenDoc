@@ -50,7 +50,7 @@ A refused restore writes nothing. Act on its reason:
 
 ## 4. Bring back deleted comments
 
-Comments keep their own history, separate from document versions. `npx opendoc comments list <document-id>` includes comments deleted in the last 90 days with their status. Restore one with `npx opendoc comments restore <document-id> <comment-id>`; it returns with its identity, anchor, earlier open or resolved status, and history.
+Comments keep their own history, separate from document versions. `npx opendoc comments list <document-id> --deleted` lists the comments deleted in the last 90 days, newest first, as **Recently deleted** does in the app. Restore one with `npx opendoc comments restore <document-id> <comment-id>`; it returns with its identity, anchor, earlier open or resolved status, and history.
 
 **Ready:** each requested comment is restored, or none was requested.
 
