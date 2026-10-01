@@ -39,7 +39,7 @@
   line-height: 1.65;
   caret-color: var(--accent);
 }
-.text-edit-panel textarea:focus-visible { outline: 1px solid var(--focus-ring); outline-offset: -1px; }
+.text-edit-panel textarea:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -1px; }
 .text-edit-footer { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .text-edit-footer > span { flex: 1; color: var(--muted); font-size: var(--tag-size); text-align: end; }
 .text-edit-footer .ui-button { min-height: 30px; min-width: 0; padding: 5px 8px; gap: 6px; font-size: var(--caption-size); color: var(--muted); background: transparent; border: 0; border-radius: 6px; }

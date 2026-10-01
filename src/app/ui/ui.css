@@ -77,10 +77,10 @@
   outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
 }
+/* Text fields keep the 2px ring, drawn over their edge so containers never clip it. */
 :where(input, textarea):focus-visible {
-  outline: 1px solid var(--focus-ring);
+  outline: 2px solid var(--focus-ring);
   outline-offset: -1px;
-  box-shadow: 0 0 3px color-mix(in srgb, var(--focus-ring) 25%, transparent);
 }
 .ui-button.primary {
   background: var(--accent);
@@ -379,7 +379,7 @@
 }
 
 .search-field { display: flex; align-items: center; gap: 10px; min-width: 200px; max-width: 440px; flex: 1; min-height: var(--control-hit-size); padding: 0 10px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--control-radius); color: var(--muted); font-size: var(--body-size); line-height: var(--body-leading); }
-.search-field:focus-within { border-color: var(--focus-ring); box-shadow: 0 0 3px color-mix(in srgb, var(--focus-ring) 25%, transparent); }
+.search-field:focus-within { border-color: var(--focus-ring); box-shadow: 0 0 0 1px var(--focus-ring); }
 .search-field input { border: 0; background: none; outline: none; box-shadow: none; width: 100%; min-width: 0; padding: 5px 0; }
 .search-field input::placeholder { color: var(--muted); }
 @media (forced-colors: active) {
