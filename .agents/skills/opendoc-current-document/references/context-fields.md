@@ -4,7 +4,7 @@ Read only the section relevant to the selected object. Field paths describe obse
 
 ## Theme or asset selection
 
-- `themeId` / `theme`: the selected theme, document theme, or project default. Definition, guide, specimen, and component paths are pointers; read the chosen `design.md` and needed source. `available: false` requires inspecting the missing definition before choosing a replacement.
+- `themeId` / `theme`: the selected theme, document theme, or project default (for a presentation, the project's presentation default); `project.themeDefaults` gives the project's document and presentation defaults. Definition, guide, specimen, and component paths are pointers; read the chosen `design.md` and needed source. `available: false` requires inspecting the missing definition before choosing a replacement.
 - `selectedAsset`: the inspected logo/font family, saved revision, library head, and selected variation or face. Read its guidance. Navigation does not bind the asset to a document.
 - `theme.assetDefaults`: choices captured for new documents. `documentAssets`: the current document's exact binding file and choices; `saved: false` denotes legacy behavior. Preserve existing bindings and `theme.tsx`; updating defaults does not rebind documents.
 - `renderedAssets`: actual uses, rendered bindings, and `renderHash`. `current: false` means these belong to the last successful PDF. A binding proves availability; rendered usage proves what the PDF used. Inspect asset errors before making substitutions.

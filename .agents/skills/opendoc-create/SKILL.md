@@ -16,7 +16,7 @@ Resolve design choices before creating the scaffold:
 - Honor an explicitly chosen theme or template, including choices carried by an app prompt. Preserve established project direction; do not ask again about a decision already made.
 - Discover themes with `npx opendoc themes list` and layouts with `npx opendoc templates list` or **Templates**. Both lists report tags; narrow them with `--tag <tag>`, such as `--tag finance`. Inspect a candidate through `npx opendoc templates inspect <id>` and read its guide when assessing its fit; do not load the whole catalog. Match the template's `documentFormat` to the intended output.
 - If the brief leaves you unsure of the visual direction or layout, ask a concise question about the user's theme/template preference. Offer relevant available choices and a recommendation in plain language. Do not silently choose Neutral or a familiar template to avoid asking.
-- When the user delegates design, choose and briefly state a suitable direction. A known project default is useful context; Neutral is the fallback when no theme is chosen and choosing has been delegated or the choice is immaterial. A bespoke layout is valid. Keep routine composition decisions autonomous and continue useful source/content work while awaiting a meaningful preference.
+- When the user delegates design, choose and briefly state a suitable direction. The project's default for the requested format is useful context (documents and presentations can differ; see `themeDefaults` in `npx opendoc projects list --json`); Neutral is the fallback when no theme is chosen and choosing has been delegated or the choice is immaterial. A bespoke layout is valid. Keep routine composition decisions autonomous and continue useful source/content work while awaiting a meaningful preference.
 
 ## 2. Create the right output
 
@@ -26,7 +26,7 @@ Read [Authoring](../../../docs/AUTHORING.md), then create the document before wr
 npx opendoc create <document-id> --project <project-id> --title "Document title"
 ```
 
-Use `--theme <id>` for the resolved theme choice; without it, the CLI applies the project default, then Neutral. Add `--template <id>` for the resolved catalog layout. These CLI fallbacks do not replace the preference check above. Optional `--starter` prose examples are an alternative to templates, not mandatory classifications. A requested new reusable layout belongs with [opendoc-create-template](../opendoc-create-template/SKILL.md).
+Use `--theme <id>` for the resolved theme choice; without it, the CLI applies the project's default for the new item's format (the presentation default for `--format presentation` or a presentation template), then Neutral. Add `--template <id>` for the resolved catalog layout. These CLI fallbacks do not replace the preference check above. Optional `--starter` prose examples are an alternative to templates, not mandatory classifications. A requested new reusable layout belongs with [opendoc-create-template](../opendoc-create-template/SKILL.md).
 
 For a presentation, add `--format presentation` for a minimal slide scaffold, or choose a presentation template with `--template <id>` (its format is inferred). Discover deck skeletons with `npx opendoc templates list` or **Templates → Presentations**, then read the chosen template's guide. Document templates and prose starters do not apply to slides. Creation records presentation identity before rendering and places the work in **Presentations** while retaining its project, local folder, and asset bindings.
 
