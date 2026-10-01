@@ -57,9 +57,7 @@
 .edit-session-bar .ui-button { min-width: 0; min-height: 32px; padding: 6px 9px; border: 0; border-radius: 7px; font-size: var(--caption-size); white-space: nowrap; box-shadow: none; }
 .edit-session-bar .ui-button.icon-button { min-width: 30px; padding: 6px; color: var(--muted); }
 .edit-session-bar .discard-edits { color: var(--muted); background: transparent; }
-.edit-session-bar .save-edits { color: var(--on-accent); background: var(--accent); gap: 10px; padding-inline: 12px; }
-.edit-session-bar .save-edits:hover { background: var(--accent-hover); }
-.edit-session-bar .save-edits:active:not(:disabled) { background: var(--accent-active); }
+.edit-session-bar .save-edits { gap: 10px; padding-inline: 12px; }
 .edit-session-bar kbd { font: inherit; font-size: var(--tag-size); opacity: 0.75; }
 .edit-session-notice { padding: 10px 12px; max-width: 620px; display: flex; align-items: center; gap: 12px; }
 .edit-session-notice p { margin: 0; font-size: var(--caption-size); line-height: 1.5; }

@@ -98,6 +98,14 @@
   background: var(--accent-active);
   border-color: var(--accent-active);
 }
+/* A faded accent still reads as available, so disabled primary actions use the neutral fill. */
+.ui-button.primary:disabled,
+.ui-button.primary[data-disabled] {
+  background: var(--control-active);
+  border-color: var(--control-active);
+  color: var(--muted);
+  box-shadow: none;
+}
 .ui-button.icon-button {
   background: transparent;
   border: 0;

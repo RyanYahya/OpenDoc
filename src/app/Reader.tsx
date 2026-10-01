@@ -792,7 +792,7 @@ export function Reader({
           <div className="edit-session-status" role="status"><Icon name={editing.saved ? 'check' : 'edit'} size={15} /><span>{editPending ? 'Saving changes…' : editing.saved ? 'All changes saved' : editing.count ? `${editing.count} unsaved ${editing.count === 1 ? 'change' : 'changes'}` : 'No unsaved changes'}</span>{(editing.previewing || readerPreview.loading) && editing.count > 0 && !editPending && <span className="draft-preview-status">Updating preview…</span>}</div>
           <div className="edit-history"><IconButton label={!editing.savedId && (editing.canUndo || editing.count) ? 'Undo change' : 'Undo saved changes'} disabled={undoDisabled} onClick={undoChange}><Icon name="undo" size={16} /></IconButton><IconButton label="Redo change" disabled={!editing.canRedo || editPending || undoPending || !!editError} onClick={redoChange}><Icon name="redo" size={16} /></IconButton></div>
           <Button className="discard-edits" disabled={editPending || undoPending || !!editing.savedId || (!editing.count && !editing.canRedo && !editError)} onClick={discardChanges}>Discard</Button>
-          <Button className="save-edits" disabled={!editing.count || !ready || editPending || undoPending || editStale || !!editError || !!editing.savedId} onClick={() => void saveAll()}>Save all<kbd aria-hidden="true">{navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} S</kbd></Button>
+          <Button className="primary save-edits" disabled={!editing.count || !ready || editPending || undoPending || editStale || !!editError || !!editing.savedId} onClick={() => void saveAll()}>Save all<kbd aria-hidden="true">{navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} S</kbd></Button>
         </div>
       </div>}
 
