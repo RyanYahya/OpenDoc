@@ -8,24 +8,28 @@ History is recorded automatically and kept for 90 days. It is stored inside each
 
 OpenDoc records a version whenever a document's text sources change:
 
-- **Your edit**: a text correction saved from the reader with Save all.
-- **Undo**: Undo saved changes in the reader.
-- **Agent change**: any change made outside the reader, usually by your coding agent or an editor. While OpenDoc runs, it waits for writes to settle for a few seconds, so one save or one burst of agent writes becomes one version. Without a running service, the commands an agent runs after editing record the change instead (see below).
-- **Restored**: a block, section, or version restored from history. The state being replaced is recorded first, so every restore can be undone.
-- **Earliest saved state**: the first version OpenDoc saw, recorded when the service starts, the document first appears, or `npx opendoc create` makes it.
+Each version carries a short label for where it came from:
 
-Changes made while OpenDoc is closed are recorded as one Agent change the next time it starts, or earlier by the first command below. In OpenDoc Headless, and in normal OpenDoc while the browser service is stopped, there is no file watcher. Instead `create`, `check`, `review`, `export`, `comments`, and `history` record a document's text sources as an Agent change when they differ from its latest version, before doing their own work: `check` and `export --all` for every document, the others for the documents they name. Because agents run `check` and `review` after editing, each round of edits keeps its own version; edits made between two commands become one version. A running service records changes itself, so these commands leave its history to it.
+- **You**: a text correction saved from the reader with Save all.
+- **Undo**: Undo saved changes in the reader.
+- **Agent**: any change made outside the reader, usually by your coding agent or an editor. While OpenDoc runs, it waits for writes to settle for a few seconds, so one save or one burst of agent writes becomes one version. Without a running service, the commands an agent runs after editing record the change instead (see below).
+- **Restore**: a block, section, or version restored from history. The state being replaced is recorded first, so every restore can be undone.
+- **First version**: the first state OpenDoc saw, recorded when the service starts, the document first appears, or `npx opendoc create` makes it.
+
+Changes made while OpenDoc is closed are recorded as one Agent version the next time it starts, or earlier by the first command below. In OpenDoc Headless, and in normal OpenDoc while the browser service is stopped, there is no file watcher. Instead `create`, `check`, `review`, `export`, `comments`, and `history` record a document's text sources as an Agent version when they differ from its latest version, before doing their own work: `check` and `export --all` for every document, the others for the documents they name. Because agents run `check` and `review` after editing, each round of edits keeps its own version; edits made between two commands become one version. A running service records changes itself, so these commands leave its history to it.
 
 Text sources are the files the document owns in `documents/<id>/`: `index.tsx`, `theme.tsx`, `assets.json`, and local data or code such as JSON, CSV, and TypeScript files. Feedback in `comments.json` keeps its own history and is not part of document versions. Files in `media/` and other binary or very large files are identified by their hash only: they are never copied into history, and restoring never changes them. Use [Media](MEDIA.md) to regenerate or replace visuals.
 
 ## Restore from the reader
 
-Choose the **History** button in the reader toolbar. Versions are listed newest first and grouped by day, each with its time, where it came from, and a short summary such as "3 blocks changed". Select a version to see how it differs from the current source: every changed block shows its kind, its earlier and current wording, and its stable ID. Changed blocks are highlighted on the page; hovering or focusing an entry highlights it more strongly, and **Show on page** scrolls to it.
+Choose the **History** button in the reader toolbar. Versions are listed newest first and grouped by day. Each row says what changed, naming blocks by their opening words (for example: Edited “Quarterly results”, “Budget”), with its time and where it came from. Consecutive versions from the same source within ten minutes, such as a burst of agent writes, share one row that opens to list each of them. Times read “8:42 PM” today, “Yesterday 3:10 PM”, then “Oct 1, 3:10 PM”.
+
+Select a version to see how it differs from the current source. Every changed block shows its kind, such as Paragraph, Title, or Table, and its earlier and current wording, with removed words struck through and added words underlined. Long paragraphs show only the changed passages until you choose **Show full text**. Each block's stable ID is under **Details**, ready to copy for your agent. Changed blocks are outlined on the page, one outline per block; hovering or focusing an entry outlines it more strongly, and **Show on page** scrolls to it.
 
 - **Restore block** replaces one paragraph, heading, callout, table, or other block with its wording from that version.
-- **Restore block only** on a section restores the section's own title or lead and keeps the current blocks inside it.
+- **Restore section only** (or slide, group, and so on) restores a container's own title or lead and keeps the current blocks inside it.
 - **Restore section** restores a section, slide, or other container together with everything inside it.
-- **Restore whole version** returns every text source to that version. Files created since are kept, and media is not changed.
+- **Restore whole version**, below the changed blocks, returns every text source to that version. Files created since are kept, and media is not changed.
 
 Each restore asks for confirmation and then offers **Undo**. To see one block's earlier wording, select it on the page and choose the History icon in the selection bar. Each distinct earlier wording is listed once; restoring it replaces that block or section only.
 
@@ -38,7 +42,7 @@ OpenDoc identifies blocks by the literal `id` written in the source, such as `<P
 - **Generated IDs.** A block whose ID is produced by code, for example inside a `map` over data, has no source position of its own. Restore its containing section or the whole version, or ask your agent to give it a literal ID. Child IDs created by composite blocks, such as `<id>-heading` from a `Section`, belong to the block that creates them.
 - **Duplicate IDs.** When an ID appears more than once in either version, OpenDoc cannot tell which copy to restore.
 - **Moved, added, or removed blocks.** A block that moved to another file, or did not exist in one of the versions, can be restored through its containing section or the whole version.
-- **Changed contents.** Restore block only needs the same blocks inside the section; otherwise restore the whole section.
+- **Changed contents.** Restore section only needs the same blocks inside the section; otherwise restore the whole section.
 - **Rendering.** The restored source is rendered first. If it does not render, for example because a citation or media item it used no longer exists, nothing is written.
 - **Newer changes.** If the document changes after you opened a version, OpenDoc asks you to review the latest changes before restoring.
 

@@ -1,51 +1,84 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from './api';
 import { Button, IconButton, useNotifications } from './ui';
 import { Icon } from './ui/Icon';
-import type { BlockHistory, HistoryBlockChange, HistoryComparison, HistoryList, HistoryVersionSummary, RestoreResult, RestoreScope } from '../shared/history';
+import { formatFull, formatTime, formatTimeRange, formatWhen } from './dates';
+import { groupVersions, historyHighlightCss, outlinedChanges, type VersionRun } from './historyView';
+import { compactDiff, compacts, diffWords, hasChanges, type DiffChunk } from './wordDiff';
+import { describeVersions, type BlockHistory, type HistoryBlockChange, type HistoryComparison, type HistoryList, type HistorySummaryPart, type HistoryVersionSummary, type RestoreResult, type RestoreScope } from '../shared/history';
 import './history.css';
 
 export type HistoryTarget = { kind: 'document' } | { kind: 'block'; blockId: string };
 
-const time = new Intl.DateTimeFormat(undefined, { timeStyle: 'short' });
-const full = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 const codeFile = /\.(?:tsx|jsx|ts|js|mjs)$/;
-// Composite blocks render child targets from their own literal ID.
-const derivedSuffixes = ['', '-heading', '-lead', '-title', '-subtitle', '-byline', '-eyebrow', '-caption'];
 const statusLabels: Record<HistoryBlockChange['status'], string> = {
-  changed: 'Changed', contents: 'Contents changed', added: 'Added since', removed: 'Removed since', moved: 'Moved', ambiguous: 'Duplicate ID',
+  changed: 'Edited', contents: 'Changed inside', added: 'Added since', removed: 'Removed since', moved: 'Moved to another file', ambiguous: 'Appears more than once',
 };
+// Long wordings open in a compact view: each change with a few words around it.
+const compactLength = 300;
 
-function dayLabel(at: string, now = new Date()) {
-  const date = new Date(at);
-  const start = (value: Date) => new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
-  const days = Math.round((start(now) - start(date)) / 86_400_000);
-  if (days === 0) return 'Today';
-  if (days === 1) return 'Yesterday';
-  return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', ...(date.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' }) });
+/** A version description with block words quoted and isolated, so Arabic and English names keep their order. */
+function Summary({ parts }: { parts: HistorySummaryPart[] }) {
+  return <>{parts.map((part, index) => typeof part === 'string' ? <Fragment key={index}>{part}</Fragment> : <Fragment key={index}>“<bdi>{part.quote}</bdi>”</Fragment>)}</>;
 }
 
-export function describeVersion(version: HistoryVersionSummary) {
-  if (version.origin === 'baseline') return 'First recorded state';
-  if (version.restore) return version.restore.scope === 'version' ? 'Restored an earlier version' : `Restored a ${version.restore.scope}`;
-  const parts: string[] = [];
-  if (version.summary.blocks) parts.push(`${version.summary.blocks} ${version.summary.blocks === 1 ? 'block' : 'blocks'} changed`);
-  const others = version.summary.files.filter(file => !codeFile.test(file));
-  if (others.length) parts.push(others.length === 1 ? `${others[0]} changed` : `${others.length} files changed`);
-  return parts.join(' · ') || 'Source changed without text changes';
+/** Marked text keeps its surrounding spaces outside the mark, so only words are struck or underlined. */
+function Marked({ text, as: Tag }: { text: string; as: 'del' | 'ins' }) {
+  const [, lead, core, trail] = /^(\s*)([\s\S]*?)(\s*)$/.exec(text)!;
+  return <>{lead}{core && <Tag>{core}</Tag>}{trail}</>;
 }
 
-function highlightRules(ids: string[], className: string) {
-  if (!ids.length) return '';
-  const selectors = ids.flatMap(id => derivedSuffixes.flatMap(suffix => [
-    `.component-target[data-block-id="${CSS.escape(id + suffix)}"]`,
-    `.component-target[data-text-target^="${CSS.escape(`${id}${suffix}:`)}"]`,
-  ]));
-  return `:is(${selectors.join(', ')}) { ${className} }`;
+function Side({ chunks, side }: { chunks: DiffChunk[]; side: 'before' | 'after' }) {
+  return <>{chunks.map((chunk, index) => chunk.type === 'same' ? <Fragment key={index}>{chunk.text}</Fragment>
+    : chunk.type === 'gap' ? <span key={index} className="history-gap">…</span>
+      : <Marked key={index} text={side === 'before' ? chunk.removed : chunk.added} as={side === 'before' ? 'del' : 'ins'} />)}</>;
+}
+
+/** Earlier and current wording, with removed and added words marked; long text starts compact. */
+function WordingDiff({ before, after }: { before?: string; after?: string }) {
+  const [full, setFull] = useState(false);
+  const diff = useMemo(() => before !== undefined && after !== undefined ? diffWords(before, after) : null, [before, after]);
+  const empty = <em>No text</em>;
+  if (!diff) return <dl className="history-diff">
+    {before !== undefined && <div><dt>Then</dt><dd dir="auto">{before || empty}</dd></div>}
+    {after !== undefined && <div><dt>Now</dt><dd dir="auto">{after || empty}</dd></div>}
+  </dl>;
+  if (!hasChanges(diff)) return <>
+    <p className="history-note">Same wording; only layout or code changed.</p>
+    <dl className="history-diff"><div><dt>Now</dt><dd dir="auto">{after || empty}</dd></div></dl>
+  </>;
+  // A near-total rewrite reads better as two plain paragraphs than as one long strike-through.
+  const marked = diff.kept >= 0.2;
+  const long = marked && Math.max(before!.length, after!.length) > compactLength && compacts(diff.chunks, 8);
+  const chunks = long && !full ? compactDiff(diff.chunks, 8) : diff.chunks;
+  return <>
+    <dl className={`history-diff${marked ? ' marked' : ''}`}>
+      <div><dt>Then</dt><dd dir="auto">{marked ? <Side chunks={chunks} side="before" /> : before || empty}</dd></div>
+      <div><dt>Now</dt><dd dir="auto">{marked ? <Side chunks={chunks} side="after" /> : after || empty}</dd></div>
+    </dl>
+    {long && <Button className="text-button history-expand" aria-expanded={full} onClick={() => setFull(value => !value)}>{full ? 'Show changes only' : 'Show full text'}</Button>}
+  </>;
+}
+
+/** The authoring ID stays available for agents and support, out of the reader's way. */
+function BlockDetails({ id, file }: { id: string; file?: string }) {
+  const notify = useNotifications();
+  return <details className="history-details">
+    <summary>Details</summary>
+    <p>
+      <span>ID</span> <code>{id}</code>
+      <IconButton label="Copy ID" className="history-copy" onClick={() => void navigator.clipboard.writeText(id).then(() => notify.success('ID copied'), () => notify.error('The ID could not be copied. Select it and copy it instead.'))}><Icon name="copy" size={13} /></IconButton>
+      {file && <><span className="history-details-file">in</span> <code>{file}</code></>}
+    </p>
+  </details>;
+}
+
+function Origin({ version }: { version: HistoryVersionSummary }) {
+  return <span className={`history-origin origin-${version.origin}`}>{version.label}</span>;
 }
 
 const wholeVersion = (comparison: HistoryComparison): Confirming => ({ key: 'version', versionId: comparison.version.id, scope: 'version', base: comparison.base,
-  message: 'Replace every text source with this version? Media files are not changed, and you can undo the restore.' });
+  message: 'Replace the whole document with this version? Media files are not changed, and you can undo the restore.' });
 
 interface Confirming { key: string; versionId: string; scope: RestoreScope; blockId?: string; base?: string; message: string }
 
@@ -73,11 +106,13 @@ export function HistoryPanel({ documentId, target, generation, connected, pageLa
   const [confirming, setConfirming] = useState<Confirming | null>(null);
   const [restoring, setRestoring] = useState(false);
   const [focused, setFocused] = useState<HistoryBlockChange | null>(null);
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
   const heading = useRef<HTMLHeadingElement>(null);
   const request = useRef(0);
   const notify = useNotifications();
   const blocked = unsaved > 0 || saving;
   const blockId = target.kind === 'block' ? target.blockId : null;
+  const whole = pageLabel === 'Slide' ? 'presentation' : 'document';
 
   const refresh = useCallback(async () => {
     const sequence = ++request.current;
@@ -109,21 +144,12 @@ export function HistoryPanel({ documentId, target, generation, connected, pageLa
     return () => document.removeEventListener('keydown', dismiss);
   }, [confirming, onClose]);
 
-  const groups = useMemo(() => {
-    const result: { day: string; versions: HistoryVersionSummary[] }[] = [];
-    for (const version of list?.versions ?? []) {
-      const day = dayLabel(version.at);
-      if (result.at(-1)?.day === day) result.at(-1)!.versions.push(version); else result.push({ day, versions: [version] });
-    }
-    return result;
-  }, [list]);
+  const days = useMemo(() => groupVersions(list?.versions ?? []), [list]);
 
   const highlight = useMemo(() => {
-    if (blockId && block) return highlightRules([block.id], 'background: var(--history-mark-strong); box-shadow: inset 0 0 0 1.5px var(--history-mark-line);');
+    if (blockId && block) return historyHighlightCss([], [block.id]);
     if (!comparison) return '';
-    const changed = comparison.blocks.filter(item => item.status !== 'removed' && item.status !== 'contents').map(item => item.id);
-    const strong = focused && focused.status !== 'removed' ? [focused.id, ...focused.descendants] : [];
-    return [highlightRules(changed, 'background: var(--history-mark);'), highlightRules(strong, 'background: var(--history-mark-strong); box-shadow: inset 0 0 0 1.5px var(--history-mark-line);')].join('\n');
+    return historyHighlightCss(outlinedChanges(comparison.blocks), focused && focused.status !== 'removed' ? [focused.id] : []);
   }, [comparison, focused, block, blockId]);
 
   async function restore(item: Confirming) {
@@ -155,21 +181,55 @@ export function HistoryPanel({ documentId, target, generation, connected, pageLa
     </div>;
   }
 
-  function action(label: string, item: Confirming, primary = false) {
-    return <Button className={primary ? 'history-action primary-action' : 'history-action'} disabled={restoring || blocked || !connected} aria-expanded={confirming?.key === item.key}
+  function action(label: string, item: Confirming) {
+    return <Button className="history-action" disabled={restoring || blocked || !connected} aria-expanded={confirming?.key === item.key}
       onClick={() => setConfirming(confirming?.key === item.key ? null : item)}>{label}</Button>;
   }
 
+  function versionRow(version: HistoryVersionSummary, nested = false) {
+    return <li key={version.id}>
+      <Button static className="history-version" onClick={() => setSelected(version.id)}>
+        <span className="history-version-title"><Summary parts={describeVersions([version])} /></span>
+        <span className="history-version-meta">
+          <time dateTime={version.at} title={formatFull(version.at)}>{formatTime(version.at)}</time>
+          {!nested && <Origin version={version} />}
+        </span>
+        {version.unavailable && <span className="history-warning">Some files are still syncing or missing</span>}
+      </Button>
+    </li>;
+  }
+
+  function runRow(run: VersionRun) {
+    if (run.versions.length === 1) return versionRow(run.versions[0]);
+    const open = expanded.has(run.key);
+    const [newest] = run.versions, oldest = run.versions.at(-1)!;
+    const toggle = () => setExpanded(current => { const next = new Set(current); if (open) next.delete(run.key); else next.add(run.key); return next; });
+    return <li key={run.key} className="history-run">
+      <Button static className="history-version history-run-toggle" aria-expanded={open} aria-controls={`history-run-${run.key}`} onClick={toggle}>
+        <span className="history-version-title"><Summary parts={describeVersions(run.versions)} /></span>
+        <span className="history-version-meta">
+          <time dateTime={oldest.at} title={`${formatFull(oldest.at)} to ${formatFull(newest.at)}`}>{formatTimeRange(oldest.at, newest.at)}</time>
+          <Origin version={newest} />
+          <span className="history-run-count">{run.versions.length} versions<Icon name="down" size={12} /></span>
+        </span>
+      </Button>
+      {open && <ol id={`history-run-${run.key}`} className="history-run-versions">{run.versions.map(version => versionRow(version, true))}</ol>}
+    </li>;
+  }
+
   const selectedVersion = list?.versions.find(version => version.id === selected) ?? comparison?.version;
-  const title = blockId ? 'Block history' : selectedVersion ? full.format(new Date(selectedVersion.at)) : 'History';
+  const title = blockId ? 'Block history' : selectedVersion ? formatWhen(selectedVersion.at) : 'History';
+  const differing = comparison?.blocks.filter(item => item.status !== 'contents').length ?? 0;
+  const otherFiles = comparison?.files.filter(file => !codeFile.test(file.path)) ?? [];
 
   return <section className="history-panel" id="reader-history" role="dialog" aria-modal="false" aria-labelledby="history-heading" aria-busy={loading || restoring}>
     {highlight && <style>{highlight}</style>}
     <div className="history-heading">
       {(selected || blockId) && <IconButton label={blockId ? 'Show document history' : 'All versions'} className="history-back" onClick={() => { if (blockId) onShowDocument(); else setSelected(null); }}><Icon name="left" size={15} /></IconButton>}
       <div className="history-title">
-        <h2 id="history-heading" ref={heading} tabIndex={-1}>{title}</h2>
-        {selectedVersion && !blockId && <p>{selectedVersion.label}</p>}
+        <h2 id="history-heading" ref={heading} tabIndex={-1} title={selectedVersion && !blockId ? formatFull(selectedVersion.at) : undefined}>{title}</h2>
+        {selectedVersion && !blockId && <p><Origin version={selectedVersion} /><span className="history-title-summary"><Summary parts={describeVersions([selectedVersion])} /></span></p>}
+        {blockId && block && <p><span>{block.kindLabel}</span>{block.name && <span className="history-title-summary">“<bdi>{block.name}</bdi>”</span>}</p>}
       </div>
       <IconButton label="Close history" onClick={onClose}><Icon name="close" size={15} /></IconButton>
     </div>
@@ -184,78 +244,71 @@ export function HistoryPanel({ documentId, target, generation, connected, pageLa
 
       {blockId && block && <>
         <div className="history-block-current">
-          <span className="history-meta">{block.kind}{block.resolution === 'enclosing' ? ' containing your selection' : ''} · now</span>
+          <span className="history-meta">Now{block.resolution === 'enclosing' ? `, the ${block.kindLabel.toLowerCase()} containing your selection` : ''}</span>
           <p dir="auto">{block.current || <em>No text</em>}</p>
         </div>
         {block.entries.length ? <ol className="history-entries">{block.entries.map(entry => {
           const scope: RestoreScope = entry.container ? 'section' : 'block';
           const item: Confirming = { key: entry.version.id, versionId: entry.version.id, scope, blockId: block.id, base: block.base,
-            message: `Replace this ${scope} with its wording from ${full.format(new Date(entry.version.at))}? The rest of the ${pageLabel.toLowerCase() === 'slide' ? 'presentation' : 'document'} stays as it is.` };
+            message: `Replace this ${scope} with its wording from ${formatFull(entry.version.at)}? The rest of the ${whole} stays as it is.` };
           return <li key={entry.version.id} className="history-entry">
-            <div className="history-entry-meta"><time dateTime={entry.version.at} title={full.format(new Date(entry.version.at))}>{dayLabel(entry.version.at)}, {time.format(new Date(entry.version.at))}</time><span>{entry.version.label}</span></div>
-            <p className="history-excerpt" dir="auto">{entry.text || <em>No text</em>}</p>
+            <div className="history-entry-meta"><time dateTime={entry.version.at} title={formatFull(entry.version.at)}>{formatWhen(entry.version.at)}</time><Origin version={entry.version} /></div>
+            <WordingDiff before={entry.text} after={block.current} />
             <div className="history-entry-actions">{action(scope === 'section' ? 'Restore section' : 'Restore', item)}</div>
             {confirmRow(item)}
           </li>;
         })}</ol> : !loading && <div className="history-empty"><strong>No earlier wording</strong><p>This block has not changed in the recorded history. Versions are kept for 90 days.</p></div>}
-        <Button className="text-button history-link" onClick={onShowDocument}>Show all versions of the {pageLabel === 'Slide' ? 'presentation' : 'document'}</Button>
+        <BlockDetails id={block.id} />
+        <Button className="text-button history-link" onClick={onShowDocument}>Show all versions of the {whole}</Button>
       </>}
 
       {!blockId && !selected && list && (list.versions.length ? <>
-        {groups.map(group => <section key={group.day} className="history-day" aria-labelledby={`history-day-${group.versions[0].id}`}>
-          <h3 id={`history-day-${group.versions[0].id}`}>{group.day}</h3>
-          <ol>{group.versions.map(version => <li key={version.id}>
-            <Button static className="history-version" onClick={() => setSelected(version.id)}>
-              <span className="history-version-line"><time dateTime={version.at} title={full.format(new Date(version.at))}>{time.format(new Date(version.at))}</time><span className={`history-origin origin-${version.origin}`}>{version.label}</span></span>
-              <span className="history-summary">{describeVersion(version)}</span>
-              {version.unavailable && <span className="history-warning">Some files are still syncing or missing</span>}
-            </Button>
-          </li>)}</ol>
+        {days.map(day => <section key={day.key} className="history-day" aria-labelledby={`history-day-${day.key}`}>
+          <h3 id={`history-day-${day.key}`}>{day.day}</h3>
+          <ol>{day.runs.map(runRow)}</ol>
         </section>)}
-        <p className="history-footnote">OpenDoc records a version when your edits are saved, when your agent changes the source, and before and after every restore. Versions are kept for {list.retentionDays} days, in the document’s .history folder.</p>
-      </> : <div className="history-empty"><strong>No versions yet</strong><p>OpenDoc records a version whenever this document’s text changes: your saved edits, your agent’s changes, and restores. Versions are kept for {list.retentionDays} days.</p></div>)}
+        <p className="history-footnote">OpenDoc records a version when your edits are saved, when your agent changes the source, and before and after every restore. Versions are kept for {list.retentionDays} days and travel with the {whole}.</p>
+      </> : <div className="history-empty"><strong>No versions yet</strong><p>OpenDoc records a version whenever this {whole}’s text changes: your saved edits, your agent’s changes, and restores. Versions are kept for {list.retentionDays} days.</p></div>)}
 
       {!blockId && selected && comparison && <>
-        {comparison.identical ? <p className="history-summary-line">This version matches the current source.</p> : <>
-          <div className="history-version-actions">
-            <p className="history-summary-line">{comparison.blocks.length ? `${comparison.blocks.filter(item => item.status !== 'contents').length} ${comparison.blocks.filter(item => item.status !== 'contents').length === 1 ? 'block differs' : 'blocks differ'} from now` : 'Only non-text files differ'}</p>
-            {action('Restore whole version', wholeVersion(comparison), true)}
-          </div>
-          {confirmRow(wholeVersion(comparison))}
+        {comparison.identical ? <p className="history-summary-line">This version matches the current {whole}.</p> : <>
+          <p className="history-summary-line">{comparison.blocks.length ? `${differing} ${differing === 1 ? 'block differs' : 'blocks differ'} from now` : 'Only layout, code, or data files differ from now'}</p>
           {!!comparison.blocks.length && <ol className="history-changes">{comparison.blocks.map(change => {
             const blockItem: Confirming = { key: `block:${change.id}`, versionId: comparison.version.id, scope: 'block', blockId: change.id, base: comparison.base,
-              message: change.container ? 'Restore this block’s own wording and keep the current blocks inside it?' : 'Replace this block with its wording from this version? Everything else stays as it is.' };
+              message: change.container ? `Restore this ${change.kindLabel.toLowerCase()}’s own wording and keep the current blocks inside it?` : 'Replace this block with its wording from this version? Everything else stays as it is.' };
             const sectionItem: Confirming = { key: `section:${change.id}`, versionId: comparison.version.id, scope: 'section', blockId: change.id, base: comparison.base,
-              message: 'Replace this section, including everything inside it, with this version? The rest stays as it is.' };
+              message: `Replace this ${change.kindLabel.toLowerCase()}, including everything inside it, with this version? The rest stays as it is.` };
             const reason = !change.block.ok && !change.section.ok ? change.block.reason ?? change.section.reason : undefined;
             const inside = comparison.blocks.filter(item => item.parent === change.id).length;
             return <li key={`${change.file}:${change.id}`} className={`history-change status-${change.status}`}
               onPointerEnter={() => setFocused(change)} onPointerLeave={() => setFocused(current => current === change ? null : current)}
               onFocus={() => setFocused(change)} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setFocused(current => current === change ? null : current); }}>
               <div className="history-change-heading">
-                <span className="history-kind">{change.kind}</span>
-                <span className="history-status">{statusLabels[change.status]}</span>
-                <code className="history-id" title={change.file}>{change.id}</code>
+                <span className="history-change-name">{change.name ? <>“<bdi>{change.name}</bdi>”</> : change.kindLabel}</span>
+                <span className="history-change-meta">{change.name ? `${change.kindLabel} · ` : ''}{statusLabels[change.status]}</span>
               </div>
-              {change.status === 'contents' ? <p className="history-note">{inside ? `${inside} ${inside === 1 ? 'block' : 'blocks'} inside changed.` : 'Blocks inside it changed.'}</p> : <dl className="history-diff">
-                {change.before !== undefined && <div><dt>Then</dt><dd dir="auto">{change.before || <em>No text</em>}</dd></div>}
-                {change.after !== undefined && <div><dt>Now</dt><dd dir="auto">{change.after || <em>No text</em>}</dd></div>}
-              </dl>}
+              {change.status === 'contents' ? <p className="history-note">{inside ? `${inside} ${inside === 1 ? 'block' : 'blocks'} inside changed.` : 'Blocks inside it changed.'}</p>
+                : change.status !== 'moved' && change.status !== 'ambiguous' && <WordingDiff before={change.before} after={change.after} />}
               {reason && <p className="history-note">{reason}</p>}
               <div className="history-entry-actions">
                 {change.status !== 'removed' && <Button className="text-button" onClick={() => onJump([change.id, ...change.descendants])}>Show on {pageLabel.toLowerCase()}</Button>}
-                {change.block.ok && action(change.container ? 'Restore block only' : 'Restore block', blockItem)}
-                {change.container && change.section.ok && action('Restore section', sectionItem)}
+                {change.block.ok && action(change.container ? `Restore ${change.kindLabel.toLowerCase()} only` : 'Restore block', blockItem)}
+                {change.container && change.section.ok && action(`Restore ${change.kindLabel.toLowerCase()}`, sectionItem)}
               </div>
               {confirmRow(blockItem)}
               {confirmRow(sectionItem)}
+              <BlockDetails id={change.id} file={change.file} />
             </li>;
           })}</ol>}
-          {comparison.files.some(file => !codeFile.test(file.path)) && <div className="history-files">
+          {!!otherFiles.length && <div className="history-files">
             <h3>Other files</h3>
-            <ul>{comparison.files.filter(file => !codeFile.test(file.path)).map(file => <li key={file.path}><code>{file.path}</code> <span>{file.status === 'added' ? 'added since' : file.status === 'removed' ? 'removed since' : 'changed'}</span></li>)}</ul>
-            <p className="history-note">Restore the whole version to bring these back.</p>
+            <ul>{otherFiles.map(file => <li key={file.path}><code>{file.path}</code> <span>{file.status === 'added' ? 'added since' : file.status === 'removed' ? 'removed since' : 'changed'}</span></li>)}</ul>
           </div>}
+          <div className="history-whole">
+            <p>{otherFiles.length ? 'To bring back these files too, restore' : 'Or restore'} the whole version. Media files are not changed, and you can undo it.</p>
+            {action('Restore whole version', wholeVersion(comparison))}
+            {confirmRow(wholeVersion(comparison))}
+          </div>
         </>}
       </>}
     </div>
