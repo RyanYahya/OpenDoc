@@ -118,7 +118,7 @@ for (const existing of [false, true]) {
     for (const entry of await readdir(join(destination, '.agents/skills'))) {
       assert.ok(guide.includes(`node_modules/opendoc/.agents/skills/${entry}/SKILL.md`), 'Every installed skill remains discoverable by reading the guide.');
     }
-    for (const command of ['npx opendoc tags', 'npx opendoc history restore']) assert.ok(guide.includes(command), `Agents learn about ${command} from the workspace guide.`);
+    for (const command of ['npx opendoc tags', 'npx opendoc tags status', 'npx opendoc history restore']) assert.ok(guide.includes(command), `Agents learn about ${command} from the workspace guide.`);
     await assertSkillStubs(destination);
     await assert.rejects(lstat(installer.calls[0].stage), { code: 'ENOENT' });
     const executable = join(destination, 'node_modules/.bin/opendoc');
@@ -162,7 +162,7 @@ test('headless initialization preserves the starter library and installs an exac
   assert.match(guide, /recipients receive finished PDF and PowerPoint files/);
   assert.match(guide, /npx opendoc review/);
   assert.ok(!guide.includes('npx opendoc start'));
-  for (const command of ['npx opendoc tags', 'npx opendoc history restore']) assert.ok(guide.includes(command), `Headless agents learn about ${command} too.`);
+  for (const command of ['npx opendoc tags', 'npx opendoc tags status', 'npx opendoc history restore']) assert.ok(guide.includes(command), `Headless agents learn about ${command} too.`);
   await assertSkillStubs(destination);
   assert.equal(await realpath(join(destination, '.claude/skills')), await realpath(join(destination, '.agents/skills')));
   assert.equal(await readFile(join(destination, 'CLAUDE.md'), 'utf8'), '@AGENTS.md\n');

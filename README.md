@@ -113,7 +113,7 @@ Both editions include **eight skills** that guide an agent through the work, fro
 | [Create or refine a template](.agents/skills/opendoc-create-template/SKILL.md) | Builds a reusable page layout, presentation skeleton, or recurring report structure. Separates content from layout where appropriate and verifies a specimen, giving future work a consistent starting point. Use the creation skill above for a single deliverable using an existing template. |
 | [Review documents and presentations](.agents/skills/opendoc-review-document/SKILL.md) | Checks the actual rendered pages for clipping, missing glyphs, awkward spacing, broken tables, and reference problems. Inspects extracted text, reviews theme and template specimens, and checks editable PowerPoint exports. Reports any unverified rendering or failed output before delivery. |
 | [Restore earlier versions](.agents/skills/opendoc-history/SKILL.md) | Answers what changed and brings back earlier wording from version history: one paragraph, one section, or a whole version, leaving the rest as it is. Confirms the version when more than one fits, reports the command that undoes each restore, and restores deleted comments. |
-| [Organize your work](.agents/skills/opendoc-organize/SKILL.md) | Tags documents, presentations, themes, and templates with the standard vocabulary, finds work by tag, and cleans up tags when asked. Arranges themes into folders, and groups documents into projects only after you approve the proposed grouping. |
+| [Organize your work](.agents/skills/opendoc-organize/SKILL.md) | Sets each document's type and status, finds work by type, status, language, or tag, and cleans up tags when asked. Arranges themes into folders, and groups documents into projects only after you approve the proposed grouping. |
 
 Creation, theme, template, and feedback workflows call for review before completion. You can also request a review on its own. Skills use the same files and commands across agents; when automatic discovery is unavailable, the agent can read the linked instructions directly.
 
@@ -184,7 +184,7 @@ Updates preserve your edition, documents, templates, themes, assets, and feedbac
 | Produce finished files remotely | [Headless](docs/HEADLESS.md) |
 | Author documents and presentations | [Authoring API](docs/AUTHORING.md) |
 | Create reusable designs | [Templates](docs/TEMPLATES.md) · [Themes](docs/THEMES.md) |
-| Tag and filter documents, themes, and templates | [Tags](docs/TAGS.md) |
+| Type, status, language, and tags for documents, themes, and templates | [Tags](docs/TAGS.md) |
 | Work with images, fonts, and logos | [Media](docs/MEDIA.md) · [Assets](docs/ASSETS.md) |
 | Apply precise corrections and feedback | [Selection](docs/SELECTION.md) |
 | Restore earlier wording, sections, or versions | [Version history](docs/HISTORY.md) |

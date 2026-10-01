@@ -14,7 +14,7 @@ Resolve the project from the request or `npx opendoc projects list`; in a normal
 Resolve design choices before creating the scaffold:
 
 - Honor an explicitly chosen theme or template, including choices carried by an app prompt. Preserve established project direction; do not ask again about a decision already made.
-- Discover themes with `npx opendoc themes list` and layouts with `npx opendoc templates list` or **Templates**. Both lists report tags; narrow them with `--tag <tag>`, such as `--tag finance`. Inspect a candidate through `npx opendoc templates inspect <id>` and read its guide when assessing its fit; do not load the whole catalog. Match the template's `documentFormat` to the intended output.
+- Discover themes with `npx opendoc themes list` and layouts with `npx opendoc templates list` or **Templates**. Templates report a `type` and both lists report `language` and custom `tags`; narrow them with `--type <type>`, `--language arabic`, or `--tag <tag>`, such as `templates list --type report`. Inspect a candidate through `npx opendoc templates inspect <id>` and read its guide when assessing its fit; do not load the whole catalog. Match the template's `documentFormat` to the intended output.
 - If the brief leaves you unsure of the visual direction or layout, ask a concise question about the user's theme/template preference. Offer relevant available choices and a recommendation in plain language. Do not silently choose Neutral or a familiar template to avoid asking.
 - When the user delegates design, choose and briefly state a suitable direction. The project's default for the requested format is useful context (documents and presentations can differ; see `themeDefaults` in `npx opendoc projects list --json`); Neutral is the fallback when no theme is chosen and choosing has been delegated or the choice is immaterial. A bespoke layout is valid. Keep routine composition decisions autonomous and continue useful source/content work while awaiting a meaningful preference.
 
@@ -32,10 +32,11 @@ For a presentation, add `--format presentation` for a minimal slide scaffold, or
 
 Confirm project membership, `index.tsx`, `theme.tsx`, and `assets.json` exist for the intended output. The scaffold is only a starting draft.
 
-Tag it right away so the user can filter their work. Choose two to five fitting standard tags from `npx opendoc tags`: one **Type** when one applies, the **Area**, the **Audience**, the **Language** (`arabic` or `bilingual` when the text is not only English), and `draft`. Do not tag the format; presentations are already known as presentations. Add a custom tag only when no standard tag fits and the label will be reused, such as a client or programme name, reusing an existing custom spelling:
+Tag it right away so agents and the user can find it. Set one type from `npx opendoc tags` when one fits (`report`, `proposal`, `brief`, `minutes`, `letter`, `guide`, `article`, `cv`, or `invoice`; aliases such as *memo* or *quote* also work) and the status `draft`. Add a custom tag only for a name that will be reused, such as a client or programme, reusing an existing spelling. Do not tag the format or the language; language is detected from the text:
 
 ```sh
-npx opendoc tags add document <document-id> report finance executive english draft
+npx opendoc tags add document <document-id> report
+npx opendoc tags status <document-id> draft
 ```
 
 Use `presentation` instead of `document` for a deck; both name the same item. Never remove or rename tags the user applied unless asked. See [Tags](../../../docs/TAGS.md#tagging-by-agents).
@@ -69,6 +70,6 @@ Run `npx opendoc check` after source changes. In Headless, run `npx opendoc revi
 
 Deliver the requested files through the host agent's existing attachment/download capabilities or accessible file links. For normal OpenDoc, the local app view may also be useful. Headless delivery must be complete on the recipient's device without OpenDoc; an inaccessible remote path or instructions to open a local workspace are not delivery. Presentations include **both PDF and editable PowerPoint by default**; an explicit request for only one format takes precedence. Review the PDF even when only PowerPoint is requested, since it supplies the export layout. After revisions, refresh both deliverables from the same final source. If one format fails, fix an in-scope authoring issue, or deliver the available reviewed file and identify the exact remaining blocker; do not call a partial handoff complete or silently change a chosen font/design.
 
-Once the reviewed files are delivered, mark the work final with `npx opendoc tags add document <document-id> final`; it replaces `draft` or `in-review`. Keep any other tags.
+Once the reviewed files are delivered, mark the work final with `npx opendoc tags status <document-id> final`. Keep its type and tags.
 
 Routine writing, design, review, export, and tagging are part of creation and need no extra completion permission. Keep runtime changes, new shared systems, and external publication within the user's requested scope. Success means the requested deliverables are reviewed and available, with concrete verification limits stated.

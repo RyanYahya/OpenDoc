@@ -1,77 +1,118 @@
 # Tags
 
-Tags label documents (presentations included), themes, and templates so they can be filtered across every project and theme folder. OpenDoc ships a standard vocabulary that covers most work; a workspace adds custom tags only for what the vocabulary does not name, such as a client or programme. Tags never change source, files, IDs, rendering, or exports.
+Tags help agents and people find, choose, and track documents (presentations included), templates, and themes. They are written mostly by agents through `npx opendoc tags`; the app shows them lightly. Tags never change source, files, IDs, rendering, or exports.
 
-## Standard vocabulary
+Each item has up to four facets:
 
-Standard tags have a stable lowercase ID and a display label. Typing an ID, label, or listed alias in any letter case selects the standard tag.
+| Facet | Applies to | Stored | How it is set |
+| --- | --- | --- | --- |
+| **Type** | Documents, templates | `tags.json` | One standard type, through `tags add` or **Details** |
+| **Status** | Documents | `tags.json` | `tags status` or the document menu |
+| **Language** | Everything | Never | Detected from the item |
+| **Custom tags** | Everything | `tags.json` | Free text, through `tags add` or **Details** |
 
-| Group | Tags | Usually fits |
-| --- | --- | --- |
-| Type | `report`, `proposal`, `brief`, `plan`, `minutes`, `memo`, `letter`, `policy`, `guide`, `invoice`, `quotation`, `contract`, `cv`, `profile`, `newsletter`, `case-study`, `pitch`, `training` | Documents, themes, templates |
-| Area | `finance`, `operations`, `strategy`, `marketing`, `sales`, `product`, `research`, `hr`, `legal`, `technical` | Documents, themes, templates |
-| Audience | `internal`, `client`, `executive`, `public` | Documents, templates |
-| Language | `english`, `arabic`, `bilingual` | Documents, themes, templates |
-| Status | `draft`, `in-review`, `final`, `archived` | Documents |
-| Style | `formal`, `minimal`, `editorial`, `bold`, `playful` | Themes, templates |
+## Types
 
-Aliases include *manual* and *handbook* for `guide`, *quote* for `quotation`, *agreement* for `contract`, *resume* for `cv`, *human resources* for `hr`, *customer* for `client`, *leadership* and *board* for `executive`, and *review* for `in-review`. `npx opendoc tags` lists them all. The document or presentation format is already known, so it is never a tag.
+An item has one type. Typing a type's ID, label, or alias in any letter case selects it, and a new type replaces the old one. Themes have no type.
 
-An item has at most one **Status**: adding `final` to a draft replaces `draft`. Other groups accept several tags. Each item can have up to 20 tags of 40 characters or fewer, without commas.
+| Type | Also selected by |
+| --- | --- |
+| `report` | case study, study, analysis, assessment, audit, evaluation, paper, research paper, white paper |
+| `proposal` | plan, pitch, pitch deck, bid, tender, business case, business plan, roadmap |
+| `brief` | memo, memorandum, one-pager, briefing, summary, executive summary, overview, fact sheet, profile, company profile |
+| `minutes` | meeting minutes, meeting notes, MoM, agenda |
+| `letter` | cover letter, correspondence, circular, notice |
+| `guide` | manual, handbook, policy, procedure, SOP, training, tutorial, how-to, playbook, guidelines, brand guidelines |
+| `article` | essay, feature, story, newsletter, blog post, op-ed, magazine, literary text |
+| `cv` | resume, résumé, curriculum vitae, bio, biography |
+| `invoice` | quotation, quote, estimate, receipt, bill, pro forma |
+
+The format is already known, so presentation and document are never types.
+
+## Status
+
+A document has no status until one is set: `draft`, `in-review`, `final`, or `archived`. *In review* and *review* also select `in-review`. The app shows the status as a small badge on cards, list rows, and the reader title. Duplicating a document copies its tags but not its status.
+
+## Language
+
+`english`, `arabic`, or `bilingual` is derived on demand and never stored. OpenDoc counts Arabic-script and Latin letters, ignoring digits and symbols:
+
+- At least 75% Arabic letters is `arabic`, below 15% is `english`, and anything between is `bilingual`. When the item declares Arabic (`direction="rtl"` or a `lang` starting with `ar`), the bounds are 60% and 5%.
+- With fewer than 24 letters, the declaration decides. Substantial text outweighs it, so a right-to-left document written only in English is `english`.
+- A document uses the text of its current render in the app, and the prose in its source files on the command line or before its first render: JSX text and string values containing a space or a non-ASCII letter. Media, history, asset bindings, theme files, guides, and schemas do not count. A template uses its source the same way.
+- A theme uses its declared `direction` and `lang`: Arabic is `arabic`, Arabic with `direction: 'auto'` is `bilingual`, and anything else is `english`.
+
+Results are cached per render or source revision.
 
 ## Custom tags
 
-Any other text becomes a custom tag. Custom tags are trimmed and compared without regard to case; a tag already used elsewhere keeps its established capitalization, and the only item using a custom tag can correct it. Custom tags stay in the workspace vocabulary after the last item stops using them, so they remain suggestions until deleted.
+Any other text is a custom tag, such as a client or programme name. Custom tags are trimmed and compared without regard to case; a tag already used elsewhere keeps its established capitalization, and the only item using it can correct it. They stay in the workspace vocabulary after the last item stops using them, until deleted. Status and language words cannot be custom tags. Each item has up to 20 tags of 40 characters or fewer, without commas.
 
 ## In the app
 
-- **Documents**, **Presentations**, and each project show tags on cards and list rows. Their **Filter by tag** control lists the tags in use, grouped like the vocabulary, with counts; search also matches tag labels.
-- A card's **…** menu and the reader's options menu offer **Edit tags…**. The editor shows the standard groups suited to the item, then custom tags; choose a tag to add or remove it, or type a new one and press Enter.
-- **Themes** shows tags on cards and on a theme's page, combines the tag filter with the folder filter buttons, and keeps **Edit tags…** in each theme's menu.
-- **Templates** shows tags on cards, filters both the Documents and Presentations tabs, and offers **Edit tags…** on a template's page.
+- Cards and list rows show the type beside the format, and the status badge. Custom tags appear only in **Details**.
+- **Documents**, **Presentations**, and each project filter by **Type** and **Status** when any item has one, by **Language** when any item is not in English, and by custom tag under **More filters** when any item has one. Search also matches the type, status, and custom tags.
+- A document's **…** menu and the reader's options menu offer **Details…** (type, status, custom tags) and **Status**.
+- **Templates** shows each template's type, filters by type, and edits a template's details from its page.
+- **Themes** filters by custom tag beside the folder filter buttons, and the two combine. Tags show on a theme's page, not its card, and each theme's menu keeps **Edit tags…**.
 
 ## Command line
 
 ```sh
-npx opendoc tags                                   # vocabulary and custom tags, with counts
-npx opendoc tags --kind template                   # counts for one kind
-npx opendoc tags show document q3-review
-npx opendoc tags add document q3-review report finance executive english draft
-npx opendoc tags add presentation board-deck final # replaces its previous status
-npx opendoc tags remove theme field-manual "Old brand"
-npx opendoc tags set template invoice invoice finance
-npx opendoc tags find finance client --kind document
+npx opendoc tags                                        # types, statuses, languages, custom tags, with counts
+npx opendoc tags show document q3-review                # type, status, language, and custom tags
+npx opendoc tags add document q3-review report "Client Acme"
+npx opendoc tags status q3-review draft                 # draft | in-review | final | archived
+npx opendoc tags status q3-review --clear
+npx opendoc tags remove document q3-review "Client Acme"
+npx opendoc tags set template invoice invoice Finance
+npx opendoc tags find --type minutes --status final
+npx opendoc tags find "Client Acme" --language arabic --kind document
 npx opendoc tags create "Project Phoenix"
 npx opendoc tags delete "Project Phoenix" [--untag]
-npx opendoc themes list --tag minimal
-npx opendoc templates list --tag invoice
+npx opendoc templates list --type invoice --language english
+npx opendoc themes list --tag Minimal --language arabic
 ```
 
-`<kind>` is `document`, `presentation`, `theme`, or `template`. Tags may be given as separate arguments or comma-separated. `set` with no tags clears an item. Removing a tag an item does not have is not an error. `find` requires every listed tag and reports each document's library name, format, and project. `delete` refuses a custom tag still in use unless `--untag` also removes it from those items; standard tags cannot be deleted. Every command prints JSON. `npx opendoc themes tags <theme-id> --add <tag>` remains available and uses the same store.
+`<kind>` is `document`, `presentation`, `theme`, or `template`. Tags may be separate arguments or comma-separated; a type spelling sets the type, and removing one clears it. `set` with no tags clears an item's type and custom tags. `tags status <id>` alone prints the status. `find` requires every listed tag and each filter; `--status none` finds documents without a status. Documents in `find` also report their library name, format, and project. Every command prints JSON with `type` and `status` as `null` when unset.
 
 ## Tagging by agents
 
-Agents apply tags whenever they create a document, presentation, theme, or template, so new work is filterable from the start:
-
-1. Choose two to five fitting standard tags: one **Type** when one applies, the **Area**, the **Audience** for documents and templates, the **Language** (`arabic` or `bilingual` when the text is not only English), **Style** for themes and templates, and `draft` for a new document.
-2. Add a custom tag only when no standard tag fits and the label will be reused, such as a client or programme name. Check `npx opendoc tags` for existing custom tags first and reuse their spelling.
-3. Run `npx opendoc tags add <kind> <id> <tag>...` once the item exists. Add `final` when a document is delivered; it replaces `draft` or `in-review`.
-4. Never remove or rename tags the user applied unless asked.
+1. When you create a document or presentation, set one type when one fits and `draft`: `npx opendoc tags add document <id> <type>` and `npx opendoc tags status <id> draft`.
+2. Set `final` with `npx opendoc tags status <id> final` once the reviewed files are delivered.
+3. Give a new template its type. Themes take no type; add a custom tag to a theme only when it will help find it, such as a brand name.
+4. Add a custom tag only for a name you will reuse, such as a client or programme; check `npx opendoc tags` first and reuse an existing spelling.
+5. Never set a language: it is detected. Never remove or rename tags the user applied unless asked.
 
 ## Storage
 
-`tags.json` in the workspace root holds the custom vocabulary and each item's tags:
+`tags.json` in the workspace root holds the custom vocabulary, each item's type and custom tags, and each document's status:
 
 ```json
 {
-  "version": 1,
-  "custom": ["Project Phoenix"],
-  "documents": { "q3-review": ["report", "finance", "executive", "draft", "Project Phoenix"] },
-  "themes": { "field-manual": ["technical", "bold"] },
-  "templates": { "invoice": ["invoice", "finance"] }
+  "version": 2,
+  "custom": ["Client Acme"],
+  "documents": { "q3-review": ["report", "Client Acme"] },
+  "themes": { "field-manual": ["Technical"] },
+  "templates": { "invoice": ["invoice"] },
+  "status": { "q3-review": "final" }
 }
 ```
 
-Standard tags are stored by ID and custom tags by their display text. Browser and command-line changes serialize through a local lock and atomically replace the file. Entries for items whose folders no longer exist are kept while reading and dropped on the next change. A deleted document's tags are kept with it in Trash and return when it is restored; a duplicate starts with the original's tags. An invalid file is reported without being overwritten; tags are unavailable until it is repaired, and everything else keeps working. New workspaces start without this file, and packages never include one.
+An item's list holds its type ID first, then its custom tags in their display spelling. Browser and command-line changes serialize through a local lock and atomically replace the file. Entries for items whose folders no longer exist are kept while reading and dropped on the next change. A deleted document's tags and status are kept with it in Trash and return when it is restored. An invalid file is reported without being overwritten; tags are unavailable until it is repaired, and everything else keeps working. New workspaces start without this file, and packages never include one.
 
-Earlier versions stored theme tags in `themes/folders.json`. They are still read for any theme `tags.json` does not mention, and the next tag change moves them into `tags.json` and removes them from the folders file. Theme folders stay in `themes/folders.json`.
+### Earlier versions
+
+Version 1 files are read as version 2 in memory and saved as version 2 on the next change; no information is lost:
+
+| Version 1 tag | Becomes |
+| --- | --- |
+| First Type tag with a version 2 type (`memo`, `plan`, `policy`, …) | The item's type (documents and templates) |
+| Later Type tags naming another type, Type tags on themes, and `contract` | Custom tags with their label, such as *Plan* or *Contract* |
+| Status tags on a document | Its status; the most advanced wins (archived, final, in review, draft) |
+| Status tags on themes and templates | Custom tags, such as *Draft* |
+| Language tags | Dropped; language is now detected |
+| Area, Audience, and Style tags | Custom tags with their label, such as *Finance* or *Minimal* |
+| Custom tags | Unchanged; one spelled `article` becomes the type of an item without one |
+
+Theme tags kept in `themes/folders.json` by even earlier versions are read the same way for any theme `tags.json` does not mention, and move into `tags.json` on the next tag change. Trash receipts from version 1 migrate when restored.

@@ -7,7 +7,7 @@ Use the user's OpenDoc workspace as the working directory. `documents/`, `templa
 
 ## 1. Inspect the design basis
 
-Resolve the requested theme explicitly or through [opendoc-current-document](../opendoc-current-document/SKILL.md). Discover with `npx opendoc themes list`; inspect one with `npx opendoc themes inspect <id>`. The list also reports each theme's `folder` from the user's optional `themes/folders.json` and its `tags` from `tags.json`; narrow it with `--folder <name>` or `--tag <tag>`; the two filters combine. Folders are single-level. Organization never moves theme folders; change folders with `npx opendoc themes assign` or `themes folders` only when the user asks, as described in [Themes](../../../docs/THEMES.md#organize-the-catalog). Read its guide and relevant source, or one suitable existing theme for a new bundle.
+Resolve the requested theme explicitly or through [opendoc-current-document](../opendoc-current-document/SKILL.md). Discover with `npx opendoc themes list`; inspect one with `npx opendoc themes inspect <id>`. The list also reports each theme's `folder` from the user's optional `themes/folders.json`, its detected `language`, and its custom `tags` from `tags.json`; narrow it with `--folder <name>`, `--language arabic`, or `--tag <tag>`; the filters combine. Folders are single-level. Organization never moves theme folders; change folders with `npx opendoc themes assign` or `themes folders` only when the user asks, as described in [Themes](../../../docs/THEMES.md#organize-the-catalog). Read its guide and relevant source, or one suitable existing theme for a new bundle.
 
 Inspect supplied images, brand-guide pages, document PDFs, and referenced websites. Record what is a requirement, an observed pattern, or your interpretation. Identify unavailable references and font substitutions honestly. Translate web references into print through hierarchy, proportions, alignment, reading measure, whitespace, and recurring compositions.
 
@@ -29,15 +29,15 @@ For logos or custom fonts, read [Assets](../../../docs/ASSETS.md) and the font s
 
 For a theme intended for Arabic or bilingual text, set `direction: 'rtl'`, `lang: 'ar'`, and `fontFallbacks` naming a registered Arabic family, as described in [Arabic and right-to-left text](../../../docs/AUTHORING.md#arabic-and-right-to-left-text). Rows, lists, tables, and running matter mirror automatically, but padding, margins, borders, and absolute positions stay physical; a component that places a rule, inset, or mark on one side calls `documentDirection()` from `opendoc` inside its render function to choose it. Write the specimen in the intended Arabic text so its review exercises the mirrored layout.
 
-For a new theme, apply two to five fitting standard tags from `npx opendoc tags` once `npx opendoc themes inspect <id>` discovers it: its **Style** (such as `formal`, `minimal`, `editorial`, `bold`, or `playful`), the **Area** or **Type** it was designed for when it has one, and `arabic` or `bilingual` when it is built for that text. Add a custom tag, such as a brand or client name, only when no standard tag fits, reusing an existing custom spelling:
+Themes have no type or status, and their language comes from `direction` and `lang`, so a new theme needs no tags. Add a custom tag only when it will help find the theme later, such as a brand or client name, reusing an existing spelling from `npx opendoc tags`:
 
 ```sh
-npx opendoc tags add theme <theme-id> minimal finance
+npx opendoc tags add theme <theme-id> "Client Acme"
 ```
 
-When refining an existing theme, keep its tags; add one only when the change gives it a new fitting purpose. Never remove or rename the user's tags unless asked. See [Tags](../../../docs/TAGS.md#tagging-by-agents).
+When refining an existing theme, keep its tags. Never remove or rename the user's tags unless asked. See [Tags](../../../docs/TAGS.md#tagging-by-agents).
 
-**Ready:** the bundle is discoverable, its guide matches its tokens, the specimen demonstrates the implemented print system, and a new theme is tagged.
+**Ready:** the bundle is discoverable, its guide matches its tokens, and the specimen demonstrates the implemented print system.
 
 ## 4. Review its real use
 

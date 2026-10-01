@@ -25,15 +25,15 @@ Bind caller-owned text with `TextSlot` (`from` for props, `field` for instance d
 
 For visual assets, follow [Media](../../../docs/MEDIA.md) or [Assets](../../../docs/ASSETS.md) as applicable. Use Neutral for the catalog specimen so layouts remain comparable.
 
-For a new template, apply two to five fitting standard tags from `npx opendoc tags` once `npx opendoc templates inspect <template-id>` discovers it: its **Type** (such as `report`, `proposal`, or `invoice`), the **Area** and **Audience** it serves, its **Style** when distinctive, and `arabic` or `bilingual` when it is built for that text. Do not tag the format; the catalog already separates document and presentation templates. Add a custom tag only when no standard tag fits, reusing an existing custom spelling:
+For a new template, set its type once `npx opendoc templates inspect <template-id>` discovers it, so agents can choose templates by type. `npx opendoc tags` lists the types (such as `report`, `proposal`, `minutes`, or `invoice`). Do not tag the format; the catalog already separates document and presentation templates. Its language is detected from its source: for an Arabic or bilingual template, declare `direction="rtl"` and `lang="ar"` on its `Document` and write its sample data in that language. Add a custom tag only for a name that will be reused, reusing an existing spelling:
 
 ```sh
-npx opendoc tags add template <template-id> report finance executive
+npx opendoc tags add template <template-id> report
 ```
 
 Never remove or rename the user's tags unless asked. See [Tags](../../../docs/TAGS.md#tagging-by-agents).
 
-**Ready:** the template, starter, guide, and native PDF specimen implement the chosen contract without prescribing the document's argument, and a new template is tagged.
+**Ready:** the template, starter, guide, and native PDF specimen implement the chosen contract without prescribing the document's argument, and a new template has its type.
 
 ## 3. Exercise the contract
 
