@@ -27,6 +27,8 @@ Keep exact guide values synchronized with executable tokens. Describe component 
 
 For logos or custom fonts, read [Assets](../../../docs/ASSETS.md) and the font section of Themes before implementing them. Verify local faces and licenses, preserve original artwork, and use semantic document font bindings inside reusable components. For generated visuals, follow [Media](../../../docs/MEDIA.md). Keep reference originals in their existing project location.
 
+For a theme intended for Arabic or bilingual text, set `direction: 'rtl'`, `lang: 'ar'`, and `fontFallbacks` naming a registered Arabic family, as described in [Arabic and right-to-left text](../../../docs/AUTHORING.md#arabic-and-right-to-left-text). Rows, lists, tables, and running matter mirror automatically, but padding, margins, borders, and absolute positions stay physical; a component that places a rule, inset, or mark on one side calls `documentDirection()` from `opendoc` inside its render function to choose it. Write the specimen in the intended Arabic text so its review exercises the mirrored layout.
+
 For a new theme, apply two to five fitting standard tags from `npx opendoc tags` once `npx opendoc themes inspect <id>` discovers it: its **Style** (such as `formal`, `minimal`, `editorial`, `bold`, or `playful`), the **Area** or **Type** it was designed for when it has one, and `arabic` or `bilingual` when it is built for that text. Add a custom tag, such as a brand or client name, only when no standard tag fits, reusing an existing custom spelling:
 
 ```sh

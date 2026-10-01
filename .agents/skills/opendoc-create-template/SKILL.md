@@ -21,7 +21,7 @@ Choose the smallest contract that fits:
 
 Implement the catalog files and exact starter sentinels specified in Templates. Accept the caller's theme; use `themeType` and `themePage` for supported roles while preserving meaningful structural geometry. New instances must use the generated `theme.tsx` adapter and saved `assets.json` choices.
 
-Bind caller-owned text with `TextSlot` (`from` for props, `field` for instance data) and give labels the template writes or computes a stated reason or a `Decoration`, following [editable text in components](../../../docs/THEMES.md#editable-text-in-components). Write a brief `AGENTS.md` explaining the layout's character, useful defaults, and sensible variations. Design for long titles, optional covers, short content, and flowing prose. Preserve stable block identities. Keep one-document adaptations local; shared options must preserve existing defaults.
+Bind caller-owned text with `TextSlot` (`from` for props, `field` for instance data) and give labels the template writes or computes a stated reason or a `Decoration`, following [editable text in components](../../../docs/THEMES.md#editable-text-in-components). Give `DataTable` rows stable `rowIds` so cells stay editable and commentable when rows reorder or repeat wording. Write a brief `AGENTS.md` explaining the layout's character, useful defaults, and sensible variations. Design for long titles, optional covers, short content, and flowing prose. Preserve stable block identities. Keep one-document adaptations local; shared options must preserve existing defaults.
 
 For visual assets, follow [Media](../../../docs/MEDIA.md) or [Assets](../../../docs/ASSETS.md) as applicable. Use Neutral for the catalog specimen so layouts remain comparable.
 
@@ -37,7 +37,7 @@ Never remove or rename the user's tags unless asked. See [Tags](../../../docs/TA
 
 ## 3. Exercise the contract
 
-Run `npx opendoc check` and focused tests for changed parsing or layout behavior. Use `npx opendoc templates check <template-id>` to validate and render the catalog specimen, or `npx opendoc templates preview <template-id>` to also export `output/templates/<template-id>.pdf`. Render sparse, typical, and long cases, plus a second theme. For data-bound reports, include the invalid-input cases specified in the structured-report branch.
+Run `npx opendoc check` and focused tests for changed parsing or layout behavior. Use `npx opendoc templates check <template-id>` to validate and render the catalog specimen, or `npx opendoc templates preview <template-id>` to also export `output/templates/<template-id>.pdf`. Render sparse, typical, and long cases, plus a second theme. When the template is meant for Arabic or bilingual use, also render a right-to-left instance and check its mirrored layout as described in [Arabic and right-to-left text](../../../docs/AUTHORING.md#arabic-and-right-to-left-text). For data-bound reports, include the invalid-input cases specified in the structured-report branch.
 
 In a disposable workspace, create an instance through the supported path:
 

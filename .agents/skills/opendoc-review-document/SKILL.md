@@ -38,11 +38,15 @@ Read render warnings and relevant feedback. Reuse a just-produced export when it
 
 Inspect the review command's page images at legible scale, render pages with an available PDF tool, or use the normal OpenDoc reader. A contact sheet helps assess rhythm; review each page legibly as well. Check hierarchy, reading measure, spacing, page furniture, stranded headings, awkward endings, clipped figures, table continuation, and captions against the document's purpose. Generating page images is not inspection. If the agent cannot view images, state that visual review remains unverified; do not claim the manifest proves visual quality.
 
+For Arabic or other right-to-left text, also check that letters join, mixed Arabic and English words read in the intended order, numbers, brackets, and punctuation sit where an Arabic reader expects them, paragraphs start at the right edge unless aligned explicitly, and lists, tables, and page furniture are mirrored.
+
 **Ready:** every page is accounted for and each material layout issue has a page and description.
 
 ## 3. Check content and extraction
 
 Read the review command's extracted text or extract representative text with available PDF tools, including ligatures, symbols, mixed bold/italic boundaries, code, final table rows, and references where present. Verify link/bookmark destinations. Confirm the document addresses its brief and distinguishes evidence, inference, and illustrative material. When claim verification is in scope, compare citations with the underlying sources; a valid reference record alone does not establish support.
+
+Treat every `missing-glyphs` issue as a defect: the named characters print as `?`, and the space after one can disappear. Fix the font list or binding; do not accept the warning. The check covers only paragraphs that contain right-to-left text, so also look for `?` in the page images. Extracted right-to-left text follows reading order, but some viewers omit the space where the direction changes; judge word order from the page images.
 
 Load [Media](../../../docs/MEDIA.md) for managed images/charts: inspect labels, values, provenance, and the actual image. Load [Assets](../../../docs/ASSETS.md) for logos/fonts: compare saved choices with rendered use, inspect the chosen artwork on its page background, and verify copied text. Recorded hashes and isolated specimens are not substitutes for checking the delivered PDF.
 
@@ -51,6 +55,8 @@ Load [Media](../../../docs/MEDIA.md) for managed images/charts: inspect labels, 
 ## 4. Check the PowerPoint handoff when included
 
 Follow [PowerPoint delivery](../../../docs/AUTHORING.md#powerpoint-delivery). Confirm the PPTX opens as a valid presentation package, has the intended slide count/order, preserves text and images, and contains native text objects and embedded fonts. Compare slide text with the reviewed PDF or its captured layout; account for whitespace and ligature normalization. A ZIP containing font parts proves packaging, not correct rendering by PowerPoint.
+
+For right-to-left slides, inspect the slide XML: each Arabic paragraph carries `rtl="1"` and a language tag such as `ar-SA`, its runs name the font the PDF used in both the Latin and complex-script (`cs`) slots, and its alignment matches the reviewed PDF lines.
 
 When PowerPoint is available, open the export and inspect slides for font substitution, clipping, missing visuals, and unexpected line wrapping. Verify text remains editable without changing the delivered file; use a disposable copy if testing an edit/save. When native inspection is unavailable, finish available package/content checks and state that native appearance was not verified. This limitation alone does not prevent delivering a valid requested PPTX. Do not require the recipient to install OpenDoc, install fonts or software, rasterize the deck, or change the chosen design just to make a check pass.
 
