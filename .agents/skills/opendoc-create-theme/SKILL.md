@@ -7,7 +7,7 @@ Use the user's OpenDoc workspace as the working directory. `documents/`, `templa
 
 ## 1. Inspect the design basis
 
-Resolve the requested theme explicitly or through [opendoc-current-document](../opendoc-current-document/SKILL.md). Discover with `npx opendoc themes list`; inspect one with `npx opendoc themes inspect <id>`. Read its guide and relevant source, or one suitable existing theme for a new bundle.
+Resolve the requested theme explicitly or through [opendoc-current-document](../opendoc-current-document/SKILL.md). Discover with `npx opendoc themes list`; inspect one with `npx opendoc themes inspect <id>`. The list also reports each theme's `folder` and `tags` from the user's optional `themes/folders.json`; narrow it with `--folder <path>` or `--tag <tag>`. That organization never moves theme folders; change it with `npx opendoc themes assign`, `themes tags`, or `themes folders` only when the user asks, as described in [Themes](../../../docs/THEMES.md#organize-the-catalog). Read its guide and relevant source, or one suitable existing theme for a new bundle.
 
 Inspect supplied images, brand-guide pages, document PDFs, and referenced websites. Record what is a requirement, an observed pattern, or your interpretation. Identify unavailable references and font substitutions honestly. Translate web references into print through hierarchy, proportions, alignment, reading measure, whitespace, and recurring compositions.
 

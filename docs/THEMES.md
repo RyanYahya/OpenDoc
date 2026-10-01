@@ -93,6 +93,38 @@ npx opendoc themes preview <id>
 
 Run `npx opendoc check` after changing source. Review every exported specimen page at readable size and inspect representative extracted text. Long titles, dense tables, custom fonts, and altered page geometry deserve representative longer-content checks. Existing usage matters: a shared theme change can reflow documents that import it. Review affected examples instead of treating a passing specimen as proof that all documents are unchanged.
 
+## Organize the catalog
+
+Folders and tags are optional. Without them, the Themes view is one gallery. **New folder** creates a folder in the current location, and folders can nest to any depth. A folder's **…** menu offers **Rename**, **Move to folder…**, and **Delete**. Deleting a folder moves its themes and subfolders to its parent; it never deletes a theme, and a folder with contents asks for confirmation first. A theme card's **…** menu offers **Move to folder…** and **Edit tags…**; on desktop, a card can also be dragged onto a folder or onto the folder path above the title. **Filter by tag** searches every folder and shows the folder of each result. Theme lists elsewhere, such as a project's default theme, show the folder after the theme name.
+
+`themes/folders.json` stores this organization separately from the theme bundles:
+
+```json
+{
+  "version": 1,
+  "folders": [
+    { "id": "clients", "name": "Clients", "parent": null },
+    { "id": "acme", "name": "Acme", "parent": "clients" }
+  ],
+  "assignments": { "field-manual": "acme" },
+  "tags": { "field-manual": ["Reports", "Technical"] }
+}
+```
+
+A theme belongs to at most one folder; a theme without an assignment is at the top level. Organizing never moves `themes/<id>/`, changes a theme ID, or edits theme source, so documents, project defaults, and imports are unaffected. Folder names are unique among their siblings regardless of case and cannot contain `/`. Tags are trimmed and compared without regard to case; a theme keeps the first spelling, and a tag already used on another theme reuses that spelling. Browser and command-line changes serialize through a local lock and atomically replace the file. Entries for themes whose folders no longer exist are ignored and dropped on the next change. An invalid file is reported without being overwritten, and the gallery stays flat until it is repaired. New workspaces start without this file.
+
+```sh
+npx opendoc themes list --folder Clients --tag Reports
+npx opendoc themes folders
+npx opendoc themes folders create Clients/Acme
+npx opendoc themes folders update Clients/Acme --name "Acme Corp" --parent none
+npx opendoc themes folders delete Clients
+npx opendoc themes assign field-manual Clients/Acme
+npx opendoc themes tags field-manual --add Reports --remove Draft
+```
+
+`themes list` reports each theme's `folder` path and `tags`. `--folder` includes nested folders; `--folder none` selects top-level themes; repeated `--tag` options must all match. `folders create` also creates missing parent folders. `assign <theme-id> none` returns a theme to the top level, and `tags <theme-id> --set ""` clears its tags. Organization belongs to the user: change it only when asked.
+
 ## Themes, templates, and projects
 
 The theme defines visual language. A template defines document-type architecture, such as an essay opening, a proposal structure, or invoice geometry. Content determines what is said. Media retains its meaning and evidence even when placed inside a new visual system.

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ThemePreview, ThemeSummary } from '../shared/themes';
+import { emptyThemeFolders, folderChildren, tagKey, type ThemeFoldersManifest } from '../shared/theme-folders';
 import { documentName, documentFormat, formatLabel, type DocumentSummary } from '../shared/types';
 import type { Project } from '../shared/projects';
 import { api } from './api';
@@ -10,6 +11,10 @@ import { AssetThemeDefaults } from './AssetThemeDefaults';
 import { CreateDocumentDialog } from './CreateDocumentDialog';
 import { Button, Dialog, Input } from './ui';
 import { Icon } from './ui/Icon';
+import {
+  displayPath, FolderBreadcrumb, FolderList, FolderMenu, folderSummary, startThemeDrag, TagFilter, ThemeCardMeta, ThemeFolderDialog, ThemeMenu, themesHash, themesHeadingId,
+  useThemeFolderMutations, type ThemeFolderAction, type ThemeOrganization,
+} from './ThemeFolders';
 import './themes.css';
 
 function ThemePdf({ id, preview, allPages, onRetry }: { id: string; preview: ThemePreview; allPages: boolean; onRetry: () => void }) {
@@ -105,16 +110,20 @@ function ThemePalette({ theme, compact = false }: { theme: ThemeSummary; compact
   </ul></section>;
 }
 
-function ThemeGallery({ themes, generation, onRefresh }: { themes: ThemeSummary[]; generation: number; onRefresh: () => void }) {
-  return <div className="theme-gallery">{themes.map(theme => <article className="theme-gallery-card" key={theme.id}>
-    <div className="theme-gallery-preview"><ThemeSpecimen theme={theme} generation={generation} onRefresh={onRefresh} /><ThemePalette theme={theme} compact /><a className="theme-preview-link" href={`#themes/${theme.id}`} aria-label={`Explore ${theme.name}`} /></div>
+type GalleryOrganization = { manifest: ThemeFoldersManifest; showFolder: boolean; disabled: boolean; onAction: (action: ThemeFolderAction) => void };
+function ThemeGallery({ themes, generation, onRefresh, organize }: { themes: ThemeSummary[]; generation: number; onRefresh: () => void; organize?: GalleryOrganization }) {
+  return <div className="theme-gallery">{themes.map(theme => <article className="theme-gallery-card" key={theme.id} onDragStart={organize && !organize.disabled ? event => startThemeDrag(event, theme.id) : undefined}>
+    <div className="theme-gallery-preview"><ThemeSpecimen theme={theme} generation={generation} onRefresh={onRefresh} /><ThemePalette theme={theme} compact /><a className="theme-preview-link" href={`#themes/${theme.id}`} aria-label={`Explore ${theme.name}`} />{organize && <ThemeMenu theme={theme} disabled={organize.disabled} onAction={organize.onAction} />}</div>
     <h2><a href={`#themes/${theme.id}`}>{theme.name}<Icon name="arrow" size={17} /></a></h2>
     {theme.description && <p className="theme-gallery-description">{theme.description}</p>}
+    {organize && <ThemeCardMeta theme={theme} manifest={organize.manifest} showFolder={organize.showFolder} />}
   </article>)}</div>;
 }
 
-export function ThemesBrowser({ themes, selection, generation, loaded, documents, projects, onRefresh, connected = true }: {
+export function ThemesBrowser({ themes, selection, generation, loaded, documents, projects, onRefresh, connected = true, organization, folder = '', tag = '', onOrganizationChange }: {
   themes: ThemeSummary[]; selection: string; generation: number; loaded: boolean; documents: DocumentSummary[]; projects: Project[]; onRefresh: () => void; connected?: boolean;
+  /** Optional folders and tags; without them the catalog is one flat gallery. */
+  organization?: ThemeOrganization; folder?: string; tag?: string; onOrganizationChange?: (manifest: ThemeFoldersManifest) => void;
 }) {
   const theme = themes.find(theme => theme.id === selection);
   const [promptOpen, setPromptOpen] = useState(false);
@@ -126,9 +135,39 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
   const usingDocuments = documents.filter(document => document.artifact?.meta.theme === theme?.id && theme);
   const defaultProjects = projects.filter(project => project.defaultTheme === theme?.id && theme);
   const ordered = [...themes].sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
+  const manifest = organization?.manifest ?? emptyThemeFolders();
+  const organizing = Boolean(onOrganizationChange) && !organization?.error;
+  const [folderAction, setFolderAction] = useState<ThemeFolderAction | null>(null);
+  const mutations = useThemeFolderMutations(next => onOrganizationChange?.(next));
+  const activeTag = tag ? tagKey(tag) : '';
+  const currentFolder = folder ? manifest.folders.find(item => item.id === folder) : undefined;
+  const inFolder = Boolean(currentFolder) && !activeTag;
+  const missingFolder = Boolean(folder) && !currentFolder && !activeTag;
+  const tagLabel = activeTag ? Object.values(manifest.tags).flat().find(item => tagKey(item) === activeTag) ?? tag : '';
+  const visible = activeTag ? ordered.filter(theme => (manifest.tags[theme.id] ?? []).some(item => tagKey(item) === activeTag))
+    : missingFolder ? [] : ordered.filter(theme => (manifest.assignments[theme.id] ?? '') === (currentFolder?.id ?? ''));
+  const subfolders = activeTag || missingFolder ? [] : folderChildren(manifest, currentFolder?.id ?? null);
+  const visited = useRef(folder);
+  useEffect(() => {
+    // Folder navigation is a page change: start at the top and announce the new title.
+    if (visited.current === folder) return;
+    visited.current = folder;
+    if (!selection) { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); document.getElementById(themesHeadingId)?.focus({ preventScroll: true }); }
+  }, [folder, selection]);
+  const onFolderAction = (action: ThemeFolderAction) => {
+    if (action.kind === 'delete' && folderSummary(manifest, themes, action.folder.id).empty) { void mutations.deleteEmptyFolder(action.folder); return; }
+    setFolderAction(action);
+  };
+  const dropTheme = organizing && connected ? (themeId: string, folderId: string | null) => {
+    const dragged = themes.find(item => item.id === themeId);
+    if (dragged && (manifest.assignments[themeId] ?? null) !== folderId) void mutations.moveTheme(dragged, folderId);
+  } : undefined;
+  const emptyFolder = loaded && inFolder && !visible.length && !subfolders.length;
+  const themeFolder = theme ? manifest.folders.find(item => item.id === manifest.assignments[theme.id]) : undefined;
+  const themeTags = theme ? manifest.tags[theme.id] ?? [] : [];
   return <section className="library-content themes-content">
     {selection ? <>
-      <a href="#themes" className="theme-back"><Icon name="left" size={16} />All themes</a>
+      <a href={themeFolder ? themesHash({ folder: themeFolder.id }) : '#themes'} className="theme-back"><Icon name="left" size={16} />{themeFolder ? themeFolder.name : 'All themes'}</a>
       {theme ? <div className="theme-detail-layout">
         <ThemeSpecimen key={theme.id} theme={theme} generation={generation} allPages onRefresh={onRefresh} />
         <aside className="theme-options">
@@ -144,17 +183,32 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
             {theme.useFor.length > 0 && <section><h2>Works well for</h2><p>{theme.useFor.join(' · ')}</p></section>}
             {usingDocuments.length > 0 && <section className="theme-used-by"><h2>Documents using {theme.name}</h2>{usingDocuments.map(document => <a key={document.id} href={`#document/${document.id}`}><Icon name={documentFormat(document) === 'presentation' ? 'monitor' : 'document'} size={16} /><span>{documentName(document)}<span className="theme-used-format"> · {formatLabel(documentFormat(document))}</span></span><Icon name="arrow" size={15} /></a>)}</section>}
             {defaultProjects.length > 0 && <section className="theme-used-by"><h2>Project default</h2>{defaultProjects.map(project => <a key={project.id} href={`#project/${project.id}`}><Icon name="folder" size={16} /><span>{project.name}</span><Icon name="arrow" size={15} /></a>)}</section>}
+            {organizing && (themeFolder || themeTags.length > 0) && <section className="theme-organization"><h2>Folder &amp; tags</h2>
+              <dl><div><dt>Folder</dt><dd>{themeFolder ? <a href={themesHash({ folder: themeFolder.id })}>{displayPath(manifest, themeFolder.id)}</a> : 'Themes (top level)'}</dd></div><div><dt>Tags</dt><dd>{themeTags.length ? themeTags.join(' · ') : 'None'}</dd></div></dl>
+              <div className="theme-organization-actions"><Button className="text-button" data-theme-menu={theme.id} disabled={!connected} onClick={() => setFolderAction({ kind: 'move-theme', theme })}>Move to folder…</Button><Button className="text-button" disabled={!connected} onClick={() => setFolderAction({ kind: 'tags', theme })}>Edit tags…</Button></div>
+            </section>}
           </div>
         </aside>
       </div> : <div className="empty-state"><h1>{loaded ? 'Theme not found' : 'Loading theme…'}</h1><p>{loaded ? 'It may have been moved or removed from the workspace.' : 'Reading the local theme folders.'}</p><Button onClick={onRefresh}>Try again</Button></div>}
     </> : <>
-      <div className="library-heading"><h1>Themes</h1><Button onClick={() => setPromptOpen(true)}><Icon name="plus" size={17} />Create theme</Button></div>
-      <p className="lead theme-intro">Explore complete print systems: color, typography, components, and page layouts.</p>
-      <p className="theme-gallery-label" role="status">{loaded ? `${ordered.length} ${ordered.length === 1 ? 'print system' : 'print systems'}` : 'Reading local themes…'}</p>
-      <ThemeGallery themes={ordered} generation={generation} onRefresh={onRefresh} />
+      {organization?.error && <p className="field-error" role="alert">{organization.error}</p>}
+      {inFolder && <FolderBreadcrumb manifest={manifest} folderId={currentFolder!.id} onDropTheme={dropTheme} />}
+      <div className="library-heading">{inFolder
+        ? <div className="theme-folder-title"><h1 id={themesHeadingId} tabIndex={-1}>{currentFolder!.name}</h1><FolderMenu folder={currentFolder!} disabled={!connected} onAction={onFolderAction} /></div>
+        : <h1 id={themesHeadingId} tabIndex={-1}>Themes</h1>}
+        <div className="theme-heading-actions">{organizing && !activeTag && !missingFolder && <Button data-new-folder disabled={!loaded || !connected} onClick={() => setFolderAction({ kind: 'create', parent: currentFolder?.id ?? null })}><Icon name="folderPlus" size={17} />New folder</Button>}<Button onClick={() => setPromptOpen(true)}><Icon name="plus" size={17} />Create theme</Button></div></div>
+      {!inFolder && <p className="lead theme-intro">Explore complete print systems: color, typography, components, and page layouts.</p>}
+      {organizing && <TagFilter manifest={manifest} themes={themes} tag={tag} onChange={value => { location.hash = themesHash({ folder, tag: value }); }} />}
+      {organizing && <FolderList folders={subfolders} manifest={manifest} themes={themes} disabled={!connected} onAction={onFolderAction} onDropTheme={dropTheme} />}
+      <p className="theme-gallery-label" role="status" hidden={emptyFolder}>{loaded ? `${visible.length} ${visible.length === 1 ? 'print system' : 'print systems'}${activeTag ? ` tagged “${tagLabel}”` : ''}` : 'Reading local themes…'}</p>
+      <ThemeGallery themes={visible} generation={generation} onRefresh={onRefresh} organize={organizing ? { manifest, showFolder: Boolean(activeTag), disabled: !connected, onAction: onFolderAction } : undefined} />
       {loaded && themes.length === 0 && <div className="empty-state"><h2>No themes yet</h2><p>Create a print system with your coding agent. Its reviewed PDF will appear here.</p><Button onClick={() => setPromptOpen(true)}>Create theme</Button></div>}
+      {loaded && themes.length > 0 && activeTag && !visible.length && <div className="empty-state"><h2>No themes tagged “{tagLabel}”</h2><p>Choose another tag, or show every theme.</p><Button onClick={() => { location.hash = themesHash({ folder }); }}>Clear filter</Button></div>}
+      {loaded && missingFolder && <div className="empty-state"><h2>Folder not found</h2><p>It may have been deleted or moved by another window. Your themes are still in the library.</p><a href={themesHash()} className="project-templates-link">Back to Themes<Icon name="arrow" size={16} /></a></div>}
+      {emptyFolder && <div className="empty-state theme-folder-empty"><h2>This folder is empty</h2><p>Choose Move to folder… from any theme’s options menu, or drag a theme card onto this folder from the folder that contains it. Use New folder to nest folders here.</p></div>}
     </>}
     <ThemePromptDialog open={promptOpen} onOpenChange={setPromptOpen} theme={selection ? theme : undefined} />
     <CreateDocumentDialog open={createOpen} onOpenChange={setCreateOpen} theme={theme} />
+    {organizing && <ThemeFolderDialog action={folderAction} manifest={manifest} themes={themes} connected={connected} onClose={() => setFolderAction(null)} onChange={next => onOrganizationChange?.(next)} />}
   </section>;
 }

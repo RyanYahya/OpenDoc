@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { ThemeSummary } from '../shared/themes';
 import type { Project } from '../shared/projects';
+import { themeChoiceLabel, type ThemeFoldersManifest } from '../shared/theme-folders';
 import { documentName, type DocumentSummary } from '../shared/types';
 import { api } from './api';
 import { Button, Dialog, Input, SelectControl } from './ui';
@@ -8,9 +9,9 @@ import { Icon } from './ui/Icon';
 
 const noDefaultTheme = '__no_default__';
 
-export function ProjectDialog({ open, project, documentCount, connected, themes, onOpenChange, onSaved, onDeleted }: {
+export function ProjectDialog({ open, project, documentCount, connected, themes, themeFolders, onOpenChange, onSaved, onDeleted }: {
   open: boolean; project: Project | null; documentCount: number; connected: boolean;
-  themes: ThemeSummary[];
+  themes: ThemeSummary[]; themeFolders?: ThemeFoldersManifest;
   onOpenChange: (open: boolean) => void; onSaved: (project: Project) => void; onDeleted: () => void;
 }) {
   const [name, setName] = useState('');
@@ -42,7 +43,7 @@ export function ProjectDialog({ open, project, documentCount, connected, themes,
     catch (error) { setError((error as Error).message); }
     finally { working.current = false; setBusy(false); }
   }
-  const themeItems = [{ value: noDefaultTheme, label: 'No default theme' }, ...themes.filter(theme => !theme.error).map(theme => ({ value: theme.id, label: theme.name }))];
+  const themeItems = [{ value: noDefaultTheme, label: 'No default theme' }, ...themes.filter(theme => !theme.error).map(theme => ({ value: theme.id, label: themeChoiceLabel(theme, themeFolders) }))];
   if (!themeItems.some(item => item.value === theme)) themeItems.push({ value: theme, label: `${theme} (unavailable)` });
   return <Dialog.Root open={open} onOpenChange={value => { if (!working.current) onOpenChange(value); }}>
     <Dialog.Portal><Dialog.Backdrop className="ui-dialog-backdrop" />

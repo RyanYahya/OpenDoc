@@ -19,13 +19,18 @@ import { api } from "./api";
 import type { ThemeSummary } from "../shared/themes";
 import { documentName, documentFormat, formatLabel, type DocumentFormat, type DocumentState, type DocumentSummary } from "../shared/types";
 import { emptyProjects, type Project, type ProjectsManifest } from "../shared/projects";
+import { emptyThemeFolders, type ThemeFoldersManifest } from "../shared/theme-folders";
+import type { ThemeOrganization } from "./ThemeFolders";
 import "./style.css";
 
 function route() {
   const hash = location.hash.slice(1);
   if (hash === "presentations") return { view: "presentations", id: "" };
-  if (hash === "themes" || hash.startsWith("themes/")) return { view: "themes", id: hash.slice(7) };
   const [templatePath, templateQuery] = hash.split('?');
+  if (templatePath === "themes" || templatePath.startsWith("themes/")) {
+    const query = new URLSearchParams(templateQuery);
+    return { view: "themes", id: templatePath.slice(7), themeFolder: query.get('folder') ?? '', themeTag: query.get('tag') ?? '' };
+  }
   if (templatePath === "templates" || templatePath.startsWith("templates/")) return { view: "templates", id: templatePath.slice(10), templateFormat: new URLSearchParams(templateQuery).get('format') === 'presentation' ? 'presentation' as const : 'document' as const };
   if (hash === "assets" || hash.startsWith("assets/")) return { view: "assets", id: hash.slice(7) || "media" };
   if (hash === "media" || hash.startsWith("media/")) return { view: "assets", id: `media${hash.length > 5 ? `/${hash.slice(6)}` : ""}` };
@@ -45,6 +50,7 @@ function App() {
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
   const [themes, setThemes] = useState<ThemeSummary[]>([]);
   const [manifest, setManifest] = useState<ProjectsManifest>(emptyProjects);
+  const [themeOrganization, setThemeOrganization] = useState<ThemeOrganization>(() => ({ manifest: emptyThemeFolders() }));
   const [error, setError] = useState("");
   const [connected, setConnected] = useState(true);
   const [help, setHelp] = useState(false);
@@ -68,14 +74,18 @@ function App() {
       do {
         refreshAgain.current = false;
         try {
-          const [next, projects, nextThemes] = await Promise.all([
+          const [next, projects, nextThemes, organization] = await Promise.all([
             api<DocumentSummary[]>("/api/documents?view=summary", { signal: requestAbort.current?.signal }),
             api<ProjectsManifest>("/api/projects", { signal: requestAbort.current?.signal }),
             api<ThemeSummary[]>("/api/themes", { signal: requestAbort.current?.signal }),
+            // Folders are optional organization; an unreadable file must not hide the workspace.
+            api<ThemeFoldersManifest>("/api/theme-folders", { signal: requestAbort.current?.signal })
+              .then((value): ThemeOrganization => ({ manifest: value }), (error): ThemeOrganization => ({ manifest: emptyThemeFolders(), error: (error as Error).message })),
           ]);
           if (requestAbort.current?.signal.aborted) return;
           setManifest(projects);
           setThemes(nextThemes);
+          setThemeOrganization(organization);
           setDocuments((previous) => {
             const existing = new Map(previous.map((item) => [item.id, item]));
             const merged = next.map((item) => {
@@ -143,7 +153,7 @@ function App() {
   const origin = lastBrowseRoute.current;
   const originProject = origin?.view === "project" ? manifest.projects.find(project => project.id === origin.id) : undefined;
   const backHash = origin
-    ? origin.view === "project" ? originProject ? `project/${originProject.id}` : "library" : `${origin.view}${origin.id ? `/${origin.id}` : ""}${origin.view === 'templates' && origin.templateFormat === 'presentation' ? '?format=presentation' : ''}`
+    ? origin.view === "project" ? originProject ? `project/${originProject.id}` : "library" : `${origin.view}${origin.id ? `/${origin.id}` : ""}${origin.view === 'templates' && origin.templateFormat === 'presentation' ? '?format=presentation' : ''}${origin.view === 'themes' && origin.themeFolder ? `?folder=${encodeURIComponent(origin.themeFolder)}` : ''}`
     : project ? `project/${project.id}` : activeSummary && documentFormat(activeSummary) === "presentation" ? "presentations" : "library";
   const backLabel = origin
     ? origin.view === "project" ? originProject?.name ?? "Documents" : ({ library: "Documents", presentations: "Presentations", assets: "Media & Assets", templates: "Templates", themes: "Themes" }[origin.view] ?? "Documents")
@@ -197,10 +207,11 @@ function App() {
         : current.view === "project" ? project ? <ProjectDocuments key={project.id} project={project} documents={projectDocuments} loaded={loaded} view={documentView} onViewChange={changeDocumentView} onCreate={() => createDocument()} onCreatePresentation={() => createDocument('presentation')} onSettings={() => setProjectDialog({ project })} onAction={onDocumentAction} disabled={!connected || duplicating} /> : <div className="empty-state"><h1>{loaded ? "Project not found" : "Loading project…"}</h1><p>{loaded ? "It may have been removed. Your other projects are still available." : "Opening your local workspace."}</p><Button onClick={() => go("library")}>Back to documents</Button></div>
         : current.view === "assets" ? <AssetsBrowser selection={current.id} generation={generation} documents={documents} themes={themes} connected={connected} />
         : current.view === "templates" ? <TemplatesBrowser selection={current.id} generation={generation} format={current.templateFormat} />
-        : current.view === "themes" ? <ThemesBrowser connected={connected} themes={themes} selection={current.id} generation={generation} loaded={loaded} documents={documents} projects={manifest.projects} onRefresh={() => void refresh()} /> : <DocumentsBrowser key={current.view} format={current.view === 'presentations' ? 'presentation' : 'document'} projects={manifest.projects} documents={documents.filter(document => documentFormat(document) === (current.view === 'presentations' ? 'presentation' : 'document'))} loaded={loaded} view={documentView} onViewChange={changeDocumentView} onCreate={() => createDocument(current.view === 'presentations' ? 'presentation' : 'document')} onMove={setMoving} onAction={onDocumentAction} disabled={!connected || duplicating} />}
+        : current.view === "themes" ? <ThemesBrowser connected={connected} themes={themes} selection={current.id} generation={generation} loaded={loaded} documents={documents} projects={manifest.projects} onRefresh={() => void refresh()}
+          organization={themeOrganization} folder={current.themeFolder} tag={current.themeTag} onOrganizationChange={next => { setThemeOrganization({ manifest: next }); void refresh(); }} /> : <DocumentsBrowser key={current.view} format={current.view === 'presentations' ? 'presentation' : 'document'} projects={manifest.projects} documents={documents.filter(document => documentFormat(document) === (current.view === 'presentations' ? 'presentation' : 'document'))} loaded={loaded} view={documentView} onViewChange={changeDocumentView} onCreate={() => createDocument(current.view === 'presentations' ? 'presentation' : 'document')} onMove={setMoving} onAction={onDocumentAction} disabled={!connected || duplicating} />}
     </main>
     <CreateDocumentDialog format={creationFormat} open={help} onOpenChange={setHelp} project={project} />
-    <ProjectDialog themes={themes} open={Boolean(projectDialog)} project={projectDialog?.project ?? null} documentCount={documents.filter(document => document.projectId === projectDialog?.project?.id).length} connected={connected} onOpenChange={open => { if (!open) setProjectDialog(null); }} onSaved={saved => {
+    <ProjectDialog themes={themes} themeFolders={themeOrganization.manifest} open={Boolean(projectDialog)} project={projectDialog?.project ?? null} documentCount={documents.filter(document => document.projectId === projectDialog?.project?.id).length} connected={connected} onOpenChange={open => { if (!open) setProjectDialog(null); }} onSaved={saved => {
       setManifest(previous => ({ ...previous, projects: previous.projects.some(project => project.id === saved.id) ? previous.projects.map(project => project.id === saved.id ? saved : project) : [...previous.projects, saved] }));
       go(`project/${saved.id}`); void refresh();
     }} onDeleted={() => { setManifest(previous => ({ ...previous, projects: previous.projects.filter(project => project.id !== projectDialog?.project?.id) })); go("library"); void refresh(); }} />

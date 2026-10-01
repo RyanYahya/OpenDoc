@@ -41,6 +41,8 @@ async function copy(relative, destination, selectedEdition) {
     filter(source) {
       const name = path.relative(root, source).split(path.sep).join('/');
       if (name === sourceArchive || name === 'docs/showcase' || name.startsWith('docs/showcase/')) return false;
+      // Theme folders and tags are a workspace's own organization, like project membership.
+      if (name === 'themes/folders.json') return false;
       if (selectedEdition === 'headless' && browserFiles.some((entry) => name === entry || name.startsWith(`${entry}/`))) return false;
       return !['.DS_Store', 'node_modules', '.git', '.opendoc', 'output', 'tmp'].includes(path.basename(source));
     },
@@ -160,6 +162,7 @@ for (const selectedEdition of editions) {
     const archive = path.join(output, packed.filename);
     const filenames = new Set(packed.files.map(({ path: name }) => name));
     const forbidden = packed.files.filter(({ path: name }) => /^(?:tests|documents|projects\.json|\.opendoc|\.git|output|tmp)(?:\/|$)/.test(name)
+      || name === 'starter/themes/folders.json'
       || name === sourceArchive
       || /^node_modules\/@formepdf\/(?:html|renderer)(?:\/|$)/.test(name)
       || /^node_modules\/@formepdf\/core\/(?:pkg|pkg-web)(?:\/|$)/.test(name));

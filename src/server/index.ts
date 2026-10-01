@@ -31,6 +31,8 @@ import { TextEditService } from './edits';
 import { ThemeCatalog, readThemeGuide, themeFile } from './themes';
 import { TemplateCatalog, createFromTemplate, readTemplateGuide } from './templates';
 import { assignProject, createProject, deleteProject, ProjectError, readProjects, requireProject, updateProject } from './projects';
+import { ThemeFoldersError, themeFoldersFile } from './theme-folders';
+import { handleThemeFoldersRequest } from './theme-folders-http';
 
 import { readAssetHead as selectedAssetHead, readAssetRevision as selectedAssetRevision } from '../assets/files';
 import type { SelectedAsset } from '../shared/assets';
@@ -184,6 +186,7 @@ const server = createServer(async (req, res) => {
       const assigned = await assignProject(root, assignmentRoute[1], input.projectId);
       await workspace.refreshProjects(); json(res, assigned); return;
     }
+    if (await handleThemeFoldersRequest(root, req, res, url, json, body, () => workspace.changed())) return;
     if (req.method === 'GET' && url.pathname === '/api/themes') { json(res, await themes.list()); return; }
     const themeRoute = url.pathname.match(/^\/api\/themes\/([a-z0-9-]+)\/(preview|pdf|guide)$/);
     if (themeRoute && req.method === 'GET') {
@@ -356,7 +359,7 @@ const server = createServer(async (req, res) => {
       }
     }
     json(res, { error: 'Not found.' }, 404);
-  } catch (error) { json(res, { error: (error as NodeJS.ErrnoException).code === 'ENOENT' ? 'That local file is missing. Restore it or reload the library.' : error instanceof Error ? error.message : String(error) }, error instanceof CreateDocumentError || error instanceof ProjectError || error instanceof ExportError || error instanceof AssetError || error instanceof GuideError ? error.status : error instanceof Conflict || error instanceof ExportChangedError ? 409 : (error as NodeJS.ErrnoException).code === 'ENOENT' ? 404 : 400); }
+  } catch (error) { json(res, { error: (error as NodeJS.ErrnoException).code === 'ENOENT' ? 'That local file is missing. Restore it or reload the library.' : error instanceof Error ? error.message : String(error) }, error instanceof CreateDocumentError || error instanceof ProjectError || error instanceof ThemeFoldersError || error instanceof ExportError || error instanceof AssetError || error instanceof GuideError ? error.status : error instanceof Conflict || error instanceof ExportChangedError ? 409 : (error as NodeJS.ErrnoException).code === 'ENOENT' ? 404 : 400); }
 });
 
 // Upgraded sockets do not occupy the browser's six HTTP/1 request slots.
@@ -403,6 +406,8 @@ watcher.on('all', (_event, path) => {
   if (relative(root, path) === 'projects.json') {
     void workspace.refreshProjects().catch(error => workspace.emit('workspace-error', error)); return;
   }
+  // Organization only regroups the catalog; it never changes a theme or its specimen.
+  if (relative(root, path) === themeFoldersFile) { workspace.changed(); return; }
   // Catalogs follow their own imports and asset bindings, including local data files.
   void Promise.all([templates.noteChange(path), themes.noteChange(path)])
     .then(() => workspace.changed()).catch(error => workspace.emit('workspace-error', error));
