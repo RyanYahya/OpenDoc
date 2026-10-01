@@ -17,6 +17,17 @@ test('creation prompts keep their workflow and add an optional brief as a delimi
   assert.ok(withBrief.endsWith(`<brief>\n${brief}\n</brief>`));
 });
 
+test('creation prompts carry the project default for their format unless a theme was chosen', () => {
+  const project = { id: 'narra', name: 'Narra' };
+  const projectThemes = [{ format: 'presentation' as const, id: 'narra-presentations', name: 'Narra presentations' }];
+  const deck = createDocumentPrompt({ format: 'presentation', project, projectThemes });
+  assert.match(deck, /default presentation theme, Narra presentations \(narra-presentations\), unless my brief says otherwise/);
+  assert.doesNotMatch(createDocumentPrompt({ format: 'presentation', project, projectThemes, theme: { id: 'neutral', name: 'Neutral' } }), /narra-presentations/, 'An explicit theme replaces the default.');
+  assert.doesNotMatch(createDocumentPrompt({ format: 'document', project }), /default/, 'No default adds nothing.');
+  const both = createDocumentPrompt({ project, projectThemes: [{ format: 'document', id: 'narra-reports', name: 'Narra reports' }, ...projectThemes] });
+  assert.match(both, /documents, Narra reports \(narra-reports\); presentations, Narra presentations \(narra-presentations\)/);
+});
+
 test('the comments prompt names the document and skill without local session details', () => {
   const prompt = applyCommentsPrompt({ id: 'welcome', name: 'Welcome to OpenDoc', format: 'document' });
   assert.match(prompt, /“Welcome to OpenDoc” \(welcome\)/);

@@ -2,19 +2,21 @@ import type { DocumentFormat } from '../shared/types';
 import { useEffect, useRef, useState } from "react";
 import { Button, Dialog } from "./ui";
 import { Icon } from "./ui/Icon";
-import { createDocumentPrompt } from "./agentPrompts";
-import type { Project } from "../shared/projects";
+import { createDocumentPrompt, type ProjectThemeChoice } from "./agentPrompts";
+import { projectDefaultTheme, type Project } from "../shared/projects";
 import type { TemplateItem } from "../shared/templates";
 import type { ThemeSummary } from "../shared/themes";
 
 /** OpenDoc never authors documents itself: this dialog prepares a prompt for the user's own agent. */
-export function CreateDocumentDialog({ open, onOpenChange, project, theme, template, format }: {
+export function CreateDocumentDialog({ open, onOpenChange, project, theme, template, format, themes = [] }: {
   format?: DocumentFormat;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   project?: Project;
   theme?: ThemeSummary;
   template?: TemplateItem;
+  /** The workspace themes, used to name the project's default and notice a removed one. */
+  themes?: ThemeSummary[];
 }) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
@@ -24,11 +26,21 @@ export function CreateDocumentDialog({ open, onOpenChange, project, theme, templ
   const outputFormat = template ? template.descriptor.documentFormat ?? 'document' : format;
   const presentation = outputFormat === 'presentation';
   const noun = presentation ? 'presentation' : outputFormat ? 'document' : 'document or presentation';
+  // Without an explicit theme, the agent starts from the project default for this format.
+  const requested: DocumentFormat[] = outputFormat ? [outputFormat] : ['document', 'presentation'];
+  const defaults = project && !theme ? requested.flatMap(format => {
+    const id = projectDefaultTheme(project, format);
+    return id ? [{ format, id, theme: themes.find(item => item.id === id && !item.error) }] : [];
+  }) : [];
+  const projectThemes: ProjectThemeChoice[] = defaults.flatMap(({ format, id, theme }) => theme ? [{ format, id, name: theme.name }] : []);
+  // Before themes load, every default would look missing.
+  const missingDefaults = themes.length ? defaults.filter(item => !item.theme) : [];
   const prompt = createDocumentPrompt({
     format: outputFormat,
     project,
     template: template && { id: template.id, name: template.descriptor.name },
     theme,
+    projectThemes,
     brief,
   });
   useEffect(() => { if (open) { setCopied(false); setError(""); } }, [open, prompt]);
@@ -47,6 +59,8 @@ export function CreateDocumentDialog({ open, onOpenChange, project, theme, templ
           {project && <p className="field-hint">Project: {project.name}</p>}
           {template && <p className="field-hint">Template: {template.descriptor.name}</p>}
           {theme && <p className="field-hint">Theme: {theme.name}</p>}
+          {projectThemes.map(item => <p className="field-hint" key={item.format}>Theme: {item.name} <span className="muted">(project default{outputFormat ? '' : ` for ${item.format}s`})</span></p>)}
+          {missingDefaults.map(item => <p className="field-hint" key={item.format}>The project’s default {item.format} theme, {item.id}, is no longer available. Your agent will help choose one, or change it in Project settings.</p>)}
         </div>}
         <label className="create-field" htmlFor="create-brief">
           <span>Brief <span className="muted">(optional)</span></span>

@@ -3,7 +3,7 @@ import type { ThemePreview, ThemeSummary } from '../shared/themes';
 import { emptyThemeFolders, folderChildren, type ThemeFoldersManifest } from '../shared/theme-folders';
 import { emptyTags, filterKey } from '../shared/tags';
 import { documentName, documentFormat, formatLabel, type DocumentSummary } from '../shared/types';
-import type { Project } from '../shared/projects';
+import { projectThemeDefaults, type Project } from '../shared/projects';
 import { api } from './api';
 import { catalogPreview } from './catalogPreview';
 import { PdfPage, usePdf } from './Pdf';
@@ -137,7 +137,12 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
     void api('/api/context', { method: 'POST', body: JSON.stringify({ projectId: null, documentId: null, blockId: null, page: 1, themeId: theme?.id ?? null, selectedAsset: null }) }).catch(() => {});
   }, [theme?.id]);
   const usingDocuments = documents.filter(document => document.artifact?.meta.theme === theme?.id && theme);
-  const defaultProjects = projects.filter(project => project.defaultTheme === theme?.id && theme);
+  // A project can name this theme for documents, presentations, or both.
+  const defaultProjects = theme ? projects.flatMap(project => {
+    const defaults = projectThemeDefaults(project);
+    const label = defaults.document === theme.id ? defaults.presentation === theme.id ? 'Documents and presentations' : 'Documents' : defaults.presentation === theme.id ? 'Presentations' : '';
+    return label ? [{ project, label }] : [];
+  }) : [];
   const ordered = [...themes].sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
   const manifest = organization?.manifest ?? emptyThemeFolders();
   const organizing = Boolean(onOrganizationChange) && !organization?.error;
@@ -191,7 +196,7 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
             {theme.principles.length > 0 && <section><h2>System rules</h2><ul>{theme.principles.map(principle => <li key={principle}>{principle}</li>)}</ul></section>}
             {theme.useFor.length > 0 && <section><h2>Works well for</h2><p>{theme.useFor.join(' · ')}</p></section>}
             {usingDocuments.length > 0 && <section className="theme-used-by"><h2>Documents using {theme.name}</h2>{usingDocuments.map(document => <a key={document.id} href={`#document/${document.id}`}><Icon name={documentFormat(document) === 'presentation' ? 'monitor' : 'document'} size={16} /><span><bdi>{documentName(document)}</bdi><span className="theme-used-format"> · {formatLabel(documentFormat(document))}</span></span><Icon name="arrow" size={15} /></a>)}</section>}
-            {defaultProjects.length > 0 && <section className="theme-used-by"><h2>Project default</h2>{defaultProjects.map(project => <a key={project.id} href={`#project/${project.id}`}><Icon name="folder" size={16} /><span dir="auto">{project.name}</span><Icon name="arrow" size={15} /></a>)}</section>}
+            {defaultProjects.length > 0 && <section className="theme-used-by"><h2>Project default</h2>{defaultProjects.map(({ project, label }) => <a key={project.id} href={`#project/${project.id}`}><Icon name="folder" size={16} /><span><bdi>{project.name}</bdi><span className="theme-used-format"> · {label}</span></span><Icon name="arrow" size={15} /></a>)}</section>}
             {(organizing || tagging) && (themeFolder || themeTags.length > 0) && <section className="theme-organization"><h2>{organizing && tagging ? <>Folder &amp; tags</> : organizing ? 'Folder' : 'Tags'}</h2>
               <dl>{organizing && <div><dt>Folder</dt><dd>{themeFolder ? <a href={themesHash({ folder: themeFolder.id })}>{displayPath(manifest, themeFolder.id)}</a> : 'Themes (top level)'}</dd></div>}{tagging && <div><dt>Tags</dt><dd>{themeTags.length ? tagText(themeTags) : 'None'}</dd></div>}</dl>
               <div className="theme-organization-actions">{organizing && <Button className="text-button" data-theme-menu={theme.id} disabled={!connected} onClick={() => setFolderAction({ kind: 'move-theme', theme })}>Move to folder…</Button>}{tagging && <Button className="text-button" data-theme-tags={theme.id} disabled={!connected} onClick={() => editTags(theme, `[data-theme-tags="${theme.id}"]`)}>Edit tags…</Button>}</div>

@@ -66,3 +66,4 @@
 }
 .project-documents .documents-list .project-document { grid-template-columns: minmax(0, 1fr); }
 .notification-action { margin-top: 6px; }
+.help-dialog .field-hint.project-theme-hint { margin-top: 10px; }
