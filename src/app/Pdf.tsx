@@ -54,6 +54,10 @@ function rangeWithinSpan(element: HTMLElement, start: number, end: number): Rang
 
 type Rect = { left: number; top: number; width: number; height: number };
 
+function rangeKey(range: DocumentSelection | null | undefined) {
+  return range ? `${range.renderHash ?? ''}:${range.blockId}:${range.targetId ?? ''}:${range.start ?? ''}:${range.end ?? ''}` : '';
+}
+
 type CachedPdf = {
   loading: Promise<PDFDocumentLoadingTask>;
   ready: Promise<PDFDocumentProxy>;
@@ -139,7 +143,7 @@ type PdfPageProps = {
   artifact?: RenderArtifact;
   selected?: string | null;
   selection?: DocumentSelection | null;
-  commented?: Set<string>;
+  commented?: ReadonlySet<string>;
   /** Open phrase comments, highlighted where their text appears on this page. */
   commentPhrases?: DocumentSelection[];
   onSelect?: (id: string, page: number) => void;
@@ -209,8 +213,9 @@ export const PdfPage = memo(function PdfPage({
     (pageSize?.pdf === pdf && pageSize.number === number ? pageSize : null);
   const scale = width / (geometry?.width ?? 595.28);
   const height = scale * (geometry?.height ?? 841.89);
-  const highlightKey = JSON.stringify([artifact?.hash, selection?.renderHash, selection?.blockId, selection?.targetId, selection?.start, selection?.end, width, number,
-    commentPhrases?.map(phrase => [phrase.targetId, phrase.start, phrase.end])]);
+  // Identifies the highlighted ranges; rebuilt only when the selection or comments for this page change.
+  const highlightKey = useMemo(() => [artifact?.hash, width, number, rangeKey(selection), ...(commentPhrases ?? []).map(rangeKey)].join('|'),
+    [artifact?.hash, width, number, selection, commentPhrases]);
   const preciseTarget = selection?.targetId && Number.isInteger(selection.start) && Number.isInteger(selection.end) && selection.end! > selection.start!
     ? artifact?.textTargets?.find(target => target.id === selection.targetId && target.blockId === selection.blockId) : undefined;
   const fullTargetSelection = !!preciseTarget && selection?.start === 0 && selection?.end === preciseTarget.text.length;
@@ -226,7 +231,7 @@ export const PdfPage = memo(function PdfPage({
     setError("");
     setRendered(false);
     setTextReady(false);
-    setLinks([]);
+    setLinks(current => current.length ? [] : current);
     text.current?.replaceChildren();
     if (!renderPage || width <= 0) {
       if (canvas.current) {
@@ -328,7 +333,8 @@ export const PdfPage = memo(function PdfPage({
 
   useEffect(() => {
     const layer = text.current, page = container.current;
-    if (!textReady || !layer || !page) { setHighlightState({ key: highlightKey, rects: [], comments: [] }); return; }
+    // Without a text layer nothing is highlighted; the ranges are measured once it is ready.
+    if (!textReady || !layer || !page) return;
     const pageRect = page.getBoundingClientRect();
     const spans = Array.from(layer.querySelectorAll<HTMLElement>('[data-pdf-text]'));
     const rectsFor = (range: DocumentSelection) => spans.flatMap(span => {

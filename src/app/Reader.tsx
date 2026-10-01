@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Menu } from '@base-ui/react/menu';
 import { Popover } from '@base-ui/react/popover';
 import { PdfPage } from "./Pdf";
@@ -25,6 +25,7 @@ import { canCorrectComponent, correctionUnavailableReason, selectedTextTarget } 
 import { useNotificationClearance } from "./notificationClearance";
 import { carryRange, isPhrase, phraseFromText, savedPhrase, type TextRange } from './phraseSelection';
 import { missingGlyphs, pageList } from "./missingGlyphs";
+import { pageSlices, type PageSlice } from "./pageSlices";
 import { sessionForDocument, sourceIdentity } from './editSession';
 import { readOpenEditor, recoverEditor, type EditorBaseline, type OpenEditorRecord } from './editorRecovery';
 import "./selection.css";
@@ -51,6 +52,12 @@ function subscribeSheetLayout(change: () => void) {
   const query = window.matchMedia(sheetQuery);
   query.addEventListener('change', change);
   return () => query.removeEventListener('change', change);
+}
+/** A stable function that calls the latest handler, so memoized pages skip renders that do not concern them. */
+function useLatest<Args extends unknown[]>(handler: (...args: Args) => void) {
+  const latest = useRef(handler);
+  useLayoutEffect(() => { latest.current = handler; });
+  return useCallback((...args: Args) => latest.current(...args), []);
 }
 
 export function Reader({
@@ -684,6 +691,14 @@ export function Reader({
     const resolved = resolveCommentAnchor(artifact, comment);
     return resolved.status === 'attached' && resolved.selection?.targetId ? [resolved.selection] : [];
   }), [unresolvedComments, artifact]);
+  // Each page receives only its own share of the selection and comments, and stable handlers.
+  const previousSlices = useRef<PageSlice[]>([]);
+  const slices = useMemo(() => previousSlices.current = pageSlices(artifact, selection, commented, commentPhrases, previousSlices.current),
+    [artifact, selection, commented, commentPhrases]);
+  const selectFromPage = useLatest((block: string, number: number) => selectComponent({ blockId: block, page: number }));
+  const commentsFromPage = useLatest(viewComments);
+  const chooseFromPage = useLatest(selectComponent);
+  const editTextFromPage = useLatest(editFromPage);
   function showHistoryBlock(ids: string[]) {
     // A section's own ID may not render; derived and nested blocks still locate it.
     const found = ids.flatMap(item => ['', '-heading', '-title', '-lead'].map(suffix => item + suffix)).find(item => getBlock(artifact, item) && pages.some(page => page.fragments.some(fragment => fragment.id === item)))
@@ -858,15 +873,15 @@ export function Reader({
                     number={i + 1}
                     width={pageWidth(i)}
                     artifact={artifact}
-                    selected={selected}
-                    selection={selection}
-                    commented={commented}
-                    commentPhrases={commentPhrases}
-                    onSelect={(block, number) => selectComponent({ blockId: block, page: number })}
-                    onComment={viewComments}
-                    onTextClick={selectComponent}
-                    onPhraseSelect={selectComponent}
-                    onTextEdit={editFromPage}
+                    selected={slices[i]?.selection?.blockId ?? null}
+                    selection={slices[i]?.selection ?? null}
+                    commented={slices[i]?.commented}
+                    commentPhrases={slices[i]?.commentPhrases}
+                    onSelect={selectFromPage}
+                    onComment={commentsFromPage}
+                    onTextClick={chooseFromPage}
+                    onPhraseSelect={chooseFromPage}
+                    onTextEdit={editTextFromPage}
                     onNavigate={goPage}
                     label={`${pageLabel} ${i + 1} of ${pages.length}`}
                     keyboardHelp="reader-component-keys"
