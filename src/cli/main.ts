@@ -15,7 +15,7 @@ ${edition === 'headless'
   npx opendoc projects              Manage projects and membership
   npx opendoc templates             Inspect, check, and preview templates
   npx opendoc themes                Inspect, check, and preview themes
-  npx opendoc tags                  Tag documents, themes, and templates
+  npx opendoc tags                  Set types, status, and tags; find work
   npx opendoc assets                Manage fonts, logos, and bindings
   npx opendoc media                 Manage document-owned media
   npx opendoc comments              Read and resolve feedback

@@ -8,10 +8,11 @@ import { RenderFailure } from './render-error';
 import { ExportChangedError, publishPDF } from './export-file';
 import { inFolder, sortedFolders, themeFolder } from '../shared/theme-folders';
 import { hasTags } from '../shared/tags';
+import { parseLanguage } from '../shared/language';
 import { assignThemeFolder, cliFolderName, createThemeFolder, deleteThemeFolder, readThemeFolders, readThemeFoldersFile, renameThemeFolder, resolveFolderName, themeDirectories, themeFoldersFile, ThemeFoldersError } from './theme-folders';
 import { changeItemTags, itemTags, readTags } from './tags';
 
-const usage = `Usage: npx opendoc themes list [--folder <name|none>] [--tag <tag>] | inspect <id> | check <id> | preview <id> [--json]
+const usage = `Usage: npx opendoc themes list [--folder <name|none>] [--tag <tag>] [--language <language>] | inspect <id> | check <id> | preview <id> [--json]
        npx opendoc themes folders [list]
        npx opendoc themes folders create <name>
        npx opendoc themes folders rename <name> <new-name>
@@ -76,7 +77,7 @@ async function runOrganization(command: string, positionals: string[], values: {
 export async function runThemesCli(args: string[], root = process.cwd()): Promise<void> {
   const { values, positionals } = parseArgs({ args: args[0] === '--' ? args.slice(1) : args, allowPositionals: true, options: {
     json: { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
-    folder: { type: 'string' }, tag: { type: 'string', multiple: true },
+    folder: { type: 'string' }, tag: { type: 'string', multiple: true }, language: { type: 'string' },
     name: { type: 'string' }, parent: { type: 'string' }, set: { type: 'string' }, add: { type: 'string', multiple: true }, remove: { type: 'string', multiple: true },
   } });
   if (values.help) { console.log(values.json ? JSON.stringify({ usage }, null, 2) : usage); return; }
@@ -84,7 +85,7 @@ export async function runThemesCli(args: string[], root = process.cwd()): Promis
   const organization = ['folders', 'assign', 'tags'].includes(command);
   const options = Object.keys(values).filter(key => !['json', 'help'].includes(key));
   if (options.includes('parent')) throw new ThemeFoldersError(noParents);
-  if (!organization && options.some(key => command !== 'list' || !['folder', 'tag'].includes(key))) throw new Error(usage);
+  if (!organization && options.some(key => command !== 'list' || !['folder', 'tag', 'language'].includes(key))) throw new Error(usage);
   if (organization) {
     const allowed = command === 'tags' ? ['set', 'add', 'remove'] : command === 'folders' && id === 'update' ? ['name'] : [];
     if (options.some(key => !allowed.includes(key)) || (command === 'folders' && id === 'update' && !options.length)) throw new Error(usage);
@@ -102,11 +103,13 @@ export async function runThemesCli(args: string[], root = process.cwd()): Promis
       });
       const manifest = await optional(readThemeFolders(root), values.folder !== undefined);
       const tagged = await optional(readTags(root), Boolean(values.tag?.length));
-      // `--folder none` selects themes outside every folder; folder and tag filters combine.
+      // `--folder none` selects themes outside every folder; folder, tag, and language filters combine.
       const target = values.folder === undefined || !manifest ? undefined : resolveFolderName(manifest, values.folder);
-      const choices = (await catalog.list()).map(({ id, name, description, error }) => ({ id, name, description, error, folder: manifest ? themeFolder(manifest, id)?.name ?? null : null, tags: tagged?.themes[id] ?? [] }))
+      const language = values.language === undefined ? undefined : parseLanguage(values.language);
+      if (values.language !== undefined && !language) throw new Error('Choose a language of english, arabic, or bilingual.');
+      const choices = (await catalog.list()).map(({ id, name, description, language, error }) => ({ id, name, description, error, folder: manifest ? themeFolder(manifest, id)?.name ?? null : null, language: language ?? null, tags: tagged?.themes[id] ?? [] }))
         .filter(theme => (target === undefined || inFolder(manifest!, theme.id, target?.id ?? null))
-          && hasTags(theme.tags, values.tag ?? []));
+          && hasTags(theme.tags, values.tag ?? []) && (!language || theme.language === language));
       console.log(JSON.stringify(choices, null, 2));
     }
     else {

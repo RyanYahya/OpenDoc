@@ -239,9 +239,9 @@ test('the theme CLI reports and filters organization, and manages folders, assig
     json();
     await runThemesCli(['assign', 'civic-spectrum', 'Clients'], f.root);
     json();
-    // `themes tags` remains available and stores tags in tags.json; Technical is a standard tag.
+    // `themes tags` remains available and stores tags in tags.json; themes carry custom tags only.
     await runThemesCli(['tags', 'field-manual', '--set', 'Reports, Technical'], f.root);
-    assert.deepEqual(json().tags, ['Reports', 'technical']);
+    assert.deepEqual(json().tags, ['Reports', 'Technical']);
     await runThemesCli(['tags', 'neutral', '--add', 'reports', '--add', 'Warm'], f.root);
     assert.deepEqual(json().tags, ['Reports', 'Warm']);
     await runThemesCli(['tags', 'neutral', '--remove', 'WARM'], f.root);
@@ -254,6 +254,10 @@ test('the theme CLI reports and filters organization, and manages folders, assig
     assert.deepEqual((json() as { id: string; folder: string; tags: string[] }[]).map(({ id, folder, tags }) => ({ id, folder, tags })), [{ id: 'neutral', folder: 'Clients', tags: ['Reports'] }]);
     await runThemesCli(['list', '--tag', 'reports'], f.root);
     assert.deepEqual((json() as { id: string }[]).map(theme => theme.id).sort(), ['field-manual', 'neutral']);
+    await runThemesCli(['list', '--folder', 'Clients', '--language', 'english'], f.root);
+    assert.deepEqual((json() as { id: string; language: string }[]).map(({ id, language }) => [id, language]).sort(), [['civic-spectrum', 'english'], ['neutral', 'english']]);
+    await runThemesCli(['list', '--folder', 'Clients', '--language', 'arabic'], f.root);
+    assert.deepEqual(json(), []);
     await runThemesCli(['list', '--folder', 'none'], f.root);
     assert.ok((json() as { folder: string | null }[]).every(theme => theme.folder === null));
     await assert.rejects(runThemesCli(['list', '--folder', 'Missing'], f.root), /No theme folder is named/);
@@ -292,7 +296,7 @@ test('the theme CLI reports and filters organization, and manages folders, assig
     await runThemesCli(['list', '--tag', 'Reports'], f.root);
     assert.deepEqual((json() as { id: string }[]).map(theme => theme.id).sort(), ['field-manual', 'neutral']);
     await assert.rejects(runThemesCli(['list', '--folder', 'Clients'], f.root), /folders\.json is invalid/);
-    await writeFile(resolve(f.root, 'tags.json'), '{"version":2}');
+    await writeFile(resolve(f.root, 'tags.json'), '{"version":3}');
     await runThemesCli(['list'], f.root);
     assert.ok((json() as unknown[]).length > 1);
     await assert.rejects(runThemesCli(['list', '--tag', 'Reports'], f.root), /tags\.json is invalid/);
