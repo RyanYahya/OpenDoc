@@ -11,7 +11,7 @@
   border-radius: var(--control-radius);
   background: var(--popup-surface);
   color: var(--ink);
-  box-shadow: var(--shadow-popup);
+  box-shadow: var(--shadow-tooltip);
 }
 .ui-button.comment-dock-trigger:hover { background: var(--control-hover); }
 .ui-button.comment-dock-trigger[aria-expanded="true"] { color: var(--accent-ink); }
