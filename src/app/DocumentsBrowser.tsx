@@ -34,7 +34,7 @@ export function DocumentsBrowser({ format = 'document', projects, documents, loa
       const project = projectById.get(document.projectId ?? '');
       return <article className="project-document" key={document.id} role="listitem">
         <DocumentCard document={document} view={view} onAction={onAction} disabled={disabled} onOpen={() => { location.hash = `document/${document.id}`; }} />
-        {project ? <a className="document-project-link" href={`#project/${project.id}`}><Icon name="folder" size={15} /><span>{project.name}</span></a>
+        {project ? <a className="document-project-link" href={`#project/${project.id}`}><Icon name="folder" size={15} /><span dir="auto">{project.name}</span></a>
           : <Button className="text-button document-move" onClick={() => onMove(document)} disabled={!projects.length}>Choose a project</Button>}
       </article>;
     })}</div>
@@ -51,7 +51,7 @@ export function ProjectDocuments({ project, documents, loaded, view, onViewChang
   const visible = documents.filter(document => (format === 'all' || documentFormat(document) === format)
     && `${documentName(document)} ${document.artifact?.meta.description ?? ''}`.toLowerCase().includes(query.toLowerCase()));
   return <section className="library-content project-documents">
-    <div className="library-heading"><h1>{project.name}</h1><div className="project-actions">
+    <div className="library-heading"><h1 dir="auto">{project.name}</h1><div className="project-actions">
       <IconButton label="Project settings" onClick={onSettings}><Icon name="gear" size={18} /></IconButton>
       <Menu.Root><Menu.Trigger render={<Button className="primary project-create-trigger" disabled={!loaded || disabled} />}>
         <Icon name="plus" size={16} /><span>Create</span><Icon name="down" size={14} />

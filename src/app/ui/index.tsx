@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
 import { Button as BaseButton } from "@base-ui/react/button";
+import { Input as BaseInput } from "@base-ui/react/input";
 import { Toggle } from "@base-ui/react/toggle";
 import { Select } from "@base-ui/react/select";
 import { Tooltip } from "@base-ui/react/tooltip";
@@ -8,8 +9,12 @@ import { Icon } from "./Icon";
 import "./ui.css";
 
 export { Dialog } from "@base-ui/react/dialog";
-export { Input } from "@base-ui/react/input";
 export { Tabs } from "@base-ui/react/tabs";
+
+/** Entered text sets its own direction, so Arabic and mixed text edit correctly in the LTR app. */
+export function Input(props: BaseInput.Props) {
+  return <BaseInput dir="auto" {...props} />;
+}
 
 // Keep the Base UI composition and ref API available to every consumer.
 export type ButtonProps = BaseButton.Props & { static?: boolean };

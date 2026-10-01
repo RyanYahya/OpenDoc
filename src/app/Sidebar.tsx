@@ -45,7 +45,7 @@ function SidebarContent({ view, projectId, projects, documents, loaded, connecte
       <nav className="project-nav" aria-label="Projects">
         {projects.map(project => <div className={`sidebar-project-row ${project.id === projectId ? 'selected' : ''}`} key={project.id}>
           <a href={`#project/${project.id}`} onClick={onNavigate} aria-label={project.name} title={project.name} aria-current={view === 'project' && project.id === projectId ? 'page' : undefined}>
-            <Icon name="folder" size={17} /><span className="project-nav-name">{project.name}</span><span className="nav-count" aria-hidden="true">{documents.filter(document => document.projectId === project.id).length}</span>
+            <Icon name="folder" size={17} /><span className="project-nav-name" dir="auto">{project.name}</span><span className="nav-count" aria-hidden="true">{documents.filter(document => document.projectId === project.id).length}</span>
           </a>
           <IconButton label={`Settings for ${project.name}`} className="project-settings-shortcut" onClick={() => onProjectSettings(project)}><Icon name="settings" size={16} /></IconButton>
         </div>)}

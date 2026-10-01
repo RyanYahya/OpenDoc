@@ -79,14 +79,14 @@ function MediaEditorDialog({ editor, connected, onClose, onSaved }: {
       <Dialog.Description>{`For ${item.documentTitle}. Your image and prepared files stay together.`}</Dialog.Description>
       <form onSubmit={event => void save(event)} aria-busy={busy}>
         <fieldset disabled={busy || !connected} className="media-editor-fields">
-          <div className="media-editor-field"><label htmlFor={field('title')}>Title</label><input id={field('title')} value={title} onChange={event => setTitle(event.target.value)} maxLength={200} required /></div>
-          <div className="media-editor-field"><label htmlFor={field('description')}>Description</label><textarea id={field('description')} value={description} onChange={event => setDescription(event.target.value)} rows={3} maxLength={4000} required placeholder="What does this image show?" /></div>
+          <div className="media-editor-field"><label htmlFor={field('title')}>Title</label><input id={field('title')} dir="auto" value={title} onChange={event => setTitle(event.target.value)} maxLength={200} required /></div>
+          <div className="media-editor-field"><label htmlFor={field('description')}>Description</label><textarea id={field('description')} dir="auto" value={description} onChange={event => setDescription(event.target.value)} rows={3} maxLength={4000} required placeholder="What does this image show?" /></div>
           <div className="media-editor-field"><span>Kind</span><SelectControl label="Media kind" value={kind} onValueChange={value => setKind(value as MediaKind)} items={kinds} /></div>
           <details className="media-editor-optional" open={!!(item?.meta?.alt || item?.meta?.attribution || item?.meta?.sources?.length)}>
             <summary>Accessibility & sources <span>Optional</span></summary>
-            <div className="media-editor-field"><label htmlFor={field('alt')}>Alternative text</label><textarea id={field('alt')} value={alt} onChange={event => setAlt(event.target.value)} rows={2} placeholder="A useful description for someone who cannot see the image." /></div>
-            <div className="media-editor-field"><label htmlFor={field('attribution')}>Attribution</label><textarea id={field('attribution')} value={attribution} onChange={event => setAttribution(event.target.value)} rows={2} placeholder="Creator, credit, or evidence limitations." /></div>
-            <div className="media-editor-field"><label htmlFor={field('sources')}>Source notes</label><textarea id={field('sources')} value={sources} onChange={event => setSources(event.target.value)} rows={3} placeholder="One note or source location per line." /><p className="field-hint">Notes for you and your agent. Links and files are not opened or copied.</p></div>
+            <div className="media-editor-field"><label htmlFor={field('alt')}>Alternative text</label><textarea id={field('alt')} dir="auto" value={alt} onChange={event => setAlt(event.target.value)} rows={2} placeholder="A useful description for someone who cannot see the image." /></div>
+            <div className="media-editor-field"><label htmlFor={field('attribution')}>Attribution</label><textarea id={field('attribution')} dir="auto" value={attribution} onChange={event => setAttribution(event.target.value)} rows={2} placeholder="Creator, credit, or evidence limitations." /></div>
+            <div className="media-editor-field"><label htmlFor={field('sources')}>Source notes</label><textarea id={field('sources')} dir="auto" value={sources} onChange={event => setSources(event.target.value)} rows={3} placeholder="One note or source location per line." /><p className="field-hint">Notes for you and your agent. Links and files are not opened or copied.</p></div>
           </details>
           {(item?.meta?.data || item?.meta?.recipe || kind === 'chart' || kind === 'diagram') && <p className="field-hint media-review-note">Your agent manages prepared data, recipes, and review. Saving details does not review or regenerate the image.</p>}
         </fieldset>
@@ -107,10 +107,10 @@ function MediaImage({ item }: { item: MediaItem }) {
 function Ownership({ item, format, connected, onEdit }: { item: MediaItem; format: DocumentFormat; connected: boolean; onEdit: (item: MediaItem) => void }) {
   const { location, note } = mediaLocation(item, format);
   return <section className="media-ownership">
-    <h3><a href={`#document/${item.documentId}`}>{item.documentTitle}<Icon name="arrow" size={16} /></a></h3>
+    <h3><a href={`#document/${item.documentId}`}><bdi>{item.documentTitle}</bdi><Icon name="arrow" size={16} /></a></h3>
     <p className="small muted" title={item.folder}>{location}</p>
-    <div className="media-item-heading"><h4>{item.meta?.title ?? item.id}</h4>{item.meta && <Button className="text-button" disabled={!connected || !item.metadataRevision} onClick={() => onEdit(item)}>Edit details</Button>}</div>
-    {item.meta?.description && <p>{item.meta.description}</p>}
+    <div className="media-item-heading"><h4 dir="auto">{item.meta?.title ?? item.id}</h4>{item.meta && <Button className="text-button" disabled={!connected || !item.metadataRevision} onClick={() => onEdit(item)}>Edit details</Button>}</div>
+    {item.meta?.description && <p dir="auto">{item.meta.description}</p>}
     {item.error ? <p role="alert" className="media-problem">{item.error}</p> : <p className={item.freshness === 'stale' || item.freshness === 'unrecorded' ? 'media-problem' : 'small muted'}>{labels[item.freshness]}{item.changedInputs?.length ? `: ${item.changedInputs.join(', ')}` : ''}</p>}
     {note && <p className="small">{note}</p>}
     {item.meta?.attribution && <p className="small">{item.meta.attribution}</p>}

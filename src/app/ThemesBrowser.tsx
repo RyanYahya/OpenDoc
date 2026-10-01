@@ -114,8 +114,8 @@ type GalleryOrganization = { manifest: ThemeFoldersManifest; showFolder: boolean
 function ThemeGallery({ themes, generation, onRefresh, organize }: { themes: ThemeSummary[]; generation: number; onRefresh: () => void; organize?: GalleryOrganization }) {
   return <div className="theme-gallery">{themes.map(theme => <article className="theme-gallery-card" key={theme.id} onDragStart={organize && !organize.disabled ? event => startThemeDrag(event, theme.id) : undefined}>
     <div className="theme-gallery-preview"><ThemeSpecimen theme={theme} generation={generation} onRefresh={onRefresh} /><ThemePalette theme={theme} compact /><a className="theme-preview-link" href={`#themes/${theme.id}`} aria-label={`Explore ${theme.name}`} />{organize && <ThemeMenu theme={theme} disabled={organize.disabled} onAction={organize.onAction} />}</div>
-    <h2><a href={`#themes/${theme.id}`}>{theme.name}<Icon name="arrow" size={17} /></a></h2>
-    {theme.description && <p className="theme-gallery-description">{theme.description}</p>}
+    <h2><a href={`#themes/${theme.id}`}><bdi>{theme.name}</bdi><Icon name="arrow" size={17} /></a></h2>
+    {theme.description && <p className="theme-gallery-description" dir="auto">{theme.description}</p>}
     {organize && <ThemeCardMeta theme={theme} manifest={organize.manifest} showFolder={organize.showFolder} />}
   </article>)}</div>;
 }
@@ -171,7 +171,7 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
       {theme ? <div className="theme-detail-layout">
         <ThemeSpecimen key={theme.id} theme={theme} generation={generation} allPages onRefresh={onRefresh} />
         <aside className="theme-options">
-          <header><h1>{theme.name}</h1><p className="lead">{theme.description}</p></header>
+          <header><h1 dir="auto">{theme.name}</h1><p className="lead" dir="auto">{theme.description}</p></header>
           <div className="theme-actions"><Button className="primary" disabled={Boolean(theme.error)} onClick={() => setCreateOpen(true)}>Create with this theme</Button><Button onClick={() => setPromptOpen(true)} aria-describedby="theme-adapt-hint">Adapt this theme</Button><p id="theme-adapt-hint" className="theme-action-hint">Have your coding agent revise this theme or build a new one from it.</p><GuideDialog key={theme.id} kind="theme" id={theme.id} name={theme.name} generation={theme.revision ?? generation} /></div>
           {theme.assetError && <p className="field-error" role="alert">{theme.assetError}</p>}
           <AssetThemeDefaults key={theme.id} themeId={theme.id} generation={generation} connected={connected} />
@@ -181,8 +181,8 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
             {Boolean(theme.geometry?.length) && <section><h2>Geometry &amp; layout</h2><ul>{theme.geometry!.map(rule => <li key={rule}>{rule}</li>)}</ul></section>}
             {theme.principles.length > 0 && <section><h2>System rules</h2><ul>{theme.principles.map(principle => <li key={principle}>{principle}</li>)}</ul></section>}
             {theme.useFor.length > 0 && <section><h2>Works well for</h2><p>{theme.useFor.join(' · ')}</p></section>}
-            {usingDocuments.length > 0 && <section className="theme-used-by"><h2>Documents using {theme.name}</h2>{usingDocuments.map(document => <a key={document.id} href={`#document/${document.id}`}><Icon name={documentFormat(document) === 'presentation' ? 'monitor' : 'document'} size={16} /><span>{documentName(document)}<span className="theme-used-format"> · {formatLabel(documentFormat(document))}</span></span><Icon name="arrow" size={15} /></a>)}</section>}
-            {defaultProjects.length > 0 && <section className="theme-used-by"><h2>Project default</h2>{defaultProjects.map(project => <a key={project.id} href={`#project/${project.id}`}><Icon name="folder" size={16} /><span>{project.name}</span><Icon name="arrow" size={15} /></a>)}</section>}
+            {usingDocuments.length > 0 && <section className="theme-used-by"><h2>Documents using {theme.name}</h2>{usingDocuments.map(document => <a key={document.id} href={`#document/${document.id}`}><Icon name={documentFormat(document) === 'presentation' ? 'monitor' : 'document'} size={16} /><span><bdi>{documentName(document)}</bdi><span className="theme-used-format"> · {formatLabel(documentFormat(document))}</span></span><Icon name="arrow" size={15} /></a>)}</section>}
+            {defaultProjects.length > 0 && <section className="theme-used-by"><h2>Project default</h2>{defaultProjects.map(project => <a key={project.id} href={`#project/${project.id}`}><Icon name="folder" size={16} /><span dir="auto">{project.name}</span><Icon name="arrow" size={15} /></a>)}</section>}
             {organizing && (themeFolder || themeTags.length > 0) && <section className="theme-organization"><h2>Folder &amp; tags</h2>
               <dl><div><dt>Folder</dt><dd>{themeFolder ? <a href={themesHash({ folder: themeFolder.id })}>{displayPath(manifest, themeFolder.id)}</a> : 'Themes (top level)'}</dd></div><div><dt>Tags</dt><dd>{themeTags.length ? themeTags.join(' · ') : 'None'}</dd></div></dl>
               <div className="theme-organization-actions"><Button className="text-button" data-theme-menu={theme.id} disabled={!connected} onClick={() => setFolderAction({ kind: 'move-theme', theme })}>Move to folder…</Button><Button className="text-button" disabled={!connected} onClick={() => setFolderAction({ kind: 'tags', theme })}>Edit tags…</Button></div>

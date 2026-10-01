@@ -16,7 +16,7 @@ export function Markdown({ children, file, onNavigate, onReady }: { children: st
     for (let count = 1; headings.has(unique); count += 1) unique = `${slug}-${count}`;
     headings.add(unique);
     const Tag = `h${level}` as const;
-    return <Tag id={`guide-${unique}`} data-guide-heading={unique}>{children}</Tag>;
+    return <Tag id={`guide-${unique}`} data-guide-heading={unique} dir="auto">{children}</Tag>;
   }
   return <div className="markdown-body">
     <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml components={{
@@ -29,6 +29,13 @@ export function Markdown({ children, file, onNavigate, onReady }: { children: st
       h1: ({ children }) => heading(1, children), h2: ({ children }) => heading(2, children), h3: ({ children }) => heading(3, children),
       h4: ({ children }) => heading(4, children), h5: ({ children }) => heading(5, children), h6: ({ children }) => heading(6, children),
       table: ({ node: _node, ...props }) => <div className="markdown-table"><table {...props} /></div>,
+      // Each block takes its direction from its own first strong character; the guide frame stays LTR.
+      p: ({ node: _node, ...props }) => <p dir="auto" {...props} />,
+      ul: ({ node: _node, ...props }) => <ul dir="auto" {...props} />,
+      ol: ({ node: _node, ...props }) => <ol dir="auto" {...props} />,
+      blockquote: ({ node: _node, ...props }) => <blockquote dir="auto" {...props} />,
+      th: ({ node: _node, ...props }) => <th dir="auto" {...props} />,
+      td: ({ node: _node, ...props }) => <td dir="auto" {...props} />,
     }}>{children}</ReactMarkdown>
   </div>;
 }

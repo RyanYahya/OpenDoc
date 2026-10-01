@@ -91,7 +91,7 @@ export function CommentDock({
             if (!connected || busy || !editing.text.trim() || editing.text.trim() === comment.text) return;
             void onSaveEdit(comment);
           }}>
-            <textarea ref={editField} aria-label="Edit comment" value={editing.text} maxLength={8000} readOnly={busy} onChange={event => onEditText(event.target.value)} />
+            <textarea ref={editField} dir="auto" aria-label="Edit comment" value={editing.text} maxLength={8000} readOnly={busy} onChange={event => onEditText(event.target.value)} />
             <div className="correction-actions">
               <Button disabled={busy} onClick={onCancelEdit}>Cancel</Button>
               <Button className="primary" type="submit" disabled={!connected || busy || !editing.text.trim() || editing.text.trim() === comment.text}>{changing === comment.id ? 'Saving…' : 'Save'}</Button>
@@ -103,7 +103,7 @@ export function CommentDock({
                 <span className="comment-status">{comment.status === 'resolved' ? <><Icon name="check" size={11} />Resolved</> : 'Open'}</span>
                 <CommentTime value={comment.createdAt} />
               </span>
-              <span className="comment-text">{comment.text}</span>
+              <span className="comment-text" dir="auto">{comment.text}</span>
             </Button>
             <div className="comment-row-actions">
               <IconButton label="Edit comment" disabled={!connected || busy} onClick={() => onEdit(comment)}><Icon name="edit" size={15} /></IconButton>

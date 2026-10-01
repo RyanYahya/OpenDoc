@@ -45,7 +45,7 @@ export function DocumentCard({
         <CoverPreview format={documentFormat(document)} id={id} artifact={artifact} compact={view === 'list'} />
         {view === 'gallery' && <span id={statusId} className="card-preview-status">{statusLabel}</span>}
       </div>
-      <h2 id={titleId} title={documentName(document)}>{documentName(document)}</h2>
+      <h2 id={titleId} title={documentName(document)} dir="auto">{documentName(document)}</h2>
       {/* Same-titled documents and presentations stay distinguishable by sight and by name. */}
       <span className="card-meta"><span id={formatId} className="card-format"><Icon name={presentation ? 'monitor' : 'document'} size={14} />{formatLabel(format)}</span>{view === 'list' && <span id={statusId}>{statusLabel}</span>}</span>
     </Button><IconButton className="document-history-trigger" label={`Previous exports for ${documentLabel(document)}`} disabled={disabled} onClick={() => onAction(document, 'exports')}><Icon name="history" size={14} /></IconButton><DocumentMenu document={document} onAction={onAction} disabled={disabled} /></div>

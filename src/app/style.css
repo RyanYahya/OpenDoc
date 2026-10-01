@@ -191,7 +191,7 @@ nav a.active {
 }
 .document-card {
   display: block;
-  text-align: left;
+  text-align: start;
   border: 0;
   background: transparent;
   padding: 0;
@@ -751,7 +751,7 @@ nav a.active {
 /* Keep the PDF surfaces independent of shared control spacing and hover fills. */
 .ui-button.document-card {
   display: block;
-  text-align: left;
+  text-align: start;
   border: 0;
   background: transparent;
   padding: 0;
@@ -990,7 +990,7 @@ a {
   background: transparent;
   border: 0;
   padding: 9px 6px;
-  text-align: left;
+  text-align: start;
   font-size: var(--caption-size);
   line-height: 1.45;
   color: var(--muted);
@@ -1006,10 +1006,10 @@ a {
   font-weight: 500;
 }
 .ui-button.outline-entry.level-2 {
-  padding-left: 16px;
+  padding-inline-start: 16px;
 }
 .ui-button.outline-entry.level-3 {
-  padding-left: 26px;
+  padding-inline-start: 26px;
 }
 .outline-page {
   flex-shrink: 0;
