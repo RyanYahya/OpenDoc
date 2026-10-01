@@ -10,16 +10,22 @@ const options = [
   { value: 'dark', label: 'Dark', icon: 'moon' },
 ] as const;
 
-export function AppearanceMenuItems({ value, onChange }: { value: Appearance; onChange: (value: Appearance) => void }) {
-  return <Menu.Group className="ui-menu-group">
-    <Menu.GroupLabel className="ui-menu-label">Appearance</Menu.GroupLabel>
-    <Menu.RadioGroup value={value} onValueChange={onChange}>
-      {options.map(option => <Menu.RadioItem key={option.value} value={option.value} closeOnClick className="ui-menu-item">
-        <Icon name={option.icon} size={16} /><span>{option.label}</span>
-        <Menu.RadioItemIndicator className="ui-menu-check"><Icon name="check" size={14} /></Menu.RadioItemIndicator>
-      </Menu.RadioItem>)}
-    </Menu.RadioGroup>
-  </Menu.Group>;
+/** Appearance inside an options menu, as one row that opens the three choices. */
+export function AppearanceSubmenu({ value, onChange }: { value: Appearance; onChange: (value: Appearance) => void }) {
+  const selected = options.find(option => option.value === value)!;
+  return <Menu.SubmenuRoot>
+    <Menu.SubmenuTrigger className="ui-menu-item"><Icon name={selected.icon} size={16} /><span>Appearance</span><span className="ui-menu-value">{selected.label}</span><Icon name="right" size={14} /></Menu.SubmenuTrigger>
+    <Menu.Portal><Menu.Positioner className="ui-positioner" sideOffset={4} alignOffset={-4} collisionPadding={8}>
+      <Menu.Popup className="ui-menu-popup" aria-label="Appearance">
+        <Menu.RadioGroup value={value} onValueChange={onChange}>
+          {options.map(option => <Menu.RadioItem key={option.value} value={option.value} closeOnClick className="ui-menu-item">
+            <Icon name={option.icon} size={16} /><span>{option.label}</span>
+            <Menu.RadioItemIndicator className="ui-menu-check"><Icon name="check" size={14} /></Menu.RadioItemIndicator>
+          </Menu.RadioItem>)}
+        </Menu.RadioGroup>
+      </Menu.Popup>
+    </Menu.Positioner></Menu.Portal>
+  </Menu.SubmenuRoot>;
 }
 
 export function AppearanceControl({ value, onChange }: { value: Appearance; onChange: (value: Appearance) => void }) {

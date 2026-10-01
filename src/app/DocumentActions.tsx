@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Menu } from '@base-ui/react/menu';
 import { documentName, documentFormat, type DocumentSummary } from '../shared/types';
 import { api } from './api';
@@ -10,14 +10,20 @@ export type DocumentActionHandler = (document: DocumentSummary, action: Document
 /** A document and presentation may share a title; their controls still need distinct names. */
 export const documentLabel = (document: DocumentSummary) => `${documentName(document)} (${documentFormat(document)})`;
 
-export function DocumentMenuItems({ document, disabled, onAction }: { document: DocumentSummary; disabled?: boolean; onAction: DocumentActionHandler }) {
+/**
+ * Document actions in three groups: edit and organize, saved exports, then Delete. `exports`
+ * is omitted where another control on the same screen already opens Previous exports, such as
+ * the reader's Export dropdown. `children` adds a screen-specific group before Delete.
+ */
+export function DocumentMenuItems({ document, disabled, onAction, exports = true, children }: { document: DocumentSummary; disabled?: boolean; onAction: DocumentActionHandler; exports?: boolean; children?: ReactNode }) {
   return <>
-    <Menu.Item className="ui-menu-item" disabled={disabled} onClick={() => onAction(document, 'exports')}><Icon name="archive" size={16} /><span>Previous exports</span></Menu.Item>
-    <Menu.Separator className="ui-menu-separator" />
     <Menu.Item className="ui-menu-item" disabled={disabled} onClick={() => onAction(document, 'rename')}><Icon name="edit" size={16} /><span>Rename</span></Menu.Item>
     <Menu.Item className="ui-menu-item" disabled={disabled || !document.projectId} onClick={() => onAction(document, 'duplicate')}><Icon name="copy" size={16} /><span>Duplicate</span></Menu.Item>
     <Menu.Item className="ui-menu-item" disabled={disabled} onClick={() => onAction(document, 'move')}><Icon name="folder" size={16} /><span>Move to project…</span></Menu.Item>
     <Menu.Item className="ui-menu-item" disabled={disabled} onClick={() => onAction(document, 'tags')}><Icon name="tag" size={16} /><span>Edit tags…</span></Menu.Item>
+    {exports && <><Menu.Separator className="ui-menu-separator" />
+      <Menu.Item className="ui-menu-item" disabled={disabled} onClick={() => onAction(document, 'exports')}><Icon name="archive" size={16} /><span>Previous exports</span></Menu.Item></>}
+    {children && <><Menu.Separator className="ui-menu-separator" />{children}</>}
     <Menu.Separator className="ui-menu-separator" />
     <Menu.Item className="ui-menu-item ui-menu-item-danger" disabled={disabled} onClick={() => onAction(document, 'delete')}><Icon name="trash" size={16} /><span>Delete</span></Menu.Item>
   </>;

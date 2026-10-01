@@ -215,7 +215,10 @@
 .ui-popover-popup .ui-menu-item { width: 100%; justify-content: flex-start; border: 0; text-decoration: none; }
 .ui-popover-popup .ui-menu-item:hover { background: var(--control-hover); }
 .ui-menu-item > svg { flex-shrink: 0; color: var(--muted); }
-.ui-menu-item > span:not(.pill):not(.ui-menu-check) { flex: 1; min-width: 0; }
+.ui-menu-item > span:not(.pill):not(.ui-menu-check):not(.ui-menu-value) { flex: 1; min-width: 0; }
+/* The current choice behind a submenu row, e.g. Appearance → System. */
+.ui-menu-value { color: var(--muted); white-space: nowrap; }
+.ui-menu-item[data-popup-open] { background: var(--control-hover); }
 .ui-menu-item[data-disabled], .ui-select-item[data-disabled] { opacity: 0.45; cursor: default; }
 .ui-menu-check { margin-inline-start: auto; display: flex; }
 .ui-menu-label { margin: 0; padding: var(--menu-item-padding); font-size: var(--menu-font-size); line-height: var(--menu-leading); font-weight: 500; color: var(--muted); }

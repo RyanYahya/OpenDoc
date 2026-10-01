@@ -9,7 +9,7 @@ import { CreateDocumentDialog } from "./CreateDocumentDialog";
 import { ProjectDialog, MoveDocumentDialog } from "./ProjectDialogs";
 import { ProjectDocuments, DocumentsBrowser } from "./DocumentsBrowser";
 import { Sidebar } from "./Sidebar";
-import { AppearanceMenuItems } from "./AppearanceControl";
+import { AppearanceSubmenu } from "./AppearanceControl";
 import { DocumentActionDialog, DocumentMenuItems, type DocumentActionHandler } from "./DocumentActions";
 import { useAppearance } from "./appearance";
 import { useDocumentView } from "./DocumentViewControl";
@@ -209,10 +209,9 @@ function App() {
           <IconButton label={`Back to ${backLabel}`} className="reader-back" render={<a href={`#${backHash}`} />} nativeButton={false}><Icon name="left" size={17} /></IconButton>
           <div className="reader-document"><a href={project ? `#project/${project.id}` : "#library"} title={project?.name ?? "Documents"} dir="auto">{project?.name ?? "Documents"}</a><span className="reader-context-separator" aria-hidden="true">/</span><span className="reader-document-title" title={documentName(active)} dir="auto">{documentName(active)}</span></div>
         </>}
-        options={<>
-          <DocumentMenuItems document={active} onAction={onDocumentAction} disabled={!connected || duplicating} />
-          <AppearanceMenuItems value={appearance} onChange={changeAppearance} />
-        </>}
+        options={<DocumentMenuItems document={active} onAction={onDocumentAction} disabled={!connected || duplicating} exports={false}>
+          <AppearanceSubmenu value={appearance} onChange={changeAppearance} />
+        </DocumentMenuItems>}
       /> : <div className="empty-state"><h1>{loaded ? "Document not found" : error ? "Workspace unavailable" : "Loading document…"}</h1><p>{loaded ? "Its source may have been moved or removed from this workspace." : "Opening your local workspace."}</p><Button onClick={() => go("library")}>Back to documents</Button></div>
         : current.view === "project" ? project ? <ProjectDocuments key={project.id} project={project} documents={projectDocuments} tags={tagState} loaded={loaded} view={documentView} onViewChange={changeDocumentView} onCreate={() => createDocument()} onCreatePresentation={() => createDocument('presentation')} onSettings={() => setProjectDialog({ project })} onAction={onDocumentAction} disabled={!connected || duplicating} /> : <div className="empty-state"><h1>{loaded ? "Project not found" : "Loading project…"}</h1><p>{loaded ? "It may have been removed. Your other projects are still available." : "Opening your local workspace."}</p><Button onClick={() => go("library")}>Back to documents</Button></div>
         : current.view === "assets" ? <AssetsBrowser selection={current.id} generation={generation} documents={documents} themes={themes} connected={connected} />
