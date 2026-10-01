@@ -63,6 +63,14 @@ test('PowerPoint uses the exact captured preview, native rich text, images, and 
     if (title.kind.type !== 'Heading') throw new Error('Expected the title heading.');
     title.kind.content = arabic; titleLine.textContent = arabic;
     sourceNode(rtl.doc.children[1], 'The final slide.')!.style = { ...sourceNode(rtl.doc.children[1], 'The final slide.')!.style, direction: 'rtl' } as never;
+    const withDirection = (node: ElementInfo, direction?: string) => { const style = { ...node.style } as Record<string, unknown>; if (direction) style.direction = direction; else delete style.direction; node.style = style as never; };
+    // The engine reports each line's resolved direction; the deck follows it so it matches the PDF.
+    withDirection(titleLine, 'ltr');
+    assert.doesNotMatch(xml(await readZip(await presentationBytes(rtl)), 'ppt/slides/slide1.xml').split('<a:p>').find(paragraph => paragraph.includes('التجريبي'))!, /rtl="1"/, 'A line resolved left to right stays left to right.');
+    withDirection(titleLine, 'rtl');
+    // Without a resolved line direction (older layouts), the authored style decides.
+    const finalBox = layoutNode(rtl.layout.pages[1].elements[0], 'The final slide.')!;
+    finalBox.children.filter(child => child.nodeType === 'TextLine').forEach(line => withDirection(line));
     const rtlParts = await readZip(await presentationBytes(rtl)), rtlSlide = xml(rtlParts, 'ppt/slides/slide1.xml');
     const paragraphOf = (slideXml: string, text: string) => slideXml.split('<a:p>').find(paragraph => paragraph.includes(text))!;
     // The PDF line is flush left, so the export keeps that alignment while marking the paragraph RTL.
