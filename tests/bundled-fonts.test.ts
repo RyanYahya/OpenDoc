@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { create as createFont, type Font } from 'fontkit';
 import { AssetStore } from '../src/assets/store';
 import { prepareFonts } from '../src/assets/imports';
 import { assetFile, readAssetHead, readAssetRevision } from '../src/assets/files';
@@ -38,6 +39,41 @@ test('five Google Fonts families ship with all six original faces, licenses, pro
     }))));
     assert.deepEqual(checked.compatibility, { status: 'ready', defaultEligible: true }, `${name} must pass with the installed PDF engine.`);
   }
+});
+
+test('Noto Naskh Arabic ships its official release faces with Arabic, Latin, and digit coverage', async () => {
+  const id = 'noto-naskh-arabic';
+  const head = readAssetHead(projectRoot, 'font', id);
+  assert.equal(head.builtIn, true);
+  const font = readAssetRevision(projectRoot, 'font', id, head.revision);
+  if (font.kind !== 'font') throw new Error('Expected font.');
+  assert.equal(font.name, 'Noto Naskh Arabic');
+  assert.deepEqual(font.faces.map(face => `${face.weight}-${face.style}`).sort(), ['400-normal', '500-normal', '600-normal', '700-normal']);
+  const folder = resolve(projectRoot, 'assets/fonts', id);
+  assert.match(await readFile(resolve(folder, 'OFL.txt'), 'utf8'), /SIL OPEN FONT LICENSE Version 1\.1/);
+  const source = JSON.parse(await readFile(resolve(folder, 'source.json'), 'utf8'));
+  assert.match(source.archive.url, /^https:\/\/github\.com\/notofonts\/arabic\/releases\/download\/NotoNaskhArabic-v[\d.]+\//);
+  const arabic = Array.from({ length: 0x064a - 0x0621 + 1 }, (_, n) => 0x0621 + n);
+  const required = [...arabic, ...Array.from({ length: 10 }, (_, n) => 0x0660 + n), 0x060c, 0x061b, 0x061f, ...Array.from({ length: 95 }, (_, n) => 0x20 + n)];
+  for (const face of font.faces) {
+    const original = source.files.find((file: { sha256: string }) => file.sha256 === face.file.hash);
+    assert.ok(original);
+    assert.equal(original.assetFile, face.file.file);
+    assert.equal(original.url, source.archive.url);
+    // Mixed Arabic and English text needs Latin letters in the same family; the release's hinted build lacks them.
+    const parsed = createFont(await readFile(assetFile(projectRoot, 'font', id, face.file))) as Font;
+    const missing = required.filter(code => !parsed.hasGlyphForCodePoint(code));
+    assert.deepEqual(missing.map(code => code.toString(16)), [], `${face.id} covers Arabic letters, both digit sets, and printable ASCII`);
+    const features = new Set(parsed.availableFeatures);
+    for (const feature of ['init', 'medi', 'fina', 'rlig']) assert.ok(features.has(feature), `${face.id} keeps the ${feature} shaping feature`);
+  }
+  assert.ok(font.specimen);
+  assetFile(projectRoot, 'font', id, font.specimen);
+  assert.deepEqual(font.compatibility, { status: 'ready', defaultEligible: true });
+  const checked = await prepareFonts(projectRoot, await Promise.all(font.faces.map(async face => ({
+    filename: face.file.file, bytes: await readFile(assetFile(projectRoot, 'font', id, face.file)),
+  }))));
+  assert.deepEqual(checked.compatibility, { status: 'ready', defaultEligible: true });
 });
 
 test('file-only import reads embedded family and description even when the upload is renamed', async () => {

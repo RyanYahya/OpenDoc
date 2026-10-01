@@ -149,7 +149,7 @@ A theme gives documents their visual character: typography, color, spacing, page
 
 Also included: **Neutral**, a quiet starting point, and **McKinsey Consulting**, an independent consulting-inspired theme with structured exhibits. OpenDoc is not affiliated with McKinsey & Company.
 
-Themes and templates remain editable in your workspace. Shared font families include Geist, Inter, Roboto, Open Sans, Lato, and Merriweather, with their licenses. [Theme authoring →](docs/THEMES.md) · [Fonts and logos →](docs/ASSETS.md)
+Themes and templates remain editable in your workspace. Shared font families include Geist, Inter, Roboto, Open Sans, Lato, Merriweather, and Noto Naskh Arabic, with their licenses. [Theme authoring →](docs/THEMES.md) · [Fonts and logos →](docs/ASSETS.md)
 
 ## Made with OpenDoc
 

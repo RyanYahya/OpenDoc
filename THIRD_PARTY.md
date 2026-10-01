@@ -36,6 +36,12 @@ Each `assets/fonts/<family-id>/` folder retains `OFL.txt` with the original copy
 
 The bundled revisions include PDF compatibility results and specimens. The app uses those checks to determine eligibility for theme defaults; `tests/bundled-fonts.test.ts` and `tests/font-renderer.test.ts` cover the bundled files and text rendering, while `tests/font-subset.test.ts` checks metadata in the actual embedded font streams. Original font files, names, shaping tables, and hashes are preserved.
 
+## Noto Naskh Arabic
+
+Noto Naskh Arabic 2.021 is bundled as the shared `noto-naskh-arabic` font asset under the SIL Open Font License 1.1, with regular (400), medium (500), semibold (600), and bold (700) faces. The family has no italics. The files are the static TTFs from the `full/ttf` folder of the Noto project's official `NotoNaskhArabic-v2.021` release archive, preserved byte for byte. That build includes Latin letters, digits, and punctuation alongside Arabic, so mixed Arabic and English text can use one family; the release's `hinted/ttf` build omits Latin. `assets/fonts/noto-naskh-arabic/` retains `OFL.txt` and `source.json` with the release and archive URLs, the archive's SHA-256 hash, each file's path inside the archive and SHA-256 hash, and its managed asset path. Its bundled revision includes a PDF compatibility result and specimen; `tests/bundled-fonts.test.ts` checks the files, provenance, Arabic and Latin coverage, and shaping features.
+
+- Noto Naskh Arabic: https://github.com/notofonts/arabic
+
 ## Geist and interface fonts
 
 Geist is distributed under SIL OFL 1.1. Its copyright and license are retained in `assets/ui-fonts/geist/OFL.txt` and `assets/fonts/geist/OFL.txt`. The interface uses variable WOFF2 files from `@fontsource-variable/geist` 5.3.0, with package provenance and exact hashes in `assets/ui-fonts/geist/source.json`. The shared document asset contains static regular, medium, and bold faces, with hashes and a PDF specimen recorded in its immutable revision. Upstream: https://github.com/vercel/geist-font

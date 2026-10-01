@@ -1,0 +1,51 @@
+{
+  "family": "Noto Naskh Arabic",
+  "version": "2.021",
+  "release": "https://github.com/notofonts/arabic/releases/tag/NotoNaskhArabic-v2.021",
+  "repositoryCommit": "59f5a3fd985bf24858915c3dddfc51a537640965",
+  "archive": {
+    "url": "https://github.com/notofonts/arabic/releases/download/NotoNaskhArabic-v2.021/NotoNaskhArabic-v2.021.zip",
+    "sha256": "6c050ab9bd087d69b733c505a7576e60c528c2f33cd7b91005a5bd7da4514032"
+  },
+  "license": "https://raw.githubusercontent.com/notofonts/arabic/59f5a3fd985bf24858915c3dddfc51a537640965/OFL.txt",
+  "files": [
+    {
+      "filename": "NotoNaskhArabic-Regular.ttf",
+      "url": "https://github.com/notofonts/arabic/releases/download/NotoNaskhArabic-v2.021/NotoNaskhArabic-v2.021.zip",
+      "archivePath": "NotoNaskhArabic/full/ttf/NotoNaskhArabic-Regular.ttf",
+      "sha256": "c9a039ce48a477243c1eb7d561b13de115cfd651d8a83fa42e2f4d63c2e11b00",
+      "weight": 400,
+      "style": "normal",
+      "assetFile": "files/c9a039ce48a477243c1eb7d561b13de115cfd651d8a83fa42e2f4d63c2e11b00.ttf"
+    },
+    {
+      "filename": "NotoNaskhArabic-Medium.ttf",
+      "url": "https://github.com/notofonts/arabic/releases/download/NotoNaskhArabic-v2.021/NotoNaskhArabic-v2.021.zip",
+      "archivePath": "NotoNaskhArabic/full/ttf/NotoNaskhArabic-Medium.ttf",
+      "sha256": "3e876c8262142470384d00644c02689a8a6620a666ef071555414e889267c687",
+      "weight": 500,
+      "style": "normal",
+      "assetFile": "files/3e876c8262142470384d00644c02689a8a6620a666ef071555414e889267c687.ttf"
+    },
+    {
+      "filename": "NotoNaskhArabic-SemiBold.ttf",
+      "url": "https://github.com/notofonts/arabic/releases/download/NotoNaskhArabic-v2.021/NotoNaskhArabic-v2.021.zip",
+      "archivePath": "NotoNaskhArabic/full/ttf/NotoNaskhArabic-SemiBold.ttf",
+      "sha256": "8ce9659622d3479744b2b5404f8caee17e956d25d672b57d160d7b0e8207c52a",
+      "weight": 600,
+      "style": "normal",
+      "assetFile": "files/8ce9659622d3479744b2b5404f8caee17e956d25d672b57d160d7b0e8207c52a.ttf"
+    },
+    {
+      "filename": "NotoNaskhArabic-Bold.ttf",
+      "url": "https://github.com/notofonts/arabic/releases/download/NotoNaskhArabic-v2.021/NotoNaskhArabic-v2.021.zip",
+      "archivePath": "NotoNaskhArabic/full/ttf/NotoNaskhArabic-Bold.ttf",
+      "sha256": "d328b92b6bb762fd61d6438dddb7b00dd0663115afb292a358101808efe117b2",
+      "weight": 700,
+      "style": "normal",
+      "assetFile": "files/d328b92b6bb762fd61d6438dddb7b00dd0663115afb292a358101808efe117b2.ttf"
+    }
+  ],
+  "downloadedAt": "2026-10-01T13:00:44Z",
+  "preparation": "Static TTF files from the release archive's full/ttf build (hinted, with Latin coverage), preserved without modification. The release's hinted/ttf build omits Latin letters."
+}

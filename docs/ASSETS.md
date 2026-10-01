@@ -91,6 +91,8 @@ Import at most 24 faces and 100 MB at once. Added faces must belong to the exist
 
 Inter, Roboto, Open Sans, Lato, and Merriweather are included in the library, each with regular, semibold, bold, italic, semibold italic, and bold italic faces. Their Google-supplied static TTF files are preserved, with an OFL license and download provenance in each family folder. Their retained bundled revisions contain passing compatibility results and reviewed specimens from the repaired PDF writer, making them available as body and heading defaults. Original font files are unchanged. The renderer patch is maintained with the OpenDoc application; ordinary workspace authoring does not require rebuilding it.
 
+Noto Naskh Arabic (`noto-naskh-arabic`) is included for Arabic and mixed Arabic and English text, with regular, medium, semibold, and bold faces and no italics. Its files are the unmodified `full` build from the Noto project's official release, which also covers Latin letters and digits; `source.json` records the release archive, version, and hashes. Bind it as `body-font` and, when headings are also Arabic, `heading-font`. Do not request italic or `Em` styling from it: the face does not exist and rendering fails instead of synthesizing one.
+
 The specimen checks ligature words, ordinary mixed styles, and kerning-sensitive boundaries as well as glyphs. Inspect its real PDF appearance and copied text. A successful automated check does not establish suitability for every document. Keep font licensing information with the supplied material and respect it when using or sharing the font.
 
 New documents use their generated theme adapter before any template factory runs:
