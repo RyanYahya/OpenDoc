@@ -9,7 +9,7 @@ export async function validateInstallation() {
   await Promise.all([...(edition === 'normal' ? ['dist/index.html'] : []), 'src/server/worker.ts', 'src/assets/import-worker.ts', 'tsconfig.workspace.json'].map(path => access(resolve(applicationRoot, path))));
   const core = runtimeResolve('@formepdf/core');
   const manifest = JSON.parse(await readFile(resolve(dirname(core), '../package.json'), 'utf8'));
-  if (manifest.version !== '0.20.1-opendoc.3') throw new Error('The repaired OpenDoc rendering engine is missing. Reinstall this OpenDoc release.');
+  if (manifest.version !== '0.20.1-opendoc.4') throw new Error('The repaired OpenDoc rendering engine is missing. Reinstall this OpenDoc release.');
   const { transform } = await import('esbuild');
   await transform('const ok: boolean = true', { loader: 'ts' });
 }

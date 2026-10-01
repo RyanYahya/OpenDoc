@@ -1,0 +1,24 @@
+diff --git a/dist/index.d.ts b/dist/index.d.ts
+--- a/dist/index.d.ts
++++ b/dist/index.d.ts
+@@ -27,6 +27,12 @@ export type ElementFontStyle = 'Normal' | 'Italic' | 'Oblique';
+ export type ElementTextAlign = 'Left' | 'Right' | 'Center' | 'Justify';
+ export type ElementTextDecoration = 'None' | 'Underline' | 'LineThrough';
+ export type ElementTextTransform = 'None' | 'Uppercase' | 'Lowercase' | 'Capitalize';
++/**
++ * Base direction. Text containers report the authored value (`'auto'`
++ * included); their `TextLine` children report the resolved paragraph
++ * direction and the alignment actually applied.
++ */
++export type ElementDirection = 'ltr' | 'rtl' | 'auto';
+ export type ElementOverflow = 'Visible' | 'Hidden';
+ export type ElementPosition = 'Relative' | 'Absolute';
+ /**
+@@ -103,6 +109,7 @@ export interface ElementStyleInfo {
+     textAlign: ElementTextAlign;
+     textDecoration: ElementTextDecoration;
+     textTransform: ElementTextTransform;
++    direction: ElementDirection;
+     color: Color;
+     backgroundColor: Color | null;
+     opacity: number;

@@ -106,7 +106,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@formepdf/core': file:vendor/formepdf/formepdf-core-0.20.1-opendoc.3.tgz
+  '@formepdf/core': file:vendor/formepdf/formepdf-core-0.20.1-opendoc.4.tgz
 
 importers:
 
@@ -116,8 +116,8 @@ importers:
         specifier: ^1.8.0
         version: 1.8.0(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@formepdf/core':
-        specifier: file:vendor/formepdf/formepdf-core-0.20.1-opendoc.3.tgz
-        version: file:vendor/formepdf/formepdf-core-0.20.1-opendoc.3.tgz(react@19.2.8)
+        specifier: file:vendor/formepdf/formepdf-core-0.20.1-opendoc.4.tgz
+        version: file:vendor/formepdf/formepdf-core-0.20.1-opendoc.4.tgz(react@19.2.8)
       '@formepdf/react':
         specifier: 0.20.1
         version: 0.20.1(react@19.2.8)
@@ -393,9 +393,9 @@ packages:
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
 
-  '@formepdf/core@file:vendor/formepdf/formepdf-core-0.20.1-opendoc.3.tgz':
-    resolution: {integrity: sha512-+zn1+vmHSwIsTVZMT5O6MBA3Tr/mYx11zVwK8b0aHW4/F0hpaCNQ3NloDhOxGqA/LUgIQkRBXfMJ8BPXFuFsFw==, tarball: file:vendor/formepdf/formepdf-core-0.20.1-opendoc.3.tgz}
-    version: 0.20.1-opendoc.3
+  '@formepdf/core@file:vendor/formepdf/formepdf-core-0.20.1-opendoc.4.tgz':
+    resolution: {integrity: sha512-YIimLbaIG1rZyzaQBW024hGA8iIG+R3buSNfwx2ohjHxp6ULrSCWliKWEcIdjvukOCrhbiiWHqGHz+soFF7HlQ==, tarball: file:vendor/formepdf/formepdf-core-0.20.1-opendoc.4.tgz}
+    version: 0.20.1-opendoc.4
     peerDependencies:
       react: ^18 || ^19
 
@@ -1448,7 +1448,7 @@ snapshots:
 
   '@floating-ui/utils@0.2.12': {}
 
-  '@formepdf/core@file:vendor/formepdf/formepdf-core-0.20.1-opendoc.3.tgz(react@19.2.8)':
+  '@formepdf/core@file:vendor/formepdf/formepdf-core-0.20.1-opendoc.4.tgz(react@19.2.8)':
     dependencies:
       '@formepdf/react': 0.20.1(react@19.2.8)
       react: 19.2.8

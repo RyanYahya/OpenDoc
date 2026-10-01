@@ -23,7 +23,7 @@ if (Number(process.versions.node.split('.')[0]) < 24) throw new Error('OpenDoc p
 
 const browserDependencies = ['@base-ui/react', 'react-dom', '@types/react-dom', 'react-markdown', 'remark-gfm', 'chokidar', 'ws', '@types/ws'];
 const browserFiles = ['dist', 'src/app', 'src/server/index.ts'];
-const sourceArchive = 'vendor/formepdf/formepdf-core-0.20.1-opendoc.3.tgz';
+const sourceArchive = 'vendor/formepdf/formepdf-core-0.20.1-opendoc.4.tgz';
 
 async function run(command, args, cwd, capture = false) {
   return new Promise((resolve, reject) => {
@@ -71,7 +71,7 @@ async function keepNodeEngine(stage) {
   const coreRoot = path.join(stage, 'node_modules/@formepdf/core');
   const manifestPath = path.join(coreRoot, 'package.json');
   const engine = JSON.parse(await readFile(manifestPath, 'utf8'));
-  if (engine.version !== '0.20.1-opendoc.3') throw new Error('The release must contain the repaired Forme 0.20.1-opendoc.3 engine.');
+  if (engine.version !== '0.20.1-opendoc.4') throw new Error('The release must contain the repaired Forme 0.20.1-opendoc.4 engine.');
   // Both editions render in Node. Keep the repaired Node engine byte for byte;
   // browser and worker targets remain available in the source rebuild archive.
   for (const entry of ['pkg', 'pkg-web', 'scripts', 'dist/browser.js', 'dist/browser.d.ts', 'dist/worker.js', 'dist/worker.d.ts']) {
