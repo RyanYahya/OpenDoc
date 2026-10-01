@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { assignThemeFolder, createThemeFolder, deleteThemeFolder, readThemeFolders, ThemeFoldersError, updateThemeFolder } from './theme-folders';
+import { assignThemeFolder, createThemeFolder, deleteThemeFolder, readThemeFolders, renameThemeFolder, ThemeFoldersError } from './theme-folders';
 
 type Send = (res: ServerResponse, value: unknown, status?: number) => void;
 type Body = (req: IncomingMessage, limit?: number) => Promise<any>;
@@ -9,7 +9,7 @@ function only(input: unknown, field: string): Record<string, unknown> {
   return input as Record<string, unknown>;
 }
 
-/** Theme folders, called after the server's local-session write guard. Theme tags live in tags-http. */
+/** Single-level theme folders, called after the server's local-session write guard. Theme tags live in tags-http. */
 export async function handleThemeFoldersRequest(root: string, req: IncomingMessage, res: ServerResponse, url: URL, json: Send, body: Body, changed: () => void): Promise<boolean> {
   if (url.pathname === '/api/theme-folders') {
     // Legacy tags are served through /api/tags, merged with tags.json.
@@ -18,7 +18,7 @@ export async function handleThemeFoldersRequest(root: string, req: IncomingMessa
     return false;
   }
   const folderRoute = url.pathname.match(/^\/api\/theme-folders\/([a-z0-9-]+)$/);
-  if (folderRoute && req.method === 'PATCH') { const result = await updateThemeFolder(root, folderRoute[1], await body(req)); changed(); json(res, result); return true; }
+  if (folderRoute && req.method === 'PATCH') { const result = await renameThemeFolder(root, folderRoute[1], await body(req)); changed(); json(res, result); return true; }
   if (folderRoute && req.method === 'DELETE') { const result = await deleteThemeFolder(root, folderRoute[1]); changed(); json(res, result); return true; }
   const themeRoute = url.pathname.match(/^\/api\/themes\/([a-z0-9-]+)\/folder$/);
   if (themeRoute && req.method === 'PUT') {

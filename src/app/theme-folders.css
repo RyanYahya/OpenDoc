@@ -1,36 +1,26 @@
-/* Optional theme folders. Nothing here renders until a workspace creates folders or tags; tag styles live in tags.css. */
+/* Optional single-level theme folders, shown as filter buttons beside the tag filter; tag styles live in tags.css. */
 .theme-heading-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; flex-shrink: 0; }
-.theme-folder-title { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.theme-folder-title h1 { margin: 0; min-width: 0; overflow-wrap: anywhere; }
-.theme-folder-title h1:focus { outline: none; }
-.theme-folder-title h1:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; border-radius: 2px; }
-.ui-button.theme-folder-title-menu { flex-shrink: 0; color: var(--muted); }
+.theme-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; margin-top: 20px; }
+.theme-folder-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; flex: 1 1 320px; min-width: 0; }
+.theme-folder-toggles { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.ui-button.theme-folder-toggle { gap: 6px; max-width: 100%; padding: 5px 10px; background: var(--surface-raised); color: var(--ink); }
+.ui-button.theme-folder-toggle > svg { flex-shrink: 0; color: var(--muted); }
+.theme-folder-toggle-name { min-width: 0; max-width: 24ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.theme-folder-toggle-count { color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
+.ui-button.theme-folder-toggle[data-pressed] { border-color: var(--accent); background: var(--selected-surface); color: var(--accent-ink); }
+.ui-button.theme-folder-toggle[data-pressed] > svg, .ui-button.theme-folder-toggle[data-pressed] .theme-folder-toggle-count { color: currentColor; }
+.ui-button.theme-manage-folders { gap: 6px; }
+.ui-button.theme-manage-folders[data-popup-open] { background: var(--control-hover); color: var(--ink); }
+.theme-manage-hint { max-width: 240px; font-weight: 400; }
+.theme-filters .theme-tag-filter { margin-inline-start: auto; }
 
-.theme-breadcrumb { margin-bottom: 6px; font-size: 13px; }
-.theme-breadcrumb ol { display: flex; flex-wrap: wrap; align-items: center; gap: 0 6px; margin: 0; padding: 0; list-style: none; color: var(--muted); }
-.theme-breadcrumb li { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.theme-breadcrumb a { display: inline-flex; align-items: center; min-height: var(--control-hit-size); max-width: 28ch; padding: 0 4px; margin: 0 -4px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
-.theme-breadcrumb a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
-
-.theme-tag-filter { margin-top: 20px; }
-
-.theme-folder-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px 24px; margin: 24px 0 0; padding: 0; list-style: none; }
-.theme-folder-row { position: relative; display: flex; align-items: center; min-width: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-raised); transition: background-color 160ms ease, border-color 160ms ease; }
-.theme-folder-row:hover { background: var(--surface-hover); }
-.theme-folder-row > a { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "icon name" "icon count"; align-items: center; column-gap: 11px; flex: 1; min-width: 0; min-height: 52px; padding: 8px 4px 8px 12px; border-radius: 6px; color: var(--ink); }
-.theme-folder-row > a > svg { grid-area: icon; color: var(--muted); }
-.theme-folder-name { grid-area: name; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--title-size); line-height: var(--title-leading); font-weight: 500; }
-.theme-folder-count { grid-area: count; color: var(--muted); font-size: 12px; line-height: 1.4; font-variant-numeric: tabular-nums; }
-.ui-button.theme-folder-menu-trigger { flex-shrink: 0; min-width: 28px; min-height: 28px; margin-right: 8px; padding: 6px; border: 0; background: transparent; box-shadow: none; color: var(--muted); }
-.ui-button.theme-folder-menu-trigger:hover, .ui-button.theme-folder-menu-trigger[data-popup-open] { color: var(--ink); background: var(--control-hover); }
 .is-drop-target { outline: 2px solid var(--focus-ring); outline-offset: 2px; background: var(--selected-surface); }
 
 .theme-gallery-preview .ui-button.theme-card-menu-trigger { position: absolute; top: 8px; right: 8px; z-index: 1; min-width: 28px; min-height: 28px; padding: 6px; border: 0; border-radius: 6px; background: var(--surface); color: var(--muted); box-shadow: none; }
 .theme-gallery-preview .ui-button.theme-card-menu-trigger:hover, .theme-gallery-preview .ui-button.theme-card-menu-trigger[data-popup-open] { color: var(--ink); background: var(--control-hover); }
 @media (hover: hover) and (pointer: fine) {
-  .theme-gallery-preview .theme-card-menu-trigger, .theme-folder-row .theme-folder-menu-trigger { opacity: 0; transition: opacity 120ms ease; }
-  .theme-gallery-preview:is(:hover, :focus-within, :has([data-popup-open])) .theme-card-menu-trigger,
-  .theme-folder-row:is(:hover, :focus-within, :has([data-popup-open])) .theme-folder-menu-trigger { opacity: 1; }
+  .theme-gallery-preview .theme-card-menu-trigger { opacity: 0; transition: opacity 120ms ease; }
+  .theme-gallery-preview:is(:hover, :focus-within, :has([data-popup-open])) .theme-card-menu-trigger { opacity: 1; }
 }
 .theme-card-meta { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; min-width: 0; }
 .theme-card-folder { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; min-height: var(--control-hit-size); color: var(--muted); font-size: var(--label-size); line-height: var(--label-leading); font-weight: 500; }
@@ -51,11 +41,13 @@
 .theme-organization .theme-organization-actions { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 12px; }
 
 @media (max-width: 620px) {
-  .theme-folder-list { grid-template-columns: minmax(0, 1fr); }
+  .theme-filters { gap: 12px; }
+  .theme-filters .theme-tag-filter { margin-inline-start: 0; }
+  .theme-folder-toggle-name { max-width: 18ch; }
 }
 @media (pointer: coarse) {
-  .ui-button.theme-folder-menu-trigger, .theme-gallery-preview .ui-button.theme-card-menu-trigger { min-width: 40px; min-height: 40px; }
+  .ui-button.theme-folder-toggle, .ui-button.theme-manage-folders, .theme-gallery-preview .ui-button.theme-card-menu-trigger { min-width: 40px; min-height: 40px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .theme-folder-row, .theme-gallery-preview .theme-card-menu-trigger, .theme-folder-row .theme-folder-menu-trigger { transition: none; }
+  .theme-gallery-preview .theme-card-menu-trigger { transition: none; }
 }

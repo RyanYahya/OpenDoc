@@ -6,49 +6,62 @@ import { ThemeCatalog, readTheme, readThemeGuide, themeFile, readThemePaths } fr
 import { captureEntryExportInputs } from './export-inputs';
 import { RenderFailure } from './render-error';
 import { ExportChangedError, publishPDF } from './export-file';
-import { folderDescendants, folderPath } from '../shared/theme-folders';
+import { inFolder, sortedFolders, themeFolder } from '../shared/theme-folders';
 import { hasTags } from '../shared/tags';
-import { assignThemeFolder, createThemeFolderPath, deleteThemeFolder, readThemeFolders, resolveFolderPath, themeDirectories, themeFoldersFile, ThemeFoldersError, updateThemeFolder } from './theme-folders';
+import { assignThemeFolder, cliFolderName, createThemeFolder, deleteThemeFolder, readThemeFolders, readThemeFoldersFile, renameThemeFolder, resolveFolderName, themeDirectories, themeFoldersFile, ThemeFoldersError } from './theme-folders';
 import { changeItemTags, itemTags, readTags } from './tags';
 
-const usage = `Usage: npx opendoc themes list [--folder <path>] [--tag <tag>] | inspect <id> | check <id> | preview <id> [--json]
+const usage = `Usage: npx opendoc themes list [--folder <name|none>] [--tag <tag>] | inspect <id> | check <id> | preview <id> [--json]
        npx opendoc themes folders [list]
-       npx opendoc themes folders create <path>
-       npx opendoc themes folders update <path> [--name "Folder name"] [--parent <path|none>]
-       npx opendoc themes folders delete <path>
-       npx opendoc themes assign <theme-id> <folder-path|none>
-       npx opendoc themes tags <theme-id> [--set "Tag, Tag"] [--add <tag>] [--remove <tag>]`;
+       npx opendoc themes folders create <name>
+       npx opendoc themes folders rename <name> <new-name>
+       npx opendoc themes folders delete <name>
+       npx opendoc themes assign <theme-id> <folder|none>
+       npx opendoc themes tags <theme-id> [--set "Tag, Tag"] [--add <tag>] [--remove <tag>]
+Theme folders are single-level; quote names that contain spaces.`;
+
+const noParents = 'Theme folders are single-level and cannot be nested, so --parent is no longer supported. Rename a folder with npx opendoc themes folders rename <name> <new-name>, and file a theme with npx opendoc themes assign <theme-id> <folder>.';
 
 /** Folders live in themes/folders.json and tags in tags.json; neither moves theme directories. */
-async function runOrganization(command: string, positionals: string[], values: { name?: string; parent?: string; set?: string; add?: string[]; remove?: string[] }, root: string) {
-  const [action = 'list', target, extra] = positionals;
+async function runOrganization(command: string, positionals: string[], values: { name?: string; set?: string; add?: string[]; remove?: string[] }, root: string) {
+  const [action = 'list', target, extra, ...rest] = positionals;
+  if (rest.length) throw new Error(usage);
   if (command === 'folders') {
-    if (extra !== undefined || (action === 'list' ? target !== undefined : !target)) throw new Error(usage);
     if (action === 'list') {
-      const manifest = await readThemeFolders(root);
+      if (target !== undefined) throw new Error(usage);
+      const { manifest, migration } = await readThemeFoldersFile(root);
       const present = await themeDirectories(root);
-      return { file: themeFoldersFile, folders: manifest.folders.map(folder => ({ id: folder.id, name: folder.name, path: folderPath(manifest, folder.id), parent: folderPath(manifest, folder.parent), themes: Object.keys(manifest.assignments).filter(id => manifest.assignments[id] === folder.id && present.has(id)).sort() }))
-        .sort((a, b) => a.path!.localeCompare(b.path!, 'en', { sensitivity: 'base', numeric: true })) };
+      return {
+        file: themeFoldersFile,
+        folders: sortedFolders(manifest).map(folder => ({ id: folder.id, name: folder.name, themes: Object.keys(manifest.assignments).filter(id => manifest.assignments[id] === folder.id && present.has(id)).sort() })),
+        ...(migration ? { migration: { ...migration, saved: false, note: 'Nested folders from an earlier version are shown flattened; the next folder or assignment change saves this layout.' } } : {}),
+      };
     }
-    if (action === 'create') return createThemeFolderPath(root, target);
-    const folder = resolveFolderPath(await readThemeFolders(root), target);
-    if (!folder) throw new ThemeFoldersError('Choose a folder path, not the top level.');
-    if (action === 'update') {
-      const input = { ...(values.name === undefined ? {} : { name: values.name }), ...(values.parent === undefined ? {} : { parent: resolveFolderPath(await readThemeFolders(root), values.parent)?.id ?? null }) };
-      const { folder: updated, manifest } = await updateThemeFolder(root, folder.id, input);
-      return { id: updated.id, name: updated.name, path: folderPath(manifest, updated.id), parent: folderPath(manifest, updated.parent) };
+    if (action === 'create') {
+      if (!target || extra !== undefined) throw new Error(usage);
+      const { folder } = await createThemeFolder(root, { name: cliFolderName(target) });
+      return { id: folder.id, name: folder.name };
+    }
+    // `update <name> --name <new-name>` is the earlier spelling of rename.
+    const renaming = action === 'rename' || (action === 'update' && values.name !== undefined);
+    if (!target || (renaming ? (action === 'rename' ? extra === undefined : extra !== undefined) : extra !== undefined)) throw new Error(usage);
+    const folder = resolveFolderName(await readThemeFolders(root), target);
+    if (!folder) throw new ThemeFoldersError('Choose a folder by name; “none” is not a folder.');
+    if (renaming) {
+      const { folder: renamed } = await renameThemeFolder(root, folder.id, { name: action === 'rename' ? extra : values.name });
+      return { id: renamed.id, name: renamed.name, previous: folder.name };
     }
     if (action === 'delete') {
-      const { manifest, deleted, parent, ...moved } = await deleteThemeFolder(root, folder.id);
-      return { deleted: deleted.id, movedTo: folderPath(manifest, parent), ...moved };
+      const { deleted, unfiledThemes } = await deleteThemeFolder(root, folder.id);
+      return { deleted: deleted.id, name: deleted.name, unfiledThemes };
     }
     throw new Error(usage);
   }
   if (command === 'assign') {
     if (!action || !target || extra !== undefined) throw new Error(usage);
-    const folder = resolveFolderPath(await readThemeFolders(root), target);
-    const { manifest } = await assignThemeFolder(root, action, folder?.id ?? null);
-    return { id: action, folder: folderPath(manifest, folder?.id) };
+    const folder = resolveFolderName(await readThemeFolders(root), target);
+    await assignThemeFolder(root, action, folder?.id ?? null);
+    return { id: action, folder: folder?.name ?? null };
   }
   // Kept for existing scripts; npx opendoc tags covers themes, documents, and templates.
   if (!action || target !== undefined) throw new Error(usage);
@@ -70,9 +83,10 @@ export async function runThemesCli(args: string[], root = process.cwd()): Promis
   const [command = 'list', id, ...extra] = positionals;
   const organization = ['folders', 'assign', 'tags'].includes(command);
   const options = Object.keys(values).filter(key => !['json', 'help'].includes(key));
+  if (options.includes('parent')) throw new ThemeFoldersError(noParents);
   if (!organization && options.some(key => command !== 'list' || !['folder', 'tag'].includes(key))) throw new Error(usage);
   if (organization) {
-    const allowed = command === 'tags' ? ['set', 'add', 'remove'] : command === 'folders' && id === 'update' ? ['name', 'parent'] : [];
+    const allowed = command === 'tags' ? ['set', 'add', 'remove'] : command === 'folders' && id === 'update' ? ['name'] : [];
     if (options.some(key => !allowed.includes(key)) || (command === 'folders' && id === 'update' && !options.length)) throw new Error(usage);
     console.log(JSON.stringify(await runOrganization(command, positionals.slice(1), values, root), null, 2)); return;
   }
@@ -88,11 +102,10 @@ export async function runThemesCli(args: string[], root = process.cwd()): Promis
       });
       const manifest = await optional(readThemeFolders(root), values.folder !== undefined);
       const tagged = await optional(readTags(root), Boolean(values.tag?.length));
-      // A folder filter includes nested folders; `none` or `/` selects themes at the top level.
-      const target = values.folder === undefined || !manifest ? undefined : resolveFolderPath(manifest, values.folder);
-      const scope = target ? folderDescendants(manifest!, target.id) : target;
-      const choices = (await catalog.list()).map(({ id, name, description, error }) => ({ id, name, description, error, folder: manifest ? folderPath(manifest, manifest.assignments[id]) : null, tags: tagged?.themes[id] ?? [] }))
-        .filter(theme => (scope === undefined || (scope === null ? !theme.folder : scope.has(manifest!.assignments[theme.id] ?? '')))
+      // `--folder none` selects themes outside every folder; folder and tag filters combine.
+      const target = values.folder === undefined || !manifest ? undefined : resolveFolderName(manifest, values.folder);
+      const choices = (await catalog.list()).map(({ id, name, description, error }) => ({ id, name, description, error, folder: manifest ? themeFolder(manifest, id)?.name ?? null : null, tags: tagged?.themes[id] ?? [] }))
+        .filter(theme => (target === undefined || inFolder(manifest!, theme.id, target?.id ?? null))
           && hasTags(theme.tags, values.tag ?? []));
       console.log(JSON.stringify(choices, null, 2));
     }
