@@ -14,7 +14,7 @@ Text fields use a fine blue focus edge on the existing border with a soft 3px gl
 
 `ui.css` owns shared control styling, focus, popup layering, and reduced-motion behavior. `style.css` owns application layout and document surfaces. Keep domain components in `src/app`; add a shared abstraction only when it has a concrete use.
 
-`SkillIndex` is the shared sidebar/reader reference tooltip. Its entries come from `.agents/skills/opendoc-*/agents/openai.yaml` at build time; edit `short_description` there using a JSON-quoted YAML string and rebuild. Keep names aligned with skill folders and frontmatter. The index lists skills for the external agent; it does not execute them.
+`SkillIndex` is the shared sidebar/reader reference tooltip. Its entries come from `.agents/skills/opendoc-*/agents/openai.yaml` at build time; edit `display_name` (the readable title) and `short_description` there using JSON-quoted YAML strings and rebuild. The exact skill name stays visible beside each title because agents need it. Keep names aligned with skill folders and frontmatter. The index lists skills for the external agent; it does not execute them.
 
 `DocumentCard` uses Base UI Button around a live PDF.js cover. `PdfPage` remains responsible for canvas rendering, references, and component geometry. Text selection is confined to the floating text editor. Base UI Preview Card is a hover popup, not a PDF renderer. Component hit areas use shared Buttons with hover outlines and keyboard activation. Clicking a target selects it. The bottom bar’s Edit and Comment icons open one shared panel.
 

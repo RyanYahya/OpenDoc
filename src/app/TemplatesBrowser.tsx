@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TemplateItem, TemplatePreview as Preview } from '../shared/templates';
-import type { DocumentFormat } from '../shared/types';
+import { pageUnit, type DocumentFormat } from '../shared/types';
 import { api } from './api';
 import { catalogPreview } from './catalogPreview';
 import { PdfPage, usePdf } from './Pdf';
@@ -84,7 +84,7 @@ export function TemplatesBrowser({ selection, generation, format = 'document' }:
       {item ? <>
         <div className={`template-detail-layout${presentation ? ' template-detail-presentation' : ''}`}>
           <div className="template-proof">
-            <div className="template-proof-label"><span>Neutral preview</span><span>{artifact ? `${artifact.pages.length} ${presentation ? artifact.pages.length === 1 ? 'slide' : 'slides' : artifact.pages.length === 1 ? 'page' : 'pages'}` : 'Preparing preview…'}</span></div>
+            <div className="template-proof-label"><span>Preview in the Neutral theme</span><span>{artifact ? `${artifact.pages.length} ${pageUnit(presentation ? 'presentation' : 'document', artifact.pages.length)}` : 'Preparing preview…'}</span></div>
             <TemplatePreview key={item.id} item={item} allPages onReady={previewReady} />
           </div>
           <div className="template-options">
@@ -130,7 +130,7 @@ export function TemplatesBrowser({ selection, generation, format = 'document' }:
         {(['document', 'presentation'] as const).map(category => {
           const visible = items.filter(item => (item.descriptor.documentFormat ?? 'document') === category);
           return <Tabs.Panel key={category} value={category}>
-      <div className="template-gallery-label"><span>{loaded ? `${visible.length} ${visible.length === 1 ? 'template' : 'templates'}` : 'Preparing templates…'}</span><span>All previews use Neutral</span></div>
+      <div className="template-gallery-label"><span>{loaded ? `${visible.length} ${visible.length === 1 ? 'template' : 'templates'}` : 'Preparing templates…'}</span><span>Previews use the Neutral theme</span></div>
       <div className={`template-grid${category === 'presentation' ? ' template-grid-presentations' : ''}`}>{visible.map(item => <article className="template-card" key={item.id}>
         <a href={`#templates/${item.id}`} className="template-card-link" aria-labelledby={`template-title-${item.id}`}>
           <div className="template-card-mat" aria-hidden="true"><TemplatePreview item={item} /></div>

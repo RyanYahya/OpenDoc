@@ -15,7 +15,9 @@
 .document-grid .card-paper { flex-shrink: 0; height: auto; aspect-ratio: 4 / 3; align-items: center; padding: 0; container-type: size; }
 .document-grid .cover-preview { width: min(calc(100cqw - 40px), calc((100cqh - 40px) * var(--cover-ratio))); }
 .document-grid .card-paper-portrait .cover-preview { width: calc(100cqw - 40px); position: absolute; top: 20px; left: 20px; }
-.document-grid .document-card h2 { margin: 12px 0 0; min-height: 2lh; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.document-grid .document-card h2 { margin: 12px 0 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.document-grid .card-meta { margin-top: 4px; }
+.card-format { display: inline-flex; align-items: center; gap: 5px; }
 .card-preview-status { position: absolute; bottom: 4px; right: 5px; padding: 1px 4px; border-radius: 3px; background: var(--surface-alt); font-size: var(--caption-size); line-height: var(--caption-leading); color: var(--muted); font-variant-numeric: tabular-nums; }
 .document-move { margin-top: 8px; }
 .project-templates-link { display: inline-flex; align-items: center; gap: 8px; color: var(--accent-ink); margin-top: 16px; }

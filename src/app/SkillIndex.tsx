@@ -19,9 +19,9 @@ export function SkillIndex() {
       <Tooltip.Positioner className="ui-positioner" side="top" align="end" sideOffset={8}>
         <Tooltip.Popup className="ui-menu-popup skill-index">
           <p className="skill-index-title">OpenDoc skills</p>
-          <p className="skill-index-intro">Describe what you need; your agent follows the matching workflow. You can also name a skill.</p>
+          <p className="skill-index-intro">Describe what you need; your agent follows the matching workflow. To pick one yourself, give your agent its skill name.</p>
           <dl>{skills.map(skill => <div key={skill.name}>
-            <dt>{skill.name}</dt><dd>{skill.description}</dd>
+            <dt>{skill.title} <code className="skill-index-name">{skill.name}</code></dt><dd>{skill.description}</dd>
           </div>)}</dl>
         </Tooltip.Popup>
       </Tooltip.Positioner>

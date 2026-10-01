@@ -31,6 +31,9 @@ export function summarizeDocument(state: DocumentState): DocumentSummary {
 }
 export function documentFormat(document: DocumentSummary): DocumentFormat { return document.format ?? document.artifact?.format ?? 'document'; }
 export function documentName(document: DocumentSummary) { return document.name ?? document.artifact?.meta.title ?? document.id; }
+/** User-facing format and page-unit words; presentations count slides, documents count pages. */
+export function formatLabel(format: DocumentFormat) { return format === 'presentation' ? 'Presentation' : 'Document'; }
+export function pageUnit(format: DocumentFormat, count = 1) { return `${format === 'presentation' ? 'slide' : 'page'}${count === 1 ? '' : 's'}`; }
 export interface Comment {
   id: string; blockId: string; text: string; quote: string; status: 'open' | 'resolved' | 'deleted';
   anchor?: TextAnchor;

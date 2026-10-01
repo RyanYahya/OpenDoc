@@ -1,4 +1,4 @@
-import { documentName, documentFormat, type DocumentSummary } from "../shared/types";
+import { documentName, documentFormat, formatLabel, pageUnit, type DocumentSummary } from "../shared/types";
 import { DocumentMenu, documentLabel, type DocumentActionHandler } from './DocumentActions';
 import { CoverPreview } from "./Pdf";
 import { Button, IconButton } from "./ui";
@@ -21,14 +21,15 @@ export function DocumentCard({
 }) {
   const { id, artifact, status } = document;
   const titleId = `document-title-${id}`;
-  const formatId = `document-format-${id}`;
-  const presentation = documentFormat(document) === 'presentation';
+  const format = documentFormat(document);
+  const presentation = format === 'presentation';
   const pageCount = artifact?.pages.length ?? 0;
   const cover = artifact?.pages[0];
   const portrait = cover ? cover.height > cover.width : !presentation;
   const statusId = `document-status-${id}`;
+  const formatId = `document-format-${id}`;
   const statusLabel = status === 'ready'
-    ? `${pageCount} ${presentation ? 'slide' : 'page'}${pageCount === 1 ? '' : 's'}`
+    ? `${pageCount} ${pageUnit(format, pageCount)}`
     : status === 'error' ? 'Needs attention' : 'Rendering…';
   return (
     <div className="document-card-wrap"><Button
@@ -45,8 +46,8 @@ export function DocumentCard({
         {view === 'gallery' && <span id={statusId} className="card-preview-status">{statusLabel}</span>}
       </div>
       <h2 id={titleId} title={documentName(document)}>{documentName(document)}</h2>
-      <span id={formatId} className="sr-only">({documentFormat(document)})</span>
-      {view === 'list' && <span id={statusId} className="card-meta">{statusLabel}</span>}
+      {/* Same-titled documents and presentations stay distinguishable by sight and by name. */}
+      <span className="card-meta"><span id={formatId} className="card-format"><Icon name={presentation ? 'monitor' : 'document'} size={14} />{formatLabel(format)}</span>{view === 'list' && <span id={statusId}>{statusLabel}</span>}</span>
     </Button><IconButton className="document-history-trigger" label={`Previous exports for ${documentLabel(document)}`} disabled={disabled} onClick={() => onAction(document, 'exports')}><Icon name="history" size={14} /></IconButton><DocumentMenu document={document} onAction={onAction} disabled={disabled} /></div>
   );
 }

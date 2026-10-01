@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ThemePreview, ThemeSummary } from '../shared/themes';
-import { documentName, type DocumentSummary } from '../shared/types';
+import { documentName, documentFormat, formatLabel, type DocumentSummary } from '../shared/types';
 import type { Project } from '../shared/projects';
 import { api } from './api';
 import { catalogPreview } from './catalogPreview';
@@ -83,7 +83,7 @@ function ThemePromptDialog({ open, onOpenChange, theme }: { open: boolean; onOpe
     <Dialog.Popup className="help-dialog">
       <Dialog.Close render={<Button className="icon-button modal-close" aria-label="Close" />}><Icon name="close" /></Dialog.Close>
       <Dialog.Title>{theme ? `Adapt ${theme.name}` : 'Create a theme'}</Dialog.Title>
-      <Dialog.Description>Use this skill in your coding agent in the OpenDoc workspace. Describe the theme you want and share any visual references.</Dialog.Description>
+      <Dialog.Description>Use this skill in your coding agent in the OpenDoc workspace. {theme ? `Say whether to revise ${theme.name} or build a new theme from it; a revision also changes documents already using it. Describe the changes and share any visual references.` : 'Describe the theme you want and share any visual references.'}</Dialog.Description>
       <Input ref={field} className="prompt-example skill-invocation" aria-label="Theme creation skill" readOnly value={prompt} />
       <Button className="primary" onClick={() => void copy()}><Icon name={copied ? 'check' : 'copy'} size={16} />{copied ? 'Copied' : 'Copy skill'}</Button>
       <span className="sr-only" role="status">{copied ? 'Skill copied to clipboard.' : ''}</span>
@@ -109,6 +109,7 @@ function ThemeGallery({ themes, generation, onRefresh }: { themes: ThemeSummary[
   return <div className="theme-gallery">{themes.map(theme => <article className="theme-gallery-card" key={theme.id}>
     <div className="theme-gallery-preview"><ThemeSpecimen theme={theme} generation={generation} onRefresh={onRefresh} /><ThemePalette theme={theme} compact /><a className="theme-preview-link" href={`#themes/${theme.id}`} aria-label={`Explore ${theme.name}`} /></div>
     <h2><a href={`#themes/${theme.id}`}>{theme.name}<Icon name="arrow" size={17} /></a></h2>
+    {theme.description && <p className="theme-gallery-description">{theme.description}</p>}
   </article>)}</div>;
 }
 
@@ -132,7 +133,7 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
         <ThemeSpecimen key={theme.id} theme={theme} generation={generation} allPages onRefresh={onRefresh} />
         <aside className="theme-options">
           <header><h1>{theme.name}</h1><p className="lead">{theme.description}</p></header>
-          <div className="theme-actions"><Button className="primary" disabled={Boolean(theme.error)} onClick={() => setCreateOpen(true)}>Create with this theme<Icon name="arrow" size={16} /></Button><Button onClick={() => setPromptOpen(true)}>Adapt this theme</Button><GuideDialog key={theme.id} kind="theme" id={theme.id} name={theme.name} generation={theme.revision ?? generation} /></div>
+          <div className="theme-actions"><Button className="primary" disabled={Boolean(theme.error)} onClick={() => setCreateOpen(true)}>Create with this theme<Icon name="arrow" size={16} /></Button><Button onClick={() => setPromptOpen(true)} aria-describedby="theme-adapt-hint">Adapt this theme</Button><p id="theme-adapt-hint" className="theme-action-hint">Have your coding agent revise this theme or build a new one from it.</p><GuideDialog key={theme.id} kind="theme" id={theme.id} name={theme.name} generation={theme.revision ?? generation} /></div>
           {theme.assetError && <p className="field-error" role="alert">{theme.assetError}</p>}
           <AssetThemeDefaults key={theme.id} themeId={theme.id} generation={generation} connected={connected} />
           <div className="theme-system-details">
@@ -141,7 +142,7 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
             {Boolean(theme.geometry?.length) && <section><h2>Geometry &amp; layout</h2><ul>{theme.geometry!.map(rule => <li key={rule}>{rule}</li>)}</ul></section>}
             {theme.principles.length > 0 && <section><h2>System rules</h2><ul>{theme.principles.map(principle => <li key={principle}>{principle}</li>)}</ul></section>}
             {theme.useFor.length > 0 && <section><h2>Works well for</h2><p>{theme.useFor.join(' · ')}</p></section>}
-            {usingDocuments.length > 0 && <section className="theme-used-by"><h2>Documents using {theme.name}</h2>{usingDocuments.map(document => <a key={document.id} href={`#document/${document.id}`}><Icon name="document" size={16} /><span>{documentName(document)}</span><Icon name="arrow" size={15} /></a>)}</section>}
+            {usingDocuments.length > 0 && <section className="theme-used-by"><h2>Documents using {theme.name}</h2>{usingDocuments.map(document => <a key={document.id} href={`#document/${document.id}`}><Icon name={documentFormat(document) === 'presentation' ? 'monitor' : 'document'} size={16} /><span>{documentName(document)}<span className="theme-used-format"> · {formatLabel(documentFormat(document))}</span></span><Icon name="arrow" size={15} /></a>)}</section>}
             {defaultProjects.length > 0 && <section className="theme-used-by"><h2>Project default</h2>{defaultProjects.map(project => <a key={project.id} href={`#project/${project.id}`}><Icon name="folder" size={16} /><span>{project.name}</span><Icon name="arrow" size={15} /></a>)}</section>}
           </div>
         </aside>

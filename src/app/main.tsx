@@ -17,7 +17,7 @@ import { Icon } from "./ui/Icon";
 import { Button, IconButton, UiProvider, useNotifications } from "./ui";
 import { api } from "./api";
 import type { ThemeSummary } from "../shared/themes";
-import { documentName, documentFormat, type DocumentFormat, type DocumentState, type DocumentSummary } from "../shared/types";
+import { documentName, documentFormat, formatLabel, type DocumentFormat, type DocumentState, type DocumentSummary } from "../shared/types";
 import { emptyProjects, type Project, type ProjectsManifest } from "../shared/projects";
 import "./style.css";
 
@@ -154,9 +154,13 @@ function App() {
       method: "POST", body: JSON.stringify({ projectId: current.view === "project" ? project?.id ?? null : null, documentId: null, blockId: null, page: 1, themeId: null, selectedAsset: null }),
     }).catch(() => {});
   }, [current.view, project?.id]);
+  // Name the format only when another item shares this title, e.g. the welcome document and presentation.
+  const activeTitle = active ? documentName(active) : undefined;
+  const sharedTitle = Boolean(active && documents.some(document => document.id !== active.id && documentName(document) === activeTitle));
+  const activeFormat = active ? documentFormat(active) : undefined;
   useEffect(() => {
-    document.title = active ? `${documentName(active)} · OpenDoc` : project ? `${project.name} · OpenDoc` : "OpenDoc";
-  }, [active?.artifact?.meta.title, active?.name, active?.id, project?.name]);
+    document.title = activeTitle ? `${activeTitle}${sharedTitle && activeFormat ? ` · ${formatLabel(activeFormat)}` : ''} · OpenDoc` : project ? `${project.name} · OpenDoc` : "OpenDoc";
+  }, [activeTitle, sharedTitle, activeFormat, project?.name]);
   const onDocumentAction: DocumentActionHandler = (document, action) => {
     if (action === "exports") { setExportDocument(document); return; }
     if (action === "move") { setMoving(document); return; }
