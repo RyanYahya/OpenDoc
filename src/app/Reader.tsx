@@ -17,6 +17,7 @@ import { commentDraftKey, componentCommentDraftKey, commentDrafts, type CommentD
 import type { DocumentSelection, TextAnchor } from "../shared/selection";
 import { anchorForSelection, getTextTarget, resolveCommentAnchor, selectionReason } from "../shared/anchors";
 import { canCorrectComponent, correctionUnavailableReason, selectedTextTarget } from "./componentCorrection";
+import { useNotificationClearance } from "./notificationClearance";
 import { carryRange, isPhrase, phraseFromText, savedPhrase, type TextRange } from './phraseSelection';
 import { missingGlyphs, pageList } from "./missingGlyphs";
 import { sessionForDocument, sourceIdentity } from './editSession';
@@ -650,6 +651,7 @@ export function Reader({
   const undoDisabled = editPending || undoPending || (editing.savedId ? !state.manualEdit?.canUndo || !connected : !editError && !editing.canUndo && (editing.count > 0 || !state.manualEdit?.canUndo || !connected));
   const composingComment = commentsOpen && commentMode === 'compose';
   const showWorkbench = !!selection || !!editor || composingComment || editing.count > 0 || editing.canRedo || editing.saved || !!editing.savedId || !!editing.error;
+  useNotificationClearance([showWorkbench, commentsOpen, commentMode]);
   const pageControls = <>
     <div className="reader-pagination">
       <IconButton label={`Previous ${pageLabel.toLowerCase()}`} disabled={safePage <= 1} onClick={() => goPage(safePage - 1)}><Icon name="left" size={14} /></IconButton>

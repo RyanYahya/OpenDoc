@@ -276,7 +276,8 @@
 }
 .ui-notifications {
   position: fixed;
-  bottom: 24px;
+  /* The reader sets a clearance so notifications sit above its floating bottom controls. */
+  bottom: max(24px, var(--notification-clearance, 0px));
   right: 24px;
   z-index: 70;
   display: flex;

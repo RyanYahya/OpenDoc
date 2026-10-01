@@ -829,7 +829,7 @@ nav a.active {
 
   .ui-notifications {
     right: 16px;
-    bottom: 16px;
+    bottom: max(16px, var(--notification-clearance, 0px));
   }
 }
 
