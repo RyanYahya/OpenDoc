@@ -21,7 +21,7 @@ For a PDF selection, open the reported source and match its stable block ID. Sou
 
 For a template instance, `provenance.dataFile` owns local content and `provenance.template` owns shared layout. Establish which the request concerns before editing.
 
-When the user refers to earlier wording ("what it said yesterday", "before the agent's change"), find it with `npx opendoc history block <doc> <block-id>` or `history show <doc> <version>`; see [Version history](../../../docs/HISTORY.md). History is the user's record: read and restore from it only on request, and never delete it.
+When the user refers to earlier wording ("what it said yesterday", "before the agent's change"), resolve the block here, then continue with [opendoc-history](../opendoc-history/SKILL.md) to find and restore it.
 
 Load [context fields](references/context-fields.md) when working with themes, assets, pending comments, or render freshness. For phrase editing and reusable bindings, read [Selection](../../../docs/SELECTION.md).
 
@@ -29,6 +29,6 @@ Load [context fields](references/context-fields.md) when working with themes, as
 
 ## 3. Continue the requested work
 
-Return the resolved target, source path, stable identity, and relevant caveats to the calling workflow. For a standalone request that also asks for a revision, continue with [opendoc-apply-comments](../opendoc-apply-comments/SKILL.md) for saved PDF feedback or [opendoc-create-theme](../opendoc-create-theme/SKILL.md) for a print-system change. Resolving context alone requires no mutation or export.
+Return the resolved target, source path, stable identity, and relevant caveats to the calling workflow. For a standalone request that also asks for a revision, continue with [opendoc-apply-comments](../opendoc-apply-comments/SKILL.md) for saved PDF feedback, [opendoc-history](../opendoc-history/SKILL.md) for earlier wording, or [opendoc-create-theme](../opendoc-create-theme/SKILL.md) for a print-system change. Resolving context alone requires no mutation or export.
 
 **Done:** the caller has a verified target, or the unavailable/stale target is explained without substituting another one.

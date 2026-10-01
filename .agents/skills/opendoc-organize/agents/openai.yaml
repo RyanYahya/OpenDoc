@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenDoc: Organize"
+  short_description: "Tag and find work, and arrange themes into folders."
+  default_prompt: "Use $opendoc-organize in this OpenDoc workspace."

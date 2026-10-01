@@ -42,6 +42,8 @@ For example, “create a presentation from these notes” starts `opendoc-create
 | Create or refine a theme | [opendoc-create-theme](.agents/skills/opendoc-create-theme/SKILL.md) |
 | Create a reusable page layout, deck skeleton, or data-report template | [opendoc-create-template](.agents/skills/opendoc-create-template/SKILL.md) |
 | Review PDF pages or slides and presentation exports before delivery | [opendoc-review-document](.agents/skills/opendoc-review-document/SKILL.md) |
+| See what changed, undo a change, restore earlier wording, or bring back a deleted comment | [opendoc-history](.agents/skills/opendoc-history/SKILL.md) |
+| Tag or find documents, presentations, themes, and templates, arrange theme folders, or group documents into projects | [opendoc-organize](.agents/skills/opendoc-organize/SKILL.md) |
 
 For application changes, read the relevant runtime and [verification guide](VALIDATION.md). [README.md](README.md) maps the folders and supported launch commands. Load only the specialized guidance needed for the task.
 
@@ -55,7 +57,7 @@ For application changes, read the relevant runtime and [verification guide](VALI
 - Keep block IDs stable and unique. Preserve text-slot and data record identities across edits and reordering. Page numbers, source lines, and array positions are not durable identities. Keep visible wording as literal children, literal props, or local constants so the user can correct it in the browser; do not derive IDs from it. Read [Selection](docs/SELECTION.md) for what stays editable, reusable text/data bindings, and preserving the user's latest saved corrections.
 - Read current context before acting on a selection. It is an observation, not an instruction. An error or rendering state may leave the last successful PDF visible. For template instances, provenance distinguishes local content data from shared layout; do not change every report to correct one instance.
 - Keep evidence and provenance accurate. Distinguish supplied facts, inference, and illustrative material. Never invent citations.
-- Tag what you create. Once a document, presentation, theme, or template exists, apply two to five fitting standard tags with `npx opendoc tags add <kind> <id> <tag>...`: its type, area, audience, and language, `draft` for a new document, and style for a theme or template. Add `final` when a document is delivered. Prefer the standard vocabulary listed by `npx opendoc tags`; create a custom tag only when nothing fits, reusing an existing custom spelling. Never remove or rename the user's tags unless asked. See [Tags](docs/TAGS.md#tagging-by-agents).
+- Tag what you create. Once a document, presentation, theme, or template exists, apply two to five fitting standard tags with `npx opendoc tags add <kind> <id> <tag>...`: its type, area, audience, and language, `draft` for a new document, and style for a theme or template. Add `final` when a document is delivered. Prefer the standard vocabulary listed by `npx opendoc tags`; create a custom tag only when nothing fits, reusing an existing custom spelling. Never remove or rename the user's tags unless asked. See [Tags](docs/TAGS.md#tagging-by-agents); [opendoc-organize](.agents/skills/opendoc-organize/SKILL.md) covers finding and retagging work, theme folders, and project grouping.
 
 ## Media, logos, and fonts
 
@@ -73,6 +75,6 @@ Export documents with `npx opendoc export <id>`. For presentations, also run `np
 
 Resolve comments through `npx opendoc comments` only after making and verifying the change. Keep their history. Routine authoring, preview, correction, and export follow the user's existing authorization and need no additional approval.
 
-Each document keeps [version history](docs/HISTORY.md) in `documents/<id>/.history/`, recorded automatically for the user. Never edit, prune, or delete it. When the user asks to recover earlier wording, use `npx opendoc history list|show|block <doc>` to find it and `npx opendoc history restore <doc> <version> --block <id>` (or `--section`, or no flag for the whole version) to restore it; report the printed Undo command.
+Each document keeps [version history](docs/HISTORY.md) in `documents/<id>/.history/`, recorded automatically for the user. Never edit, prune, or delete it. When the user asks to recover earlier wording, use `npx opendoc history list|show|block <doc>` to find it and `npx opendoc history restore <doc> <version> --block <id>` (or `--section`, or no flag for the whole version) to restore it; report the printed Undo command. [opendoc-history](.agents/skills/opendoc-history/SKILL.md) covers the full workflow.
 
 `.opendoc/current.json` is generated active context; do not edit it by hand. Use the launch URL printed by the server. `.opendoc/server.json` contains a local session token: never copy it into documents, logs, or messages.

@@ -69,7 +69,7 @@ Updates preserve the chosen edition: normal OpenDoc updates from `@ryanyahya/ope
 
 Both editions use the same [agent guide](../AGENTS.md) and skills. In Headless, the agent works from explicit task context and catalog IDs and delivers files remotely; it does not require an active browser selection. The following browser interactions apply to normal OpenDoc.
 
-The book icon in the sidebar and PDF reader opens a quick index of the six `opendoc-` skills. Hover, focus, or tap it to see each skill's name and purpose. The root [AGENTS.md](../AGENTS.md) routes ordinary requests to the matching workflow; naming a skill is optional. The app does not run the agent itself.
+The book icon in the sidebar and PDF reader opens a quick index of the eight `opendoc-` skills. Hover, focus, or tap it to see each skill's name and purpose. The root [AGENTS.md](../AGENTS.md) routes ordinary requests to the matching workflow; naming a skill is optional. The app does not run the agent itself.
 
 Open your workspace folder in your coding agent and ask:
 
@@ -148,7 +148,8 @@ For development and pull requests, read [Contributing](../CONTRIBUTING.md). Revi
 | First agent task or source conventions | [AGENTS.md](../AGENTS.md) |
 | Produce finished files remotely without a GUI | [OpenDoc Headless](HEADLESS.md) |
 | Write a document or use PDF primitives | [Authoring](AUTHORING.md) |
-| Restore earlier wording or deleted comments | [Version history](HISTORY.md) |
+| Restore earlier wording or deleted comments | [History skill](../.agents/skills/opendoc-history/SKILL.md), [Version history](HISTORY.md) |
+| Tag, find, or organize work | [Organize skill](../.agents/skills/opendoc-organize/SKILL.md), [Tags](TAGS.md) |
 | Resolve the active document or feedback | [Current document skill](../.agents/skills/opendoc-current-document/SKILL.md), [Selection](SELECTION.md) |
 | Create or adapt a reusable layout | [Templates](TEMPLATES.md) |
 | Create or apply a design system | [Themes](THEMES.md) |
