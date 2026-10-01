@@ -2,6 +2,7 @@ import { useEffect, useRef, type Ref } from 'react';
 import type { Comment } from '../shared/types';
 import { Button, IconButton } from './ui';
 import { Icon } from './ui/Icon';
+import { CommentHandoff } from './CommentHandoff';
 import './comment-dock.css';
 
 export interface CommentDockItem {
@@ -13,6 +14,11 @@ export interface CommentDockItem {
 
 export interface CommentDockProps {
   pageLabel?: string;
+  /** True when the list shows one selected component instead of the whole document. */
+  filtered?: boolean;
+  /** Open comments across the document, which the agent prompt asks to apply. */
+  openCount?: number;
+  agentPrompt?: string;
   open: boolean;
   heading: string;
   count: number;
@@ -35,6 +41,7 @@ export interface CommentDockProps {
 /** The reader owns selection, drafts, and writes; this dock only presents them. */
 export function CommentDock({
   pageLabel = 'Page',
+  filtered = false, openCount = 0, agentPrompt,
   open, heading, count, items, error, connected, changing, editing,
   onEdit, onEditText, onSaveEdit, onCancelEdit, onDelete, onJump, onOpen, onClose,
   triggerRef,
@@ -92,7 +99,7 @@ export function CommentDock({
             <Button static className="comment-jump" disabled={!canJump || busy} onClick={() => onJump(comment)}>
               <span className="comment-location">
                 {page !== undefined ? <><span>{pageLabel} {page}</span><span aria-hidden="true">·</span><span className="comment-kind">{kind}</span>{canJump && <Icon name="arrow" size={12} />}</> : 'Component unavailable'}
-                {comment.status === 'resolved' && <span>· Resolved</span>}
+                <span className="comment-status">{comment.status === 'resolved' ? <><Icon name="check" size={11} />Resolved</> : 'Open'}</span>
               </span>
               <span className="comment-text">{comment.text}</span>
             </Button>
@@ -101,8 +108,12 @@ export function CommentDock({
               <IconButton label={changing === comment.id ? 'Deleting comment…' : 'Delete comment'} className="delete-comment" disabled={!connected || busy} onClick={() => { void onDelete(comment); }}><Icon name="trash" size={15} /></IconButton>
             </div>
           </div>}
-        </article>) : <p className="no-comments">No comments here yet.</p>}
+        </article>) : <div className="no-comments">
+          <p><strong>{filtered ? 'No comments on this component' : 'No comments yet'}</strong></p>
+          <p>{filtered ? 'Choose the Comment icon in the bar below to add one.' : `Select a component on the ${pageLabel.toLowerCase()}, then choose the Comment icon in the bar that appears.`} Your agent applies open comments and marks them resolved.</p>
+        </div>}
       </div>
+      {openCount > 0 && agentPrompt && <CommentHandoff openCount={openCount} prompt={agentPrompt} />}
     </section>}
   </>;
 }

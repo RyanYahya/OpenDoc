@@ -894,6 +894,27 @@ a {
   line-height: var(--body-leading);
   font-weight: 400;
 }
+.create-field > textarea:not(.prompt-example) {
+  width: 100%;
+  min-height: 88px;
+  padding: 7px 10px;
+  resize: vertical;
+  font-size: var(--body-size);
+  line-height: var(--body-leading);
+  font-weight: 400;
+  background: var(--surface-raised);
+  border: 1px solid var(--control-line);
+  border-radius: var(--control-radius);
+}
+.create-field > .prompt-example {
+  margin: 0;
+  max-height: 40dvh;
+  field-sizing: content;
+  font-weight: 400;
+  resize: vertical;
+}
+.agent-prompt-dialog .agent-prompt-context { margin-top: 12px; }
+.agent-prompt-dialog .copy-prompt { margin-top: 20px; }
 .purpose-select .ui-select {
   width: 100%;
   min-height: 44px;
@@ -1060,5 +1081,6 @@ a {
   .navigation-open:not(.contents-rail) .page-thumb { margin-inline: auto; }
 }
 @media (max-width: 620px) {
-  .skill-invocation { font-size: 16px; }
+  .skill-invocation,
+  .create-field > textarea:not(.prompt-example) { font-size: 16px; }
 }

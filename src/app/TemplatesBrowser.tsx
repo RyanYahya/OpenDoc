@@ -96,7 +96,7 @@ export function TemplatesBrowser({ selection, generation, format = 'document' }:
             <p className="template-format">{item.descriptor.format}</p>
             <ul>{item.descriptor.structure.map(note => <li key={note}>{note}</li>)}</ul>
             <Button className="primary" onClick={() => setCreateOpen(true)}>
-              Use this template<Icon name="arrow" size={16} />
+              Use this template
             </Button>
             <CreateDocumentDialog open={createOpen} onOpenChange={setCreateOpen} template={item} />
             <GuideDialog key={item.id} kind="template" id={item.id} name={item.descriptor.name} generation={generation} />

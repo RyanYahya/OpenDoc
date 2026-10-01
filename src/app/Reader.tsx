@@ -5,10 +5,11 @@ import { PdfPage } from "./Pdf";
 import { useReaderPreview } from "./useReaderPreview";
 import { useTextEditing } from "./useTextEditing";
 import { CommentDock } from "./CommentDock";
+import { applyCommentsPrompt } from "./agentPrompts";
 import { api } from "./api";
 import { ExportMenu } from "./ExportMenu";
 import { SkillIndex } from './SkillIndex';
-import { getBlock, documentFormat, type Comment, type DocumentState } from "../shared/types";
+import { getBlock, documentFormat, documentName, type Comment, type DocumentState } from "../shared/types";
 import { PageNumberInput } from "./PageNumberInput";
 import { commentDraftKey, componentCommentDraftKey, commentDrafts, type CommentDrafts } from "./commentDrafts";
 import type { DocumentSelection, TextAnchor } from "../shared/selection";
@@ -741,6 +742,7 @@ export function Reader({
         </div>
       </div>
       <CommentDock pageLabel={pageLabel} open={commentsOpen && commentMode === 'view'} heading={selected ? 'Component comments' : `${formatLabel} comments`} count={unresolvedComments.length}
+        filtered={!!selected} openCount={unresolvedComments.length} agentPrompt={applyCommentsPrompt({ id, name: documentName(state), format: documentFormat(state) })}
         items={comments.filter(comment => comment.status !== 'deleted' && (!selected || comment.blockId === selected)).map(comment => {
           const anchor = resolveCommentAnchor(artifact, comment);
           return { comment, page: anchor.selection?.page, kind: getBlock(artifact, comment.blockId)?.kind ?? 'Component', canJump: !!pdf && !!anchor.selection };
@@ -758,8 +760,8 @@ export function Reader({
             if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); if (!submitting) event.currentTarget.requestSubmit(); }
           }}>
             <div className="text-edit-heading"><div><Icon name="comment" size={15} /><h2 id="correction-title">Add comment</h2><span className="text-edit-kind">{selectedBlock?.kind ?? 'Component'}</span></div><IconButton label="Close comment composer" disabled={submitting} onClick={closeComments}><Icon name="close" size={15} /></IconButton></div>
-            <textarea ref={commentField} aria-label="Comment" placeholder="Write a comment…" value={draft} maxLength={8000} readOnly={submitting} onChange={event => setDraft(event.target.value)} />
-            <div className="text-edit-footer"><span>Feedback for this component</span><Button disabled={submitting} onClick={closeComments}>Cancel</Button><Button className="add-comment" type="submit" disabled={!draft.trim() || !ready || submitting || !selectedBlock}>{submitting ? 'Adding…' : 'Add comment'}</Button></div>
+            <textarea ref={commentField} aria-label="Comment" placeholder="Describe the change for your agent…" value={draft} maxLength={8000} readOnly={submitting} onChange={event => setDraft(event.target.value)} />
+            <div className="text-edit-footer"><span>Your agent applies comments</span><Button disabled={submitting} onClick={closeComments}>Cancel</Button><Button className="add-comment" type="submit" disabled={!draft.trim() || !ready || submitting || !selectedBlock}>{submitting ? 'Adding…' : 'Add comment'}</Button></div>
           </form> : editor && <form key="edit" onSubmit={event => { event.preventDefault(); closeEditor(); }} onKeyDown={event => {
             if (event.nativeEvent.isComposing || composingText.current) return;
             if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeEditor(); }
