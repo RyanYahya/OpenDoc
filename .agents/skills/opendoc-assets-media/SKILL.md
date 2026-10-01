@@ -37,7 +37,7 @@ npx opendoc assets add-faces acme-sans --file /path/to/AcmeSans-Italic.ttf --exp
 npx opendoc assets revise logo acme --metadata /path/to/logo-update.json
 ```
 
-`add-variation --replace <variation-id>` replaces one variation's file and keeps its ID. A `revise` metadata file holds `expectedRevision` and only the fields to change. A conflict means someone else changed the family: inspect again and reconcile; never resend old metadata. Archive a family only when asked, with `npx opendoc assets archive <logo|font> <id> --expected-revision <revision>`; add `--clear-defaults` only when the user agrees to clear theme defaults that use it. `assets list --archived` and `assets restore` bring it back; nothing is deleted.
+`add-variation --replace <variation-id>` replaces one variation's file and keeps its ID. A `revise` metadata file holds `expectedRevision` and only the fields to change. A conflict means someone else changed the family: inspect again and reconcile; never resend old metadata. Archive a family only when asked, with `npx opendoc assets archive <logo|font> <id> --expected-revision <revision>`; add `--clear-defaults` only when the user agrees to clear theme defaults that use it. Archiving deletes nothing. `assets list --archived` includes archived families, and `npx opendoc assets restore <logo|font> <id> --expected-revision <revision>` brings one back.
 
 **Ready:** the family exists at a new revision with accurate guidance, or no library change was needed.
 
@@ -82,7 +82,7 @@ npx opendoc media record <document-id> <media-id>
 npx opendoc media check <document-id> <media-id>
 ```
 
-Record only after that review; it snapshots hashes and validates nothing. A stale or unrecorded chart blocks export until regenerated, reviewed, and recorded.
+Record only after that review; it snapshots hashes and validates nothing. `media check` reports `freshness` and exits nonzero for a `stale` or `unrecorded` item, and such a chart blocks export until it is regenerated, reviewed, and recorded.
 
 **Ready:** each visual is in the document's media folder with honest metadata, recorded when derived, and placed in source.
 

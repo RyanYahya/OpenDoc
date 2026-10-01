@@ -9,8 +9,8 @@ Use the user's OpenDoc workspace as the working directory. `documents/`, `templa
 
 Run `npx opendoc tags` for the types, statuses, languages, and custom tags with their counts; add `--kind <kind>` to count one kind. `<kind>` is `document`, `presentation`, `theme`, or `template`; a presentation is a document. Read [Tags](../../../docs/TAGS.md) for aliases and limits. Each item has up to four facets:
 
-- **Type**: one per document or template, such as `report`, `minutes`, `proposal`, `brief`, or `guide`. Themes have none.
-- **Status**: documents only: `draft`, `in-review`, `final`, or `archived`, or none.
+- **Type**: one of `report`, `proposal`, `brief`, `minutes`, `letter`, `guide`, `article`, `cv`, or `invoice` per document or template. Themes have none.
+- **Status**: for documents only, `draft`, `in-review`, `final`, or `archived`, or none. `tags status` also accepts *review* for `in-review`, *done* or *delivered* for `final`, and *archive* for `archived`.
 - **Language**: `english`, `arabic`, or `bilingual`, detected from the item and never set.
 - **Custom tags**: free text for reused names, such as a client or programme.
 
@@ -28,13 +28,13 @@ npx opendoc templates list --type invoice
 npx opendoc themes list --language arabic
 ```
 
-`find` requires every listed tag and filter, and reports each item's type, status, language, and custom tags; documents also report their name, format, and project. `--status none` finds documents without a status. Typing an alias selects the type, so "memo" finds `brief` and "quote" finds `invoice`. `npx opendoc projects list` maps documents to projects when the request is scoped to one.
+`find` needs at least one tag or filter and returns the items that match all of them, with each item's type, status, language, and custom tags; documents also report their name, format, and project. `--status` limits results to documents and `--type` to documents and templates unless `--kind` names another kind. `--status none` finds documents without a status. Typing an alias selects the type, so "memo" finds `brief` and "quote" finds `invoice`. `npx opendoc projects list` maps documents to projects when the request is scoped to one.
 
 **Ready:** the intended items are listed by kind and ID.
 
 ## 3. Apply and clean up
 
-A type spelling sets the item's type and replaces any earlier one; other text is a custom tag. Status is separate:
+A type spelling sets the item's type and replaces any earlier one; other text is a custom tag. Status is separate; `tags add` refuses a status word, and `tags status <document-id>` without a value prints the current one:
 
 ```sh
 npx opendoc tags add document <document-id> minutes "Client Acme"
@@ -42,7 +42,7 @@ npx opendoc tags status <document-id> in-review
 npx opendoc tags status <document-id> --clear
 ```
 
-Add a custom tag only for a name that will be reused, reusing an existing spelling. Never set a language. Change or remove tags the user applied only when asked. `tags remove <kind> <id> <tag>...` removes custom tags or the named type, `tags set <kind> <id> <tag>...` replaces an item's type and custom tags, and `tags delete "<custom-tag>"` removes an unused custom tag from the vocabulary; `--untag` also removes it from every item. There is no rename: add the new tag to each item, remove the old one, then delete it.
+Add a custom tag only for a name that will be reused, reusing an existing spelling. Never set a language. Change or remove tags the user applied only when asked. `tags remove <kind> <id> <tag>...` removes custom tags or the named type, `tags set <kind> <id> <tag>...` replaces an item's type and custom tags, `tags create "<custom-tag>"` adds a custom tag to the vocabulary without applying it, and `tags delete "<custom-tag>"` removes an unused one; `--untag` also removes it from every item. There is no rename: add the new tag to each item, remove the old one, then delete it.
 
 Before changing several items, replacing an item's tags, or deleting a tag in use, list the planned changes and confirm them with the user.
 

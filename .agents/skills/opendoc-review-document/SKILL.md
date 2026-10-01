@@ -1,6 +1,6 @@
 ---
 name: opendoc-review-document
-description: Review OpenDoc documents and presentations before delivery or when the user requests an audit, including PDF pages, editable PowerPoint exports, and theme or template specimens, and export finished files when the user asks to export a document again, send the PDF or PowerPoint of a document, export everything, or leave review findings as comments.
+description: Review OpenDoc documents, presentations, and theme or template specimens before delivery or when the user asks for a check or audit, covering PDF pages, extracted text, and editable PowerPoint exports. Also use to export a document again, send the PDF or PowerPoint of a document, export everything, or leave review findings as comments.
 ---
 
 Use the user's OpenDoc workspace as the working directory. `documents/`, `templates/`, `themes/`, `assets/`, and `.opendoc/` are workspace paths; guide links are relative to this installed skill. Use `npx opendoc` for commands and keep authoring changes out of `node_modules/opendoc`. In Headless, follow [the remote workflow](../../../docs/HEADLESS.md); these commands and imports stay the same, and no browser or recipient-side installation is needed.
@@ -62,7 +62,9 @@ For right-to-left slides, inspect the slide XML: each Arabic paragraph carries `
 
 When PowerPoint is available, open the export and inspect slides for font substitution, clipping, missing visuals, and unexpected line wrapping. Verify text remains editable without changing the delivered file; use a disposable copy if testing an edit/save. When native inspection is unavailable, finish available package/content checks and state that native appearance was not verified. This limitation alone does not prevent delivering a valid requested PPTX. Do not require the recipient to install OpenDoc, install fonts or software, rasterize the deck, or change the chosen design just to make a check pass.
 
-If export rejects an unsupported effect or font, resolve it within the user's design direction. Ask when the remedy would change an explicit visual choice or reduce editability. Keep a successful PDF available and clearly identify an outstanding PPTX failure.
+If export rejects an unsupported effect or font, resolve it within the user's design direction. Ask when the remedy would change an explicit visual choice or reduce editability. Keep a successful PDF available and identify an outstanding PPTX failure.
+
+**Ready:** the PPTX checks have results, with unverified native appearance and any failed export stated, or no PowerPoint was requested.
 
 ## 5. Close the review
 

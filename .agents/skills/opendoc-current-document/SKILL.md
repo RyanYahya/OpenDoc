@@ -1,6 +1,6 @@
 ---
 name: opendoc-current-document
-description: Resolve OpenDoc context when the user refers to this document or presentation, a page or slide, a selected passage, the current theme, a selected image or chart, or an inspected logo or font.
+description: Resolve OpenDoc context when the user refers to this document or presentation, the one open in OpenDoc, a page or slide, a selected passage, the current theme, a selected image or chart, or an inspected logo or font.
 ---
 
 Use the user's OpenDoc workspace as the working directory. `documents/`, `templates/`, `themes/`, `assets/`, and `.opendoc/` are workspace paths; guide links are relative to this installed skill. Use `npx opendoc` for commands and keep authoring changes out of `node_modules/opendoc`. In Headless, follow [the remote workflow](../../../docs/HEADLESS.md); these commands and imports stay the same, and no browser or recipient-side installation is needed.
@@ -29,6 +29,6 @@ Load [context fields](references/context-fields.md) when working with slides, na
 
 ## 3. Continue the requested work
 
-Return the resolved target, source path, stable identity, and relevant caveats to the calling workflow. For a standalone request that also asks for a revision, continue with [opendoc-revise-document](../opendoc-revise-document/SKILL.md) for a direct change such as an update, translation, conversion, or theme switch, [opendoc-apply-comments](../opendoc-apply-comments/SKILL.md) for saved PDF feedback, [opendoc-assets-media](../opendoc-assets-media/SKILL.md) for logos, fonts, or the selected image, [opendoc-history](../opendoc-history/SKILL.md) for earlier wording, or [opendoc-create-theme](../opendoc-create-theme/SKILL.md) for a print-system change. Resolving context alone requires no mutation or export.
+Return the resolved target, source path, stable identity, and relevant caveats to the calling workflow. For a standalone request that also asks for work on the target, continue with [opendoc-revise-document](../opendoc-revise-document/SKILL.md) for a direct change such as an update, translation, conversion, or theme switch, [opendoc-apply-comments](../opendoc-apply-comments/SKILL.md) for saved PDF feedback, [opendoc-assets-media](../opendoc-assets-media/SKILL.md) for logos, fonts, or the selected image, [opendoc-history](../opendoc-history/SKILL.md) for earlier wording, [opendoc-review-document](../opendoc-review-document/SKILL.md) to review or export it again, [opendoc-organize](../opendoc-organize/SKILL.md) to tag it, set its status, move it to another project, or rename, duplicate, or delete it, or [opendoc-create-theme](../opendoc-create-theme/SKILL.md) for a print-system change. Resolving context alone requires no mutation or export.
 
 **Done:** the caller has a verified target, or the unavailable/stale target is explained without substituting another one.

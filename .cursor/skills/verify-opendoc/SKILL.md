@@ -1,6 +1,6 @@
 ---
 name: verify-opendoc
-description: Drive OpenDoc's Normal browser workspace (and Headless CLI) to prove library, review, export, and comments behavior. Use after a checkout change, to reproduce a user-facing bug, or to confirm the real app still boots and produces PDFs/PPTX.
+description: Drive OpenDoc's Normal browser workspace (and Headless CLI) to prove library, review, export, comments, history, tags, projects, and assets behavior. Use after a checkout change, to reproduce a user-facing bug, or to confirm the real app still boots and produces PDFs/PPTX.
 ---
 
 # Verify OpenDoc
@@ -113,6 +113,7 @@ Prefer existing harnesses, in this order:
    - `pnpm themes -- preview <id>` / `pnpm themes -- list`
    - `pnpm comments -- list <id>` / `add` / `resolve` (add verifies through the live server when one runs, otherwise by rendering saved source)
    - `pnpm documents -- rename|duplicate|delete|trash|restore` and `pnpm projects -- list|create|update|assign|delete` (mutate only disposable copies)
+   - `pnpm history|tags|assets|media -- <args>` take the same arguments as `npx opendoc`; there is no `pnpm templates` script, so use `pnpm exec tsx src/server/templates-cli.ts -- <args>`
 3. **Repo tests** for a focused contract: `pnpm exec tsx --test tests/<name>.test.ts`
 4. **Browser** only when the claim is the GUI. Routes are hash URLs; use ARIA names, not coordinates.
 

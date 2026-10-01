@@ -1,15 +1,15 @@
 ---
 name: opendoc-create-theme
-description: Design or refine an OpenDoc theme from a brief, brand material, or references when the user wants a reusable visual system for documents or presentations. Choose an existing theme for a new deliverable through opendoc-create.
+description: Design or refine an OpenDoc theme from a brief, brand material, or references when the user wants a reusable visual system (palette, typography, page design) for documents or presentations, including an Arabic or right-to-left theme. Choose an existing theme for a new deliverable through opendoc-create.
 ---
 
 Use the user's OpenDoc workspace as the working directory. `documents/`, `templates/`, `themes/`, `assets/`, and `.opendoc/` are workspace paths; guide links are relative to this installed skill. Use `npx opendoc` for commands and keep authoring changes out of `node_modules/opendoc`. In Headless, follow [the remote workflow](../../../docs/HEADLESS.md); these commands and imports stay the same, and no browser or recipient-side installation is needed.
 
 ## 1. Inspect the design basis
 
-Resolve the requested theme explicitly or through [opendoc-current-document](../opendoc-current-document/SKILL.md). Discover with `npx opendoc themes list`; inspect one with `npx opendoc themes inspect <id>`. The list also reports each theme's `folder` from the user's optional `themes/folders.json`, its detected `language`, and its custom `tags` from `tags.json`; narrow it with `--folder <name>`, `--language arabic`, or `--tag <tag>`; the filters combine. Folders are single-level. Organization never moves theme folders; change folders with `npx opendoc themes assign` or `themes folders` only when the user asks, as described in [Themes](../../../docs/THEMES.md#organize-the-catalog). Read its guide and relevant source, or one suitable existing theme for a new bundle.
+Resolve the requested theme explicitly or through [opendoc-current-document](../opendoc-current-document/SKILL.md). Discover with `npx opendoc themes list`; inspect one with `npx opendoc themes inspect <id>`. The list also reports each theme's `folder` from the user's optional `themes/folders.json`, its detected `language`, and its custom `tags` from `tags.json`; narrow it with `--folder <name>` (or `none`), `--language arabic`, or `--tag <tag>`; the filters combine. Folders are single-level and live in `themes/folders.json`, so filing a theme never moves `themes/<id>/`. Change folders with `npx opendoc themes assign` or `themes folders` only when the user asks, as described in [Themes](../../../docs/THEMES.md#organize-the-catalog); [opendoc-organize](../opendoc-organize/SKILL.md) covers the commands. Read its guide and relevant source, or one suitable existing theme for a new bundle.
 
-Inspect supplied images, brand-guide pages, document PDFs, and referenced websites. Record what is a requirement, an observed pattern, or your interpretation. Identify unavailable references and font substitutions honestly. Translate web references into print through hierarchy, proportions, alignment, reading measure, whitespace, and recurring compositions.
+Inspect supplied images, brand-guide pages, document PDFs, and referenced websites. Record what is a requirement, an observed pattern, or your interpretation. Report unavailable references and font substitutions. Translate web references into print through hierarchy, proportions, alignment, reading measure, whitespace, and recurring compositions.
 
 **Ready:** the design basis is grounded in inspected material and the target is identified as a new theme, adaptation, or shared revision.
 

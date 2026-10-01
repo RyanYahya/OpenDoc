@@ -1,22 +1,24 @@
 ---
 name: opendoc-create
-description: Create an OpenDoc document or presentation from a brief and sources. Use for requests to write a report, make a slide deck, or produce a new deliverable in this workspace, even when the user does not name a skill. Deliver documents as PDF and presentations as PDF plus editable PowerPoint unless the user specifies otherwise.
+description: Create an OpenDoc document or presentation from a brief and sources. Use for requests to write a report, proposal, brief, letter, or other document, make a slide deck or PowerPoint, start from a template, or produce a new deliverable in this workspace, even when the user does not name a skill. Deliver documents as PDF and presentations as PDF plus editable PowerPoint unless the user specifies otherwise.
 ---
 
 Use the user's OpenDoc workspace as the working directory. `documents/`, `templates/`, `themes/`, `assets/`, and `.opendoc/` are workspace paths; guide links are relative to this installed skill. Use `npx opendoc` for commands and keep authoring changes out of `node_modules/opendoc`. In Headless, follow [the remote workflow](../../../docs/HEADLESS.md); these commands and imports stay the same, and no browser or recipient-side installation is needed.
 
 ## 1. Establish the brief
 
-Follow the user's brief, choices, and requested files throughout the task. Read supplied material and identify the reader, purpose, evidence, and delivery constraints. Let these determine the title, structure, length, and design. A request for a deck, slides, or PowerPoint selects the presentation branch; a report, article, or written brief normally selects documents. Ask if the intended output is genuinely ambiguous.
+Follow the user's brief, choices, and requested files throughout the task. Read supplied material and identify the reader, purpose, evidence, and delivery constraints. Let these determine the title, structure, length, and design. A request for a deck, slides, or PowerPoint selects the presentation branch; a report, article, or written brief normally selects documents. Ask if the intended output is ambiguous.
 
 Resolve the project from the request or `npx opendoc projects list`; in a normal browser session, [current context](../opendoc-current-document/SKILL.md) is another source. Headless uses explicit task context and catalog IDs rather than an active selection. Create one through the [project CLI](../../../docs/PROJECTS.md) if needed.
 
 Resolve design choices before creating the scaffold:
 
 - Honor an explicitly chosen theme or template, including choices carried by an app prompt. Preserve established project direction; do not ask again about a decision already made.
-- Discover themes with `npx opendoc themes list` and layouts with `npx opendoc templates list` or **Templates**. Templates report a `type` and both lists report `language` and custom `tags`; narrow them with `--type <type>`, `--language arabic`, or `--tag <tag>`, such as `templates list --type report`. Inspect a candidate through `npx opendoc templates inspect <id>` and read its guide when assessing its fit; do not load the whole catalog. Match the template's `documentFormat` to the intended output.
+- Discover themes with `npx opendoc themes list` and layouts with `npx opendoc templates list` or **Templates**. Both lists report the detected `language` and custom `tags`, and narrow with `--language arabic` or `--tag <tag>`; templates also report a `type` and take `--type <type>`, such as `templates list --type report`. Inspect a candidate through `npx opendoc templates inspect <id>` and read its guide when assessing its fit; do not load the whole catalog. Match the template's `documentFormat` (`presentation`, or absent for a document) to the intended output.
 - If the brief leaves you unsure of the visual direction or layout, ask a concise question about the user's theme/template preference. Offer relevant available choices and a recommendation in plain language. Do not silently choose Neutral or a familiar template to avoid asking.
 - When the user delegates design, choose and briefly state a suitable direction. The project's default for the requested format is useful context (documents and presentations can differ; see `themeDefaults` in `npx opendoc projects list --json`); Neutral is the fallback when no theme is chosen and choosing has been delegated or the choice is immaterial. A bespoke layout is valid. Keep routine composition decisions autonomous and continue useful source/content work while awaiting a meaningful preference.
+
+**Ready:** the output type, project, and theme or template are settled, or the user has been asked about the choice that matters.
 
 ## 2. Create the right output
 
@@ -26,7 +28,7 @@ Read [Authoring](../../../docs/AUTHORING.md), then create the document before wr
 npx opendoc create <document-id> --project <project-id> --title "Document title"
 ```
 
-Use `--theme <id>` for the resolved theme choice; without it, the CLI applies the project's default for the new item's format (the presentation default for `--format presentation` or a presentation template), then Neutral. Add `--template <id>` for the resolved catalog layout. These CLI fallbacks do not replace the preference check above. Optional `--starter` prose examples, listed by `npx opendoc create --list`, are an alternative to templates, not mandatory classifications. A requested new reusable layout belongs with [opendoc-create-template](../opendoc-create-template/SKILL.md).
+Use `--theme <id>` for the resolved theme choice; without it, the CLI applies the project's default for the new item's format (the presentation default for `--format presentation` or a presentation template), then Neutral. Add `--template <id>` for the resolved catalog layout. These CLI fallbacks do not replace the preference check above. `--starter <id>` begins from a prose example instead of a template (`npx opendoc create --list` shows `article`, `report`, `proposal`, `research`, and `technical`); it is optional, cannot be combined with `--template`, and does not set the document's type. A requested new reusable layout belongs with [opendoc-create-template](../opendoc-create-template/SKILL.md).
 
 For a presentation, add `--format presentation` for a minimal slide scaffold, or choose a presentation template with `--template <id>` (its format is inferred). Discover deck skeletons with `npx opendoc templates list` or **Templates → Presentations**, then read the chosen template's guide. Document templates and prose starters do not apply to slides. Creation records presentation identity before rendering and places the work in **Presentations** while retaining its project, local folder, and asset bindings.
 
@@ -40,6 +42,8 @@ npx opendoc tags status <document-id> draft
 ```
 
 Use `presentation` instead of `document` for a deck; both name the same item. Never remove or rename tags the user applied unless asked. See [Tags](../../../docs/TAGS.md#tagging-by-agents).
+
+**Ready:** the scaffold exists in the intended project with its format, theme, type, and `draft` status.
 
 ## 3. Write and compose
 
@@ -59,6 +63,8 @@ Load only the branch needed:
 
 Develop a complete draft that addresses the brief, with honest sources or illustrative labels for visuals and references. Continue through review and delivery; a scaffold or outline is not the finished request.
 
+**Ready:** the source holds a complete draft that answers the brief.
+
 ## 4. Review and deliver
 
 Run `npx opendoc check` after source changes. In Headless, run `npx opendoc review <document-id> --json`, then inspect the returned page images, extracted text, and issues. In normal OpenDoc, use the existing app session or the [README launch instructions](../../../README.md); the review command is also available. Confirm the current source rendered successfully; a previous PDF is not proof. Complete [opendoc-review-document](../opendoc-review-document/SKILL.md), reusing artifacts from the same unchanged revision:
@@ -72,4 +78,6 @@ Deliver the requested files through the host agent's existing attachment/downloa
 
 Once the reviewed files are delivered, mark the work final with `npx opendoc tags status <document-id> final`. Keep its type and tags.
 
-Routine writing, design, review, export, and tagging are part of creation and need no extra completion permission. Keep runtime changes, new shared systems, and external publication within the user's requested scope. Success means the requested deliverables are reviewed and available, with concrete verification limits stated.
+Routine writing, design, review, export, and tagging are part of creation and need no extra completion permission. Keep runtime changes, new shared systems, and external publication within the user's requested scope.
+
+**Done:** the requested files are reviewed and delivered, the item is marked `final`, and any verification limits are stated.

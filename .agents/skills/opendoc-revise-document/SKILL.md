@@ -15,6 +15,8 @@ In normal OpenDoc, read `manualEdit.pendingEdits` in `.opendoc/current.json` fir
 npx opendoc documents duplicate <document-id> --id <new-id> --title "New title"
 ```
 
+`--title` names the copy in the library; change `meta.title` in its source for the PDF title.
+
 **Ready:** the target, the scope of the change, and whether it happens in place or in a copy are clear.
 
 ## 2. Make the change in source
