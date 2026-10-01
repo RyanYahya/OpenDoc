@@ -200,11 +200,15 @@
   user-select: none;
   outline: 0;
 }
+/* The fill alone is too faint to find, so the highlighted row, by keyboard or pointer, also gets
+   an inset ring at least 3:1 against the menu in every appearance. */
 .ui-menu-item[data-highlighted],
 .ui-select-item[data-highlighted],
 .ui-menu-item:focus-visible,
 .ui-select-item:focus-visible {
   background: var(--control-hover);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
 }
 .ui-select-item[data-selected] {
   color: var(--accent-ink);
