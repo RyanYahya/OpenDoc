@@ -1,10 +1,24 @@
 import { ExportHistoryDialog } from "./ExportHistoryDialog";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { AssetsBrowser } from "./AssetsBrowser";
-import { TemplatesBrowser } from "./TemplatesBrowser";
-import { ThemesBrowser } from "./ThemesBrowser";
-import { Reader } from "./Reader";
+// The reader and catalog views load when first opened. Their styles stay in the
+// main stylesheet, imported here in their original order, so the cascade is unchanged.
+import "./materials.css";
+import "./assets.css";
+import "./guides.css";
+import "./tags.css";
+import "./templates.css";
+import "./theme-folders.css";
+import "./themes.css";
+import "./comment-dock.css";
+import "./deleted-comments.css";
+import "./history.css";
+import "./reader-panel.css";
+import "./export.css";
+import "./skills.css";
+import "./selection.css";
+import "./reader-toolbar.css";
+import "./edit-workbench.css";
 import { CreateDocumentDialog } from "./CreateDocumentDialog";
 import { ProjectDialog, MoveDocumentDialog } from "./ProjectDialogs";
 import { ProjectDocuments, DocumentsBrowser } from "./DocumentsBrowser";
@@ -25,6 +39,11 @@ import { emptyTags, itemStatus, type DocumentStatus, type TagsManifest } from ".
 import { textLang } from "../shared/language";
 import { DetailsDialog, StatusBadge, TagsProvider, type TagState, type TagTarget } from "./Tags";
 import "./style.css";
+
+const AssetsBrowser = lazy(() => import("./AssetsBrowser").then(module => ({ default: module.AssetsBrowser })));
+const TemplatesBrowser = lazy(() => import("./TemplatesBrowser").then(module => ({ default: module.TemplatesBrowser })));
+const ThemesBrowser = lazy(() => import("./ThemesBrowser").then(module => ({ default: module.ThemesBrowser })));
+const Reader = lazy(() => import("./Reader").then(module => ({ default: module.Reader })));
 
 function route() {
   const hash = location.hash.slice(1);
@@ -217,6 +236,7 @@ function App() {
       {detailError && activeSummary && <div className="error-banner" role="alert"><span>{detailError}</span><Button onClick={() => setDetailAttempt(value => value + 1)}>Try again</Button></div>}
       {error && <div className="error-banner" role="alert"><span>{error}</span><Button className="text-button" onClick={() => void refresh()}>Try again</Button></div>}
       {tagState.error && current.view !== "document" && current.view !== "assets" && <div className="error-banner" role="alert"><span>{tagState.error}</span><Button className="text-button" onClick={() => void refresh()}>Try again</Button></div>}
+      <Suspense fallback={<div className="empty-state" role="status"><div className="loading-mark" /><p>Loading…</p></div>}>
       {current.view === "document" ? active ? <Reader key={active.id} state={active} generation={generation} connected={connected} onShowExports={() => setExportDocument(active)}
         identity={<>
           <IconButton label={`Back to ${backLabel}`} className="reader-back" render={<a href={`#${backHash}`} />} nativeButton={false}><Icon name="left" size={17} /></IconButton>
@@ -231,6 +251,7 @@ function App() {
         : current.view === "templates" ? <TemplatesBrowser selection={current.id} generation={generation} format={current.templateFormat} connected={connected} tags={tagState} onEditTags={setTagTarget} />
         : current.view === "themes" ? <ThemesBrowser connected={connected} themes={themes} selection={current.id} generation={generation} loaded={loaded} documents={documents} projects={manifest.projects} onRefresh={() => void refresh()}
           organization={themeOrganization} folder={current.themeFolder} tag={current.themeTag} onOrganizationChange={next => { setThemeOrganization({ manifest: next }); void refresh(); }} tags={tagState} onEditTags={setTagTarget} /> : <DocumentsBrowser key={current.view} format={current.view === 'presentations' ? 'presentation' : 'document'} projects={manifest.projects} documents={documents.filter(document => documentFormat(document) === (current.view === 'presentations' ? 'presentation' : 'document'))} tags={tagState} loaded={loaded} view={documentView} onViewChange={changeDocumentView} onCreate={() => createDocument(current.view === 'presentations' ? 'presentation' : 'document')} onMove={setMoving} onAction={onDocumentAction} disabled={!connected || duplicating} />}
+      </Suspense>
     </main>
     <CreateDocumentDialog format={creationFormat} open={help} onOpenChange={setHelp} project={project} themes={themes} />
     <ProjectDialog themes={themes} themeFolders={themeOrganization.manifest} open={Boolean(projectDialog)} project={projectDialog?.project ?? null} documentCount={documents.filter(document => document.projectId === projectDialog?.project?.id).length} connected={connected} onOpenChange={open => { if (!open) setProjectDialog(null); }} onSaved={saved => {

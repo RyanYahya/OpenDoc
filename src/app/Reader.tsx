@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import React, { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Menu } from '@base-ui/react/menu';
 import { Popover } from '@base-ui/react/popover';
 import { PdfPage } from "./Pdf";
@@ -6,7 +6,6 @@ import { useReaderPreview } from "./useReaderPreview";
 import { useTextEditing } from "./useTextEditing";
 import { CommentDock, CommentsButton } from "./CommentDock";
 import { DeletedComments } from "./DeletedComments";
-import { HistoryPanel } from "./HistoryPanel";
 import { ReaderPanel } from "./ReaderPanel";
 import { closePanel, isShowing, loadPanelPreference, panelFromPreference, savePanelPreference, selectTab, showPanel, togglePanel, type PanelState, type PanelTarget } from "./readerPanel";
 import { saveBarStatus, saveBarVisible } from "./saveBar";
@@ -40,6 +39,10 @@ import {
   SelectControl,
   useNotifications,
 } from "./ui";
+
+// Version history loads when its tab first opens; the panel shows its own loading placeholder meanwhile.
+const HistoryPanel = lazy(() => import("./HistoryPanel").then(module => ({ default: module.HistoryPanel })));
+const historyLoading = <section className="history-panel" aria-busy="true"><div className="history-content"><div className="history-skeleton" aria-hidden="true"><span /><span /><span /></div></div></section>;
 
 type CorrectionDraft = { selection: DocumentSelection; text: string; linked: number; baseline?: EditorBaseline };
 const openEditors = new Map<string, OpenEditorRecord>();
@@ -913,9 +916,9 @@ export function Reader({
             onShowAll={() => setPanel(current => showPanel(current, 'comments'))} onClose={closeReaderPanel}
             footer={<DeletedComments documentId={id} blockId={commentFilter} connected={connected} refreshKey={comments}
               onRestored={value => { ++commentRequest.current; commentAbort.current?.abort(); setComments(value); notify.success('Comment restored'); }} onError={notify.error} />} />}
-          history={<HistoryPanel key={panel.targets.history.kind === 'block' ? `block:${panel.targets.history.blockId}` : 'document'} documentId={id} target={panel.targets.history} generation={generation} connected={connected} pageLabel={pageLabel}
+          history={<Suspense fallback={historyLoading}><HistoryPanel key={panel.targets.history.kind === 'block' ? `block:${panel.targets.history.blockId}` : 'document'} documentId={id} target={panel.targets.history} generation={generation} connected={connected} pageLabel={pageLabel}
             unsaved={editing.count} saving={editPending || undoPending} onSave={saveAll} onDiscard={discardChanges} onJump={showHistoryBlock}
-            onShowDocument={() => setPanel(current => showPanel(current, 'history'))} onClose={closeReaderPanel} />} />}
+            onShowDocument={() => setPanel(current => showPanel(current, 'history'))} onClose={closeReaderPanel} /></Suspense>} />}
       </div>
       {(editor || composing) && <section ref={selectionPanel} className="text-edit-panel" id="selection-panel" role="dialog" aria-modal="false" aria-labelledby="correction-title">
         {composing ? <form key="comment" onSubmit={submitComment} onKeyDown={event => {
