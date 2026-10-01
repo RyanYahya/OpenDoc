@@ -11,7 +11,7 @@
 /* One frame for mixed formats; the paper inside keeps its real proportions. */
 .document-grid > .project-document { display: flex; flex-direction: column; }
 .document-grid .document-card-wrap { display: flex; flex: 1; }
-.document-grid .ui-button.document-card { display: flex; flex-direction: column; align-items: stretch; align-self: stretch; justify-content: flex-start; gap: 0; max-width: none; }
+.document-grid .document-card { display: flex; flex-direction: column; align-items: stretch; align-self: stretch; justify-content: flex-start; gap: 0; max-width: none; }
 .document-grid .card-paper { flex-shrink: 0; height: auto; aspect-ratio: 4 / 3; align-items: center; padding: 0; container-type: size; }
 .document-grid .cover-preview { width: min(calc(100cqw - 40px), calc((100cqh - 40px) * var(--cover-ratio))); }
 .document-grid .card-paper-portrait .cover-preview { width: calc(100cqw - 40px); position: absolute; top: 20px; left: 20px; }
@@ -30,7 +30,7 @@
 .documents-list { display: flex; flex-direction: column; }
 .documents-list .project-document { display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, 170px); align-items: center; gap: 24px; min-height: var(--browse-row-height); padding: 8px; border-bottom: 1px solid var(--line); transition: background-color 160ms ease; }
 .documents-list .project-document:hover { background: var(--surface-hover); }
-.documents-list .ui-button.document-card { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; grid-template-areas: "preview title meta"; align-items: center; column-gap: 16px; row-gap: 4px; max-width: none; min-width: 0; }
+.documents-list .document-card { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; grid-template-areas: "preview title meta"; align-items: center; column-gap: 16px; row-gap: 4px; max-width: none; min-width: 0; }
 .documents-list .card-paper { grid-area: preview; width: 28px; height: 36px; padding: 2px; align-items: center; border-radius: 4px; background: transparent; }
 .documents-list .cover-preview { max-width: 24px; }
 .documents-list .document-card h2 { grid-area: title; margin: 0; font-size: var(--title-size); line-height: var(--title-leading); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-wrap: nowrap; }
@@ -38,7 +38,7 @@
 .documents-list .document-project-link, .documents-list .document-move { margin: 0; justify-self: end; font-size: var(--caption-size); }
 @media (max-width: 1050px) {
   .documents-content .library-heading, .project-documents .library-heading { align-items: flex-start; flex-wrap: wrap; }
-  .documents-list .ui-button.document-card { grid-template-columns: 28px minmax(0, 1fr); grid-template-areas: "preview title" "preview meta"; }
+  .documents-list .document-card { grid-template-columns: 28px minmax(0, 1fr); grid-template-areas: "preview title" "preview meta"; }
   .documents-list .card-meta { align-self: start; }
 }
 /* Narrow screens: search on its own line, then the filters and view toggle share one row. */

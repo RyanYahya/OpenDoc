@@ -189,25 +189,32 @@ nav a.active {
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 28px 24px;
 }
+/* The card keeps the label type it had as a button; its title link covers the whole card. */
 .document-card {
+  position: relative;
   display: block;
   text-align: start;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  border-radius: 0;
   max-width: 320px;
   align-self: start;
-  box-shadow: none;
-}
-.document-card:hover {
-  background: transparent;
+  font-size: var(--label-size);
+  line-height: var(--label-leading);
+  font-weight: 500;
 }
 .document-card:not(.document-card-list):hover .card-paper {
   background: var(--surface-hover);
 }
-.ui-button.document-card:active {
-  background: transparent;
+.document-card-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+}
+.document-card-link:focus-visible {
+  outline: none;
+}
+.document-card-link:focus-visible::after {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
 }
 .card-paper {
   height: 315px;
@@ -770,17 +777,6 @@ nav a.active {
 }
 
 /* Keep the PDF surfaces independent of shared control spacing and hover fills. */
-.ui-button.document-card {
-  display: block;
-  text-align: start;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  border-radius: 6px;
-}
-.ui-button.document-card:hover {
-  background: transparent;
-}
 .ui-button.page-thumb {
   border: 0;
   background: transparent;

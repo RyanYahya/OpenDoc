@@ -1,23 +1,25 @@
 import { documentName, documentFormat, formatLabel, pageUnit, type DocumentSummary } from "../shared/types";
 import { DocumentMenu, type DocumentActionHandler } from './DocumentActions';
 import { CoverPreview } from "./Pdf";
-import { Button } from "./ui";
 import { Icon } from "./ui/Icon";
 import type { DocumentView } from './DocumentViewControl';
 import { StatusBadge, useDocumentDetails } from './Tags';
 import { typeLabel } from '../shared/tags';
+import { textLang } from '../shared/language';
 
-// Base UI owns the card interaction; PDF.js renders the actual document cover.
+/**
+ * The title is a real link, so a card opens in a new tab and its address can be copied; the link
+ * stretches over the whole card while the heading stays outside any button. PDF.js renders the
+ * actual document cover.
+ */
 export function DocumentCard({
   document,
   view = 'gallery',
-  onOpen,
   onAction,
   disabled,
 }: {
   document: DocumentSummary;
   view?: DocumentView;
-  onOpen: () => void;
   onAction: DocumentActionHandler;
   disabled?: boolean;
 }) {
@@ -37,23 +39,23 @@ export function DocumentCard({
   const statusLabel = status === 'ready'
     ? `${pageCount} ${pageUnit(format, pageCount)}`
     : status === 'error' ? 'Needs attention' : 'Rendering…';
+  const name = documentName(document);
   return (
-    <div className="document-card-wrap"><Button
-      static
-      className={`document-card ${view === 'list' ? 'document-card-list' : ''}`}
-      onClick={onOpen}
-      aria-labelledby={`${titleId} ${formatId}`}
-      aria-describedby={[statusId, type && typeId, workStatus && badgeId].filter(Boolean).join(' ')}
-    >
+    <div className="document-card-wrap"><div className={`document-card ${view === 'list' ? 'document-card-list' : ''}`}>
       <div
         className={`card-paper${portrait ? ' card-paper-portrait' : ''}`}
       >
         <CoverPreview format={documentFormat(document)} id={id} artifact={artifact} compact={view === 'list'} />
         {view === 'gallery' && <span id={statusId} className="card-preview-status">{statusLabel}</span>}
       </div>
-      <h2 id={titleId} title={documentName(document)} dir="auto">{documentName(document)}</h2>
+      <h2 id={titleId} title={name} dir="auto" lang={textLang(name, document.language)}>
+        <a className="document-card-link" href={`#document/${id}`}
+          aria-labelledby={`${titleId} ${formatId}`}
+          aria-describedby={[statusId, type && typeId, workStatus && badgeId].filter(Boolean).join(' ')}
+        >{name}</a>
+      </h2>
       {/* Same-titled documents and presentations stay distinguishable by sight and by name. */}
       <span className="card-meta"><span id={formatId} className="card-format"><Icon name={presentation ? 'monitor' : 'document'} size={14} />{formatLabel(format)}</span>{type && <span id={typeId} className="card-type">{typeLabel(type)}</span>}{view === 'list' && <span id={statusId}>{statusLabel}</span>}<StatusBadge status={workStatus} id={badgeId} /></span>
-    </Button><DocumentMenu document={document} onAction={onAction} disabled={disabled} /></div>
+    </div><DocumentMenu document={document} onAction={onAction} disabled={disabled} /></div>
   );
 }

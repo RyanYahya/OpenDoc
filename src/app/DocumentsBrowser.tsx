@@ -46,7 +46,7 @@ export function DocumentsBrowser({ format = 'document', projects, documents, tag
     <div className={view === 'list' ? 'documents-list' : 'document-grid'} role="list">{visible.map(document => {
       const project = projectById.get(document.projectId ?? '');
       return <article className="project-document" key={document.id} role="listitem">
-        <DocumentCard document={document} view={view} onAction={onAction} disabled={disabled} onOpen={() => { location.hash = `document/${document.id}`; }} />
+        <DocumentCard document={document} view={view} onAction={onAction} disabled={disabled} />
         {project ? <a className="document-project-link" href={`#project/${project.id}`}><Icon name="folder" size={15} /><span dir="auto" lang={textLang(project.name)}>{project.name}</span></a>
           : <Button className="text-button document-move" onClick={() => onMove(document)} disabled={!projects.length}>Choose a project</Button>}
       </article>;
@@ -79,7 +79,7 @@ export function ProjectDocuments({ project, documents, tags, loaded, view, onVie
       filter={<><SelectControl label="Filter by format" value={format} onValueChange={value => { if (value === 'all' || value === 'document' || value === 'presentation') setFormat(value); }} items={[
         { label: 'All formats', value: 'all' }, { label: 'Documents', value: 'document' }, { label: 'Presentations', value: 'presentation' },
       ]} /><ItemFilters manifest={manifest} kind="documents" items={documents} value={filters} onChange={setFilters} /></>} />
-    <div className={view === 'list' ? 'documents-list' : 'document-grid'} role="list">{visible.map(document => <article className="project-document" key={document.id} role="listitem"><DocumentCard document={document} view={view} onAction={onAction} disabled={disabled} onOpen={() => { location.hash = `document/${document.id}`; }} /></article>)}</div>
+    <div className={view === 'list' ? 'documents-list' : 'document-grid'} role="list">{visible.map(document => <article className="project-document" key={document.id} role="listitem"><DocumentCard document={document} view={view} onAction={onAction} disabled={disabled} /></article>)}</div>
     {!visible.length && <div className="empty-state"><h2>{!loaded ? 'Loading project…' : hasFilters ? 'No matching items' : 'Your project is ready'}</h2><p>{!loaded ? 'Opening your local workspace.' : hasFilters ? 'Try another search, format, or filter.' : 'Create a document or presentation with your agent.'}</p>{loaded && (hasFilters ? <Button onClick={() => { setQuery(''); setFormat('all'); setFilters(noFilters); }}>Clear filters</Button> : <a href="#templates" className="project-templates-link">Browse templates<Icon name="arrow" size={16} /></a>)}</div>}
   </section>;
 }
