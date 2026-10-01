@@ -153,9 +153,11 @@ function App() {
       .catch(error => { if (!controller.signal.aborted) setDetailError(error.message); });
     return () => controller.abort();
   }, [activeId, detailKey, detailAttempt]);
-  // Keep the previous PDF visible during a refresh, with currentness controls disabled.
+  // Keep the previous PDF visible during a refresh, with currentness controls disabled. Opening a document only
+  // waits for its details, so it keeps the summary's title and status instead of announcing a render.
+  const updating = detail?.state.id === activeSummary?.id;
   const active: DocumentState | undefined = activeSummary ? detail?.key === detailKey ? detail.state : {
-    ...activeSummary, status: 'rendering', artifact: detail?.state.id === activeSummary.id ? detail.state.artifact : undefined,
+    ...activeSummary, name: documentName(activeSummary), status: updating ? 'rendering' : activeSummary.status, artifact: updating ? detail?.state.artifact : undefined,
   } : undefined;
   const routeProjectId = current.view === "project" ? current.id : active?.projectId;
   const project = manifest.projects.find(project => project.id === routeProjectId);

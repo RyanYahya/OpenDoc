@@ -108,22 +108,24 @@ nav a.active {
   width: calc(100% - 240px);
   min-width: 0;
 }
+/* Shown while a document opens or when it is missing; it matches the reader toolbar it gives way to. */
 .topbar {
-  height: 52px;
+  height: 64px;
   flex-shrink: 0;
   border-bottom: 1px solid var(--line);
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 12px;
-  background: var(--background);
+  padding: 0 16px;
+  background: var(--popup-surface);
 }
 .topbar > .ui-button { flex-shrink: 0; }
 .breadcrumb {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: var(--caption-size);
+  font-size: var(--label-size);
+  font-weight: 500;
   min-width: 0;
   flex: 1;
 }
@@ -721,7 +723,7 @@ nav a.active {
   .reader-scroll {
     --sheet-gutter: 24px;
   }
-  .topbar { padding: 0 8px; gap: 8px; }
+  .topbar { height: 60px; padding: 0 12px; gap: 12px; }
   .library-heading {
     align-items: flex-start;
   }
@@ -1000,6 +1002,8 @@ a {
   justify-content: space-between;
   gap: 4px;
   margin: -12px -6px 16px;
+  /* Hold the thumbnail column (72px pages in 4px of padding) before the PDF loads, so the pages never shift. */
+  min-width: 92px;
 }
 .rail-heading .ui-select {
   font-size: var(--tag-size);
