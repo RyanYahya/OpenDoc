@@ -18,7 +18,7 @@ import { parseGlobalArgs } from '../src/cli/main';
 const version = '0.4.2';
 const normalPin = `npm:@ryanyahya/opendoc@${version}`;
 const starterSource = 'export const title = "An authored starter";\n';
-const shippedSkills = ['opendoc-create', 'opendoc-current-document', 'opendoc-apply-comments', 'opendoc-create-theme', 'opendoc-create-template', 'opendoc-review-document', 'opendoc-history', 'opendoc-organize'];
+const shippedSkills = ['opendoc-create', 'opendoc-current-document', 'opendoc-apply-comments', 'opendoc-revise-document', 'opendoc-assets-media', 'opendoc-create-theme', 'opendoc-create-template', 'opendoc-review-document', 'opendoc-history', 'opendoc-organize'];
 
 /** Every shipped skill gets a workspace stub that forwards to its installed, version-matched SKILL.md. */
 async function assertSkillStubs(destination: string) {

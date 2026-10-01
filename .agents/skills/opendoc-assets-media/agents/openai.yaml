@@ -1,0 +1,6 @@
+interface:
+  display_name: "OpenDoc: Assets and media"
+  short_description: "Import and bind logos and fonts; add images and charts."
+  default_prompt: "Use $opendoc-assets-media in this OpenDoc workspace."
+policy:
+  allow_implicit_invocation: true

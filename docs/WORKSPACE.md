@@ -69,7 +69,7 @@ Updates preserve the chosen edition: normal OpenDoc updates from `@ryanyahya/ope
 
 Both editions use the same [agent guide](../AGENTS.md) and skills. In Headless, the agent works from explicit task context and catalog IDs and delivers files remotely; it does not require an active browser selection. The following browser interactions apply to normal OpenDoc.
 
-The book icon in the sidebar and PDF reader opens a quick index of the eight `opendoc-` skills. Hover, focus, or tap it to see each skill's name and purpose. The root [AGENTS.md](../AGENTS.md) routes ordinary requests to the matching workflow; naming a skill is optional. The app does not run the agent itself.
+The book icon in the sidebar and PDF reader opens a quick index of the ten `opendoc-` skills. Hover, focus, or tap it to see each skill's name and purpose. The root [AGENTS.md](../AGENTS.md) routes ordinary requests to the matching workflow; naming a skill is optional. The app does not run the agent itself.
 
 Open your workspace folder in your coding agent and ask:
 
@@ -151,6 +151,8 @@ For development and pull requests, read [Contributing](../CONTRIBUTING.md). Revi
 | Restore earlier wording or deleted comments | [History skill](../.agents/skills/opendoc-history/SKILL.md), [Version history](HISTORY.md) |
 | Tag, find, or organize work | [Organize skill](../.agents/skills/opendoc-organize/SKILL.md), [Tags](TAGS.md) |
 | Resolve the active document or feedback | [Current document skill](../.agents/skills/opendoc-current-document/SKILL.md), [Selection](SELECTION.md) |
+| Update, translate, convert, or retheme existing work | [Revise skill](../.agents/skills/opendoc-revise-document/SKILL.md), [Authoring](AUTHORING.md) |
+| Manage logos, fonts, and document images | [Assets and media skill](../.agents/skills/opendoc-assets-media/SKILL.md), [Assets](ASSETS.md), [Media](MEDIA.md) |
 | Create or adapt a reusable layout | [Templates](TEMPLATES.md) |
 | Create or apply a design system | [Themes](THEMES.md) |
 | Manage projects and document ownership | [Projects](PROJECTS.md) |

@@ -16,7 +16,7 @@ Run commands and edit content in the initialized workspace, which contains `.ope
 
 Use `npx opendoc <command>` in either edition from the workspace or one of its subfolders. Commands discover the workspace through parent directories; use `--workspace /path/to/workspace` when targeting another one. Use `npx opendoc --help` or `<command> --help` for syntax and `--json` for structured output. Both editions install under the `opendoc` dependency alias: `npm:@ryanyahya/opendoc@<version>` for normal OpenDoc and `npm:@ryanyahya/opendoc-headless@<version>` for Headless. This preserves these commands, authoring imports, and guide paths.
 
-In normal OpenDoc, `npx opendoc start` runs in the foreground and opens the browser; use its printed launch URL. Stop the service with Ctrl-C before an authorized `npx opendoc update`. Headless has no browser service. Updates preserve the workspace's edition and authored content.
+In normal OpenDoc, `npx opendoc start` runs in the foreground and opens the browser (`--no-open` skips the browser); use its printed launch URL. `npx opendoc update --check` reports available versions without changing anything; install one only when the user asks, stopping the service with Ctrl-C before `npx opendoc update` (or `--version <exact-version>`). Headless has no browser service. Updates preserve the workspace's edition and authored content.
 
 ## Complete remote work with Headless
 
@@ -39,11 +39,14 @@ For example, “create a presentation from these notes” starts `opendoc-create
 | Create a document, report, presentation, slide deck, or PowerPoint | [opendoc-create](.agents/skills/opendoc-create/SKILL.md) |
 | Work on “this document”, presentation, page, slide, or selection | [opendoc-current-document](.agents/skills/opendoc-current-document/SKILL.md) |
 | Apply saved comments or marked feedback to documents or slides | [opendoc-apply-comments](.agents/skills/opendoc-apply-comments/SKILL.md) |
+| Change an existing document or deck directly: update, shorten, translate or convert to Arabic, turn into a deck or document, or switch its theme | [opendoc-revise-document](.agents/skills/opendoc-revise-document/SKILL.md) |
+| Add or change logos, fonts, a theme's defaults for new documents, or images and charts in a document | [opendoc-assets-media](.agents/skills/opendoc-assets-media/SKILL.md) |
 | Create or refine a theme | [opendoc-create-theme](.agents/skills/opendoc-create-theme/SKILL.md) |
 | Create a reusable page layout, deck skeleton, or data-report template | [opendoc-create-template](.agents/skills/opendoc-create-template/SKILL.md) |
-| Review PDF pages or slides and presentation exports before delivery | [opendoc-review-document](.agents/skills/opendoc-review-document/SKILL.md) |
+| Review PDF pages or slides and presentation exports before delivery, export a document again, or export everything | [opendoc-review-document](.agents/skills/opendoc-review-document/SKILL.md) |
 | See what changed, undo a change, restore earlier wording, or bring back a deleted comment | [opendoc-history](.agents/skills/opendoc-history/SKILL.md) |
-| Tag, find, or set the status of documents, presentations, themes, and templates, arrange theme folders, or group documents into projects | [opendoc-organize](.agents/skills/opendoc-organize/SKILL.md) |
+| Tag, find, or set the status of documents, presentations, themes, and templates, arrange theme folders, group documents into projects, change project settings, or rename, duplicate, delete, or restore documents | [opendoc-organize](.agents/skills/opendoc-organize/SKILL.md) |
+| Start OpenDoc, or check for and install an update | **Work in the user's workspace** above; [Update an existing workspace](README.md#update-an-existing-workspace) |
 
 For application changes, read the relevant runtime and [verification guide](VALIDATION.md). [README.md](README.md) maps the folders and supported launch commands. Load only the specialized guidance needed for the task.
 
@@ -65,7 +68,7 @@ Document-owned visuals live in `documents/<document-id>/media/<media-id>/` with 
 
 For exact image boxes use `MediaFrame`; for managed full-page artwork use `Page backgroundMedia`. Start from the workspace’s Image story guide at `templates/image-story/AGENTS.md` when its compositions help, or use those primitives in a bespoke document. Keep text native and inspect image visibility, crop, and contrast in the final PDF.
 
-Reusable logos and fonts live in the shared [asset library](docs/ASSETS.md). Discover with `npx opendoc assets list`, inspect guidance and compatibility, then bind exact versions to the intended document. Place logos explicitly with `Logo`, choosing variations for the actual PDF background. App appearance never chooses artwork. Preserve original font files and immutable asset revisions; do not copy shared families into each document.
+Reusable logos and fonts live in the shared [asset library](docs/ASSETS.md). Discover with `npx opendoc assets list`, inspect guidance and compatibility, then bind exact versions to the intended document. Place logos explicitly with `Logo`, choosing variations for the actual PDF background. App appearance never chooses artwork. Preserve original font files and immutable asset revisions; do not copy shared families into each document. [opendoc-assets-media](.agents/skills/opendoc-assets-media/SKILL.md) covers imports, revisions, bindings, theme defaults, and document visuals end to end.
 
 ## Verify and finish
 
