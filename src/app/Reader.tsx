@@ -151,18 +151,22 @@ export function Reader({
   useEffect(() => { editField.current?.focus({ preventScroll: true }); }, [editor?.selection.targetId]);
   useEffect(() => { if (commentsOpen && commentMode === 'compose') commentField.current?.focus({ preventScroll: true }); }, [commentsOpen, commentMode, selection?.blockId]);
   useEffect(() => {
-    if ((!editor && !(commentsOpen && commentMode === 'compose')) || !selection?.targetId) return;
+    // Scroll the selected component above any floating panel opened for it.
+    if ((!editor && !commentsOpen) || !selection) return;
     const frame = requestAnimationFrame(() => {
-      const target = scroll.current?.querySelector<HTMLElement>(`[data-text-target="${CSS.escape(selection.targetId!)}"]`);
-      const panel = document.querySelector('.edit-workbench');
-      if (target && panel && scroll.current) {
-        const box = target.getBoundingClientRect();
-        const top = panel.getBoundingClientRect().top;
-        if (box.bottom > top - 20) scroll.current.scrollTop += Math.min(box.bottom - top + 20, box.top - scroll.current.getBoundingClientRect().top - 32);
-      }
+      const container = scroll.current;
+      const selector = selection.targetId ? `[data-text-target="${CSS.escape(selection.targetId)}"]` : `[data-block-id="${CSS.escape(selection.blockId)}"]`;
+      const target = container?.querySelector<HTMLElement>(`[data-sheet="${selection.page}"] ${selector}`) ?? container?.querySelector<HTMLElement>(selector);
+      if (!container || !target) return;
+      const box = target.getBoundingClientRect();
+      const panels = [...document.querySelectorAll('.edit-workbench, .comment-dock-panel')].map(panel => panel.getBoundingClientRect())
+        .filter(panel => panel.left < box.right && panel.right > box.left);
+      if (!panels.length) return;
+      const top = Math.min(...panels.map(panel => panel.top));
+      if (box.bottom > top - 20) container.scrollTop += Math.min(box.bottom - top + 20, box.top - container.getBoundingClientRect().top - 32);
     });
     return () => cancelAnimationFrame(frame);
-  }, [editor?.selection.targetId, commentsOpen, commentMode, selection?.targetId]);
+  }, [editor?.selection.targetId, commentsOpen, commentMode, selection?.targetId, selection?.blockId]);
   useEffect(() => {
     if (!pdf) return;
     if (previousPreview.current.hash === artifact?.hash && previousPreview.current.revision === state.revision) return;
