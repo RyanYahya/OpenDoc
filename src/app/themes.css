@@ -18,6 +18,7 @@
 .theme-gallery-card h2 { margin: 12px 0 0; font-size: var(--title-size); line-height: var(--title-leading); font-weight: 500; }
 .theme-gallery-card h2 a { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 28px; }
 .theme-gallery-card h2 a:hover { text-decoration: underline; text-underline-offset: 4px; }
+@media (pointer: coarse) { .theme-gallery-card h2 a { min-height: var(--control-hit-size); } }
 .theme-gallery-description { margin-top: 4px; color: var(--muted); font-size: 13px; line-height: 1.5; }
 .theme-palette-strip { position: absolute; left: 24px; right: 24px; bottom: 16px; display: flex; border-radius: 2px; overflow: hidden; box-shadow: 0 0 0 1px var(--line); }
 .theme-palette-strip span { flex: 1; min-width: 0; height: 6px; }

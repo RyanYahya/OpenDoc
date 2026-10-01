@@ -30,8 +30,9 @@
   --menu-min-width: 184px;
   --motion-quick: 140ms;
 }
+/* Touch screens raise every shared control to a 40px target; fine pointers keep the compact 32px. */
 @media (pointer: coarse) {
-  :root { --data-row-height: 44px; --menu-row-height: 44px; }
+  :root { --control-hit-size: 40px; --data-row-height: 44px; --menu-row-height: 44px; }
 }
 #root {
   isolation: isolate;
