@@ -9,6 +9,7 @@
     const dark = preference === 'dark' || (preference !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
     document.documentElement.dataset.appearance = dark ? 'dark' : 'light';
     document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+    // The styles have not loaded yet, so this mirrors --background in src/app/colors.css until the app takes over.
     document.querySelector('meta[name="theme-color"]').content = dark ? '#181818' : '#f8f8f8';
   })();
 </script>

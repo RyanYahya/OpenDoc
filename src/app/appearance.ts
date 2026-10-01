@@ -19,7 +19,9 @@ export function useAppearance() {
       const resolved = appearance === 'system' ? system.matches ? 'dark' : 'light' : appearance;
       document.documentElement.dataset.appearance = resolved;
       document.documentElement.style.colorScheme = resolved;
-      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', resolved === 'dark' ? '#181818' : '#f8f8f8');
+      // Browser chrome follows the app background token, including its higher-contrast values.
+      const background = getComputedStyle(document.documentElement).getPropertyValue('--background').trim();
+      if (background) document.querySelector('meta[name="theme-color"]')?.setAttribute('content', background);
     };
     apply();
     system.addEventListener('change', apply);
