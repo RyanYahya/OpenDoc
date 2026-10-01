@@ -99,7 +99,7 @@
 .asset-dialog textarea, .asset-theme-defaults textarea { display: block; width: 100%; resize: vertical; min-height: 75px; border: 1px solid var(--line); border-radius: 5px; padding: 11px 12px; background: var(--surface); color: var(--ink); font: inherit; line-height: 1.5; }
 .asset-upload { padding: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
 .asset-upload input[type=file] { display: block; width: 100%; font: inherit; color: var(--muted); font-size: 13px; border: 0; background: transparent; padding: 0; }
-.asset-upload input[type=file]::file-selector-button { min-height: var(--control-hit-size); padding: 6px 10px; font: 500 var(--label-size)/var(--label-leading) Inter, sans-serif; color: var(--ink); border: 1px solid var(--line); border-radius: var(--control-radius); background: var(--surface); margin: 6px 10px 6px 0; cursor: pointer; }
+.asset-upload input[type=file]::file-selector-button { min-height: var(--control-hit-size); padding: 6px 10px; font: inherit; font-size: var(--label-size); line-height: var(--label-leading); font-weight: 500; color: var(--ink); border: 1px solid var(--line); border-radius: var(--control-radius); background: var(--surface); margin: 6px 10px 6px 0; cursor: pointer; }
 .asset-upload-files { margin: 8px 0 0; padding: 0; list-style: none; }
 .asset-upload-files li { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: var(--caption-size); line-height: 1.6; padding-top: 5px; overflow-wrap: anywhere; }
 .asset-upload-files li span { flex: none; color: var(--muted); }
