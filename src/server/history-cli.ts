@@ -16,8 +16,8 @@ const usage = `Usage: npx opendoc history list <doc> [--json]
        npx opendoc history restore <doc> <version> [--block <id> | --section <id>] [--json]
 
 History is recorded automatically and kept for 90 days in documents/<doc>/.history/. Without a running
-OpenDoc service, as in OpenDoc Headless, create, check, review, export, comments, and history record
-the edits made since the previous version.
+OpenDoc service, as in OpenDoc Headless, create, check, review, export, comments, documents, and
+history record the edits made since the previous version.
 list groups versions by day, and joins a burst from one source within ten minutes into one entry,
 as the History panel does; --json also gives each version its description and the same groups.
 show names each changed block by its kind and opening words, with the changed words; --json adds
