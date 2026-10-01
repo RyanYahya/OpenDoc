@@ -25,3 +25,6 @@ themes/folders.json
 .claude/settings.local.json
 CLAUDE.local.md
 AGENTS.override.md
+
+# Per-document version history (kept inside each document folder).
+.history/

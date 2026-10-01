@@ -39,6 +39,8 @@ import { handleTagsRequest } from './tags-http';
 import { readAssetHead as selectedAssetHead, readAssetRevision as selectedAssetRevision } from '../assets/files';
 import type { SelectedAsset } from '../shared/assets';
 import { applicationRoot } from '../runtime/paths';
+import { ignoredByWatcher } from './watch';
+import { HistoryRecorder, HistoryStore } from './history';
 
 const root = process.cwd();
 const workspace = new Workspace(root);
@@ -46,6 +48,8 @@ const edits = new TextEditService(root);
 const exports = new ExportStore(root);
 const assets = new AssetStore(root, () => workspace.list());
 workspace.manualEditSummary = id => edits.summary(id);
+const historyStore = new HistoryStore(root);
+const history = new HistoryRecorder(historyStore, error => console.error('Could not record document history:', error));
 const templates = new TemplateCatalog(root);
 const themes = new ThemeCatalog(root);
 const token = randomBytes(24).toString('hex');
@@ -301,11 +305,14 @@ const server = createServer(async (req, res) => {
       const state = workspace.states.get(id);
       if (!state) { json(res, { error: 'Document not found.' }, 404); return; }
       const input = await body(req, 256_000);
+      // Outside changes made before this save keep their own version.
+      await history.flush(id).catch(error => console.error('Could not record document history:', error));
       state.manualEdit = editId ? await edits.undo(id, editId) : await edits.apply(id, input, state);
       const files = edits.changedFiles(id);
       if (files.length) for (const file of files) workspace.noteChange(resolve(root, file));
       else workspace.invalidate(id);
       workspace.changed();
+      await history.record(id, editId ? 'undo' : 'edit').catch(error => console.error('Could not record document history:', error));
       json(res, state); return;
     }
     const match = url.pathname.match(/^\/api\/documents\/([^/]+)\/(pdf|export|comments)(?:\/([^/]+)(?:\/(restore))?)?$/);
@@ -400,11 +407,7 @@ workspace.on('change', () => {
   materialsVersion++;
   for (const client of events.clients) if (client.readyState === WebSocket.OPEN) client.send('changed');
 });
-const watcher = watch([...new Set([root, resolve(applicationRoot, 'src'), resolve(applicationRoot, 'package.json'), resolve(applicationRoot, 'pnpm-lock.yaml'), resolve(applicationRoot, 'tsconfig.workspace.json')])], { ignoreInitial: true, ignored: path => {
-  const installed = relative(applicationRoot, path);
-  const rel = installed === '' || (!installed.startsWith('../') && installed !== '..') ? installed : relative(root, path);
-  return /(^|[/\\])(node_modules|\.git|\.opendoc|output|tmp|dist|tests)([/\\]|$)/.test(rel) || /\.forme-render-|\.tmp$/.test(rel);
-} });
+const watcher = watch([...new Set([root, resolve(applicationRoot, 'src'), resolve(applicationRoot, 'package.json'), resolve(applicationRoot, 'pnpm-lock.yaml'), resolve(applicationRoot, 'tsconfig.workspace.json')])], { ignoreInitial: true, ignored: path => ignoredByWatcher(applicationRoot, root, path) });
 watcher.on('all', (_event, path) => {
   if (relative(root, path) === 'projects.json') {
     void workspace.refreshProjects().catch(error => workspace.emit('workspace-error', error)); return;
@@ -416,12 +419,16 @@ watcher.on('all', (_event, path) => {
     .then(() => workspace.changed()).catch(error => workspace.emit('workspace-error', error));
   if (/^themes\/.*\.md$/.test(relative(root, path))) return;
   if (path.endsWith('comments.json')) { workspace.changed(); return; }
+  // Debounced, so one save or one burst of agent writes becomes one version.
+  history.noteChange(path);
   // Documents may import modules or read local assets in any format (CSV, text,
   // diagrams, and fonts included). Dependency handling decides what is affected.
   workspace.noteChange(path);
 });
 workspace.on('workspace-error', error => console.error('Workspace refresh failed:', error));
 await workspace.refresh();
+// Record any change made while OpenDoc was closed, and apply the retention period.
+void (async () => { for (const id of workspace.states.keys()) await history.record(id, 'external').catch(error => console.error('Could not record document history:', error)); })();
 console.log(`\nOpenDoc is running at ${origin}\nDocuments: ${resolve(root, 'documents')}\n`);
 let closing = false;
 async function close() {
@@ -433,6 +440,7 @@ async function close() {
   // Complete accepted saves while their preview files and source watcher are still available.
   await stopped;
   await watcher.close();
+  await history.close();
   await workspace.close(); await edits.close(); await templates.close(); await themes.close(); await vite?.close();
   const sessionFile = resolve(root, '.opendoc/server.json');
   const session = await readFile(sessionFile, 'utf8').then(JSON.parse, error => { if (error.code === 'ENOENT') return null; throw error; });

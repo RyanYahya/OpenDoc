@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { excludedFromCopy, forbiddenInPackage } from './package-rules.mjs';
+import { excludedFromPackage, forbiddenPackagePath } from './package-files.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const argv = process.argv.slice(2);
@@ -44,7 +45,7 @@ async function copy(relative, destination, selectedEdition) {
       // Showcase material and a workspace's own folders, tags, and projects stay out of releases.
       if (excludedFromCopy(name, sourceArchive)) return false;
       if (selectedEdition === 'headless' && browserFiles.some((entry) => name === entry || name.startsWith(`${entry}/`))) return false;
-      return !['.DS_Store', 'node_modules', '.git', '.opendoc', 'output', 'tmp'].includes(path.basename(source));
+      return !excludedFromPackage(source);
     },
   });
 }
@@ -161,7 +162,7 @@ for (const selectedEdition of editions) {
     const packed = JSON.parse(await run('npm', ['pack', '--ignore-scripts', '--json', '--pack-destination', output], stage, true))[0];
     const archive = path.join(output, packed.filename);
     const filenames = new Set(packed.files.map(({ path: name }) => name));
-    const forbidden = packed.files.filter(({ path: name }) => forbiddenInPackage(name, sourceArchive));
+    const forbidden = packed.files.filter(({ path: name }) => forbiddenInPackage(name, sourceArchive) || forbiddenPackagePath(name));
     if (forbidden.length) throw new Error(`Excluded files entered the package: ${forbidden.map(({ path: name }) => name).join(', ')}`);
     if (packed.bundled.some((name) => name === 'esbuild' || name.startsWith('@esbuild/') || name.startsWith('@napi-rs/') || name.startsWith('@resvg/'))) {
       throw new Error('A platform-specific dependency entered the bundle.');

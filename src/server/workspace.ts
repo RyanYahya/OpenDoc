@@ -3,6 +3,7 @@ import { access, readdir, rm } from 'node:fs/promises';
 import { relative, resolve, sep } from 'node:path';
 import { renderOnce, validId, documentEntry } from './render';
 import { atomicWrite } from './files';
+import { historyFolder } from './history-paths';
 import { themePaths, readThemePaths } from './themes';
 import { readProjects } from './projects';
 import { readComments } from './comments';
@@ -75,6 +76,8 @@ export class Workspace extends EventEmitter {
     if (this.closed) return [];
     const path = resolve(this.root, file);
     const parts = relative(this.root, path).split(sep);
+    // Recording a version must never re-render the document it records.
+    if (parts[0] === 'documents' && parts.includes(historyFolder)) return [];
     const owner = parts[0] === 'documents' && validId(parts[1] ?? '') ? parts[1] : undefined;
     const sharedRuntime = isRenderRuntimePath(this.root, path) || (parts[0] === 'documents' && parts.length === 1);
     const affected: string[] = [];

@@ -6,6 +6,7 @@ import ts from 'typescript';
 import { atomicWrite } from './files';
 import { validId } from './render';
 import { documentDisplayName, ProjectError, requireProject, withProjects } from './projects';
+import { historyFolder } from './history-paths';
 import { readTagsFile, setItemTags } from './tags';
 
 /** Tags follow a document through duplication and Trash; a tags file problem never blocks either. */
@@ -72,6 +73,8 @@ function rebaseSource(text: string, file: string, root: string, from: string, to
 async function copyDocumentTree(source: string, destination: string, root: string, from: string, to: string) {
   await mkdir(destination);
   for (const entry of await readdir(source, { withFileTypes: true })) {
+    // A copy starts its own history; earlier versions stay with the original.
+    if (entry.name === historyFolder) continue;
     const input = resolve(source, entry.name), output = resolve(destination, entry.name);
     if (entry.isDirectory()) await copyDocumentTree(input, output, root, from, to);
     else if (entry.isFile()) {
