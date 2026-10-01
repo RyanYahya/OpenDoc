@@ -136,3 +136,11 @@ export async function restoreComment(root: string, documentId: string, commentId
     return { status, history: [...comment.history, { at, action: 'restored' }] };
   }, true);
 }
+
+/** Deleted feedback that is still offered for restoring, newest deletion first. Records themselves are never pruned. */
+export function recentlyDeletedComments(rows: Comment[], now = Date.now(), days = 90) {
+  return rows.filter(row => row.status === 'deleted')
+    .map(row => ({ row, at: Date.parse([...row.history].reverse().find(event => event.action === 'deleted')?.at ?? row.updatedAt) }))
+    .filter(({ at }) => now - at <= days * 86_400_000)
+    .sort((a, b) => b.at - a.at).map(({ row }) => row);
+}

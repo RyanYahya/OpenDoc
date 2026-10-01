@@ -15,7 +15,7 @@ import { builtClient } from './client';
 import { GuideError, readGuide } from './guides';
 import { Workspace } from './workspace';
 import { atomicWrite } from './files';
-import { addComment, changeComment, editComment, deleteComment, restoreComment, readComments, Conflict, withCommentLock } from './comments';
+import { addComment, changeComment, editComment, deleteComment, restoreComment, readComments, recentlyDeletedComments, Conflict, withCommentLock } from './comments';
 import { renameDocument, duplicateDocument, deleteDocument, restoreDocument } from './documents';
 import { validId } from './render';
 import { createDocument, listStarters, CreateDocumentError } from './create';
@@ -40,7 +40,9 @@ import { readAssetHead as selectedAssetHead, readAssetRevision as selectedAssetR
 import type { SelectedAsset } from '../shared/assets';
 import { applicationRoot } from '../runtime/paths';
 import { ignoredByWatcher } from './watch';
-import { HistoryRecorder, HistoryStore } from './history';
+import { HistoryError, HistoryRecorder, HistoryStore } from './history';
+import { blockHistory, compareVersion, restoreVersion, RestoreRefusal } from './history-restore';
+import type { RestoreScope } from '../shared/history';
 
 const root = process.cwd();
 const workspace = new Workspace(root);
@@ -315,6 +317,33 @@ const server = createServer(async (req, res) => {
       await history.record(id, editId ? 'undo' : 'edit').catch(error => console.error('Could not record document history:', error));
       json(res, state); return;
     }
+    const historyRoute = url.pathname.match(/^\/api\/documents\/([a-z0-9-]+)\/history(?:\/blocks\/([^/]+)|\/(\d{8}T\d{9}Z-[a-f0-9]{8})(\/restore)?)?$/);
+    if (historyRoute) {
+      const [, id, encodedBlock, versionId, restore] = historyRoute;
+      const state = workspace.states.get(id);
+      if (!state) { json(res, { error: 'Document not found.' }, 404); return; }
+      if (req.method === 'GET' && !encodedBlock && !versionId) { json(res, { documentId: id, retentionDays: historyStore.retentionDays, versions: await historyStore.list(id) }); return; }
+      if (req.method === 'GET' && encodedBlock) {
+        const requested = decodeURIComponent(encodedBlock);
+        json(res, await blockHistory(historyStore, id, requested, getBlock(state.artifact, requested))); return;
+      }
+      if (req.method === 'GET' && versionId && !restore) { json(res, await compareVersion(historyStore, id, versionId)); return; }
+      if (req.method === 'POST' && versionId && restore) {
+        const input = await body(req);
+        if (Object.keys(input).some(key => !['scope', 'blockId', 'base'].includes(key)) || !['version', 'block', 'section'].includes(input.scope)
+          || (input.blockId !== undefined && typeof input.blockId !== 'string') || (input.base !== undefined && typeof input.base !== 'string')) throw new HistoryError('Invalid restore request.');
+        // Restoring would leave unsaved browser drafts against replaced source.
+        if (workspace.context.documentId === id && (workspace.context.pendingEdits ?? 0) > 0) throw new Conflict('Save or discard your unsaved text edits before restoring an earlier version.');
+        const result = await edits.withDocument(id, () => restoreVersion(historyStore, id, versionId, {
+          scope: input.scope as RestoreScope, blockId: input.blockId, base: input.base,
+          record: (origin, extra) => history.record(id, origin, extra),
+          written: path => { workspace.noteChange(path); },
+        }));
+        workspace.changed();
+        json(res, result); return;
+      }
+      json(res, { error: 'Not found.' }, 404); return;
+    }
     const match = url.pathname.match(/^\/api\/documents\/([^/]+)\/(pdf|export|comments)(?:\/([^/]+)(?:\/(restore))?)?$/);
     if (!match || !validId(match[1])) { json(res, { error: 'Not found.' }, 404); return; }
     const [, id, action, commentId, commentAction] = match;
@@ -339,7 +368,10 @@ const server = createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': info.mime, 'Content-Length': bytes.length, 'Content-Disposition': `attachment; filename="${id}${info.extension}"`, 'Cache-Control': 'no-store' }); res.end(bytes); return;
     }
     if (action === 'comments') {
-      if (req.method === 'GET') { json(res, (await readComments(root, id)).filter(comment => comment.status !== 'deleted')); return; }
+      if (req.method === 'GET') {
+        const rows = await readComments(root, id);
+        json(res, url.searchParams.get('status') === 'deleted' ? recentlyDeletedComments(rows) : rows.filter(comment => comment.status !== 'deleted')); return;
+      }
       if (req.method === 'POST' && !commentId) {
         const value = await body(req);
         if (state.status !== 'ready' || state.artifact?.hash !== value.hash) throw new Conflict('The preview changed. Wait for the latest version before commenting.');
@@ -369,7 +401,7 @@ const server = createServer(async (req, res) => {
       }
     }
     json(res, { error: 'Not found.' }, 404);
-  } catch (error) { json(res, { error: (error as NodeJS.ErrnoException).code === 'ENOENT' ? 'That local file is missing. Restore it or reload the library.' : error instanceof Error ? error.message : String(error) }, error instanceof CreateDocumentError || error instanceof ProjectError || error instanceof ThemeFoldersError || error instanceof TagsError || error instanceof ExportError || error instanceof AssetError || error instanceof GuideError ? error.status : error instanceof Conflict || error instanceof ExportChangedError ? 409 : (error as NodeJS.ErrnoException).code === 'ENOENT' ? 404 : 400); }
+  } catch (error) { json(res, { error: (error as NodeJS.ErrnoException).code === 'ENOENT' ? 'That local file is missing. Restore it or reload the library.' : error instanceof Error ? error.message : String(error) }, error instanceof CreateDocumentError || error instanceof ProjectError || error instanceof ThemeFoldersError || error instanceof TagsError || error instanceof ExportError || error instanceof AssetError || error instanceof GuideError || error instanceof HistoryError ? error.status : error instanceof RestoreRefusal ? 422 : error instanceof Conflict || error instanceof ExportChangedError ? 409 : (error as NodeJS.ErrnoException).code === 'ENOENT' ? 404 : 400); }
 });
 
 // Upgraded sockets do not occupy the browser's six HTTP/1 request slots.

@@ -37,6 +37,8 @@ export interface SourceOverride {
   contents: string;
   originalDigest: string;
   replacements: { start: number; end: number; tokenLength: number; value: string }[];
+  /** A restore candidate may override a local file the current graph does not import. */
+  optional?: boolean;
 }
 
 /** Keep the authored identity while candidate tokens and all following offsets move. */
@@ -92,6 +94,6 @@ export async function bundleSourceOverrides(source: string, entry: string, overr
       });
     } }, authoringResolutionPlugin()],
   }).catch(error => { throw new Error(`Build error: ${error instanceof Error ? error.message : String(error)}`, { cause: error }); });
-  if ([...overrides.keys()].some(file => !used.has(file))) throw new Error('An edited source is no longer used by this document. Refresh the document before saving.');
+  if ([...overrides].some(([file, override]) => !override.optional && !used.has(file))) throw new Error('An edited source is no longer used by this document. Refresh the document before saving.');
   return result.outputFiles[0].text;
 }
