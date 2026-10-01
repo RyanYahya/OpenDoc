@@ -11,6 +11,8 @@ import { inspectPresentationCompatibility, roundedPanel, type PaintStyle } from 
 
 export interface PresentationCapture {
   version: 1; hash: string; meta: DocumentMeta; slides: SlideInfo[]; doc: FormeDocument; layout: LayoutInfo;
+  /** Each text target's slot, by the target number a text node's synthetic source line carries. */
+  textSlots?: string[];
 }
 type TextKind = Extract<FormeNode['kind'], { type: 'Text' | 'Heading' }>;
 type Run = { text: string; style: FormeStyle; href?: string };
@@ -20,6 +22,28 @@ const key = (location: SourceLocation | undefined, type: string) => `${location?
 const hex = (color: Color) => [color.r, color.g, color.b].map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join('').toUpperCase();
 const fill = (color: Color) => ({ color: hex(color), transparency: (1 - (color.a ?? 1)) * 100 });
 const box = (node: ElementInfo) => ({ x: node.x / PT, y: node.y / PT, w: node.width / PT, h: node.height / PT });
+const blockOf = (node: Pick<ElementInfo, 'sourceLocation'>, inherited: string) => node.sourceLocation?.file.startsWith('opendoc:block:') ? node.sourceLocation.file.slice(14) : inherited;
+
+type SlideObject = { block: string; part: string; text?: boolean; draw: (objectName: string) => void };
+/**
+ * Selection Pane names for one slide, in drawing order. Each object is named by its component's
+ * block ID. A block's only text box, or its main text, keeps the bare ID; other text boxes add
+ * their text slot, such as "costs column-item" or "steps-call marker", and shapes and images
+ * name their role. A number is appended only when a name would still repeat on the slide.
+ */
+export function slideObjectNames(objects: Pick<SlideObject, 'block' | 'part' | 'text'>[]): string[] {
+  const texts = new Map<string, number>();
+  for (const object of objects) if (object.text) texts.set(object.block, (texts.get(object.block) ?? 0) + 1);
+  const used = new Set<string>();
+  return objects.map(object => {
+    const bare = object.text && (texts.get(object.block) === 1 || object.part === 'children');
+    const base = bare ? object.block : `${object.block} ${object.part}`;
+    let name = base;
+    for (let count = 2; used.has(name); count++) name = `${base} ${count}`;
+    used.add(name);
+    return name;
+  });
+}
 
 /** Preserve authored runs inside one editable textbox, using the reviewed line breaks. */
 export function presentationTextRuns(source: TextKind, lines: Pick<ElementInfo, 'textContent'>[]): Run[] | null {
@@ -191,23 +215,25 @@ export async function presentationBytes(capture: PresentationCapture): Promise<U
     }
     indexSource(sourcePage);
     const slide = pptx.addSlide(), config = sourcePage.kind.config;
-    if (config.backgroundImage) slide.addImage({ data: config.backgroundImage, x: 0, y: 0, w: 960 / PT, h: 540 / PT, transparency: (1 - (config.backgroundOpacity ?? 1)) * 100 });
-    function visit(node: ElementInfo) {
-      const style = node.style as PaintStyle;
+    // Collect the slide's objects in drawing order, name them together, then draw them.
+    const objects: SlideObject[] = [];
+    if (config.backgroundImage) objects.push({ block: label, part: 'background image', draw: objectName => slide.addImage({ data: config.backgroundImage!, x: 0, y: 0, w: 960 / PT, h: 540 / PT, transparency: (1 - (config.backgroundOpacity ?? 1)) * 100, objectName }) });
+    function visit(node: ElementInfo, inherited: string) {
+      const style = node.style as PaintStyle, block = blockOf(node, inherited);
       if (style.opacity === 0) return;
       if (node.kind === 'Rect') {
         const { radius } = roundedPanel(node);
         if (radius > 0) {
-          if (style.backgroundColor || style.borderWidth.top > 0) slide.addShape('roundRect', { ...box(node), rectRadius: radius / PT,
+          if (style.backgroundColor || style.borderWidth.top > 0) objects.push({ block, part: 'panel', draw: objectName => slide.addShape('roundRect', { ...box(node), rectRadius: radius / PT,
             line: style.borderWidth.top > 0 ? { ...fill(style.borderColor.top), width: style.borderWidth.top } : { transparency: 100 },
-            fill: style.backgroundColor ? fill(style.backgroundColor) : { transparency: 100 } });
+            fill: style.backgroundColor ? fill(style.backgroundColor) : { transparency: 100 }, objectName }) });
         } else {
-          if (style.backgroundColor) slide.addShape('rect', { ...box(node), line: { transparency: 100 }, fill: fill(style.backgroundColor) });
+          if (style.backgroundColor) objects.push({ block, part: 'background', draw: objectName => slide.addShape('rect', { ...box(node), line: { transparency: 100 }, fill: fill(style.backgroundColor!), objectName }) });
           for (const side of ['top', 'right', 'bottom', 'left'] as const) if (style.borderWidth?.[side] > 0) {
             const horizontal = side === 'top' || side === 'bottom';
-            slide.addShape('line', { x: (node.x + (side === 'right' ? node.width : 0)) / PT, y: (node.y + (side === 'bottom' ? node.height : 0)) / PT,
+            objects.push({ block, part: `${side} border`, draw: objectName => slide.addShape('line', { x: (node.x + (side === 'right' ? node.width : 0)) / PT, y: (node.y + (side === 'bottom' ? node.height : 0)) / PT,
               w: horizontal ? node.width / PT : 0, h: horizontal ? 0 : node.height / PT,
-              line: { ...fill(style.borderColor[side]), width: style.borderWidth[side], beginArrowType: 'none', endArrowType: 'none' } });
+              line: { ...fill(style.borderColor[side]), width: style.borderWidth[side], beginArrowType: 'none', endArrowType: 'none' }, objectName }) });
           }
         }
       }
@@ -231,21 +257,27 @@ export async function presentationBytes(capture: PresentationCapture): Promise<U
           return fontRuns(run.text, runStyle).map(part => ({ text: part.text, options: { ...textStyle(part.fontFamily ? { ...runStyle, fontFamily: part.fontFamily } : runStyle), ...bidi, ...(run.href ? { hyperlink: { url: run.href } } : {}) } }));
         });
         const align = paragraphAlignment(direction.rtl, node, lines);
-        slide.addText(rich, { ...box(node), y: lines[0].y / PT, ...textStyle(style), ...bidi, margin: 0, breakLine: false, paraSpaceAfter: 0, paraSpaceBefore: 0,
-          lineSpacing: style.fontSize * style.lineHeight, align, valign: 'top', wrap: false, fit: 'none',
-          objectName: node.sourceLocation?.file?.replace('opendoc:block:', '') ?? 'text' });
+        // Text targets carry their number as a synthetic source line; line 0 marks a decoration such as a list marker.
+        const line = node.sourceLocation?.file.startsWith('opendoc:block:') ? node.sourceLocation.line : undefined;
+        const part = line === 0 ? 'marker' : (line && capture.textSlots?.[line - 1]) || 'text';
+        const textStyles = textStyle(style);
+        objects.push({ block, part, text: true, draw: objectName => slide.addText(rich, { ...box(node), y: lines[0].y / PT, ...textStyles, ...bidi, margin: 0, breakLine: false, paraSpaceAfter: 0, paraSpaceBefore: 0,
+          lineSpacing: style.fontSize * style.lineHeight, align, valign: 'top', wrap: false, fit: 'none', objectName }) });
         return;
       }
       if (node.kind === 'Image') {
         const source = sources.get(key(node.sourceLocation, 'Image'))?.shift();
         if (source?.kind.type !== 'Image' || !source.kind.src) throw new Error(`Slide ${label}: an image source could not be matched.`);
-        slide.addImage({ data: source.kind.src, ...box(node), altText: source.alt ?? '' }); return;
+        const data = source.kind.src;
+        objects.push({ block, part: 'image', draw: objectName => slide.addImage({ data, ...box(node), altText: source.alt ?? '', objectName }) }); return;
       }
       if (!['Rect', 'None', 'Text'].includes(node.kind)) throw new Error(`Slide ${label}: PowerPoint export does not yet support ${node.nodeType}.`);
       if (node.nodeType === 'TextLine') throw new Error(`Slide ${label}: an editable text line could not be matched.`);
-      node.children.forEach(visit);
+      node.children.forEach(child => visit(child, block));
     }
-    page.elements.forEach(visit);
+    page.elements.forEach(node => visit(node, label));
+    const names = slideObjectNames(objects);
+    objects.forEach((object, index) => object.draw(names[index]));
   }
   for (const font of used.values()) {
     if (font.restrictions.noEmbedding || font.restrictions.bitmapOnly || font.restrictions.viewOnly) throw new Error(`${font.family} does not permit editable font embedding. Choose a font that does before exporting PowerPoint.`);

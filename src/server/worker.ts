@@ -183,7 +183,7 @@ try {
   await writeFile(resolve(destination, 'document.pdf'), result.pdf);
   await writeFile(resolve(destination, 'artifact.json'), JSON.stringify(artifact, null, 2));
   await writeFile(resolve(destination, 'layout.json'), JSON.stringify(result.layout));
-  if (capture.format === 'presentation') await writeFile(resolve(destination, 'presentation.json'), JSON.stringify({ version: 1, hash: artifact.hash, meta: capture.meta, slides: capture.slides, doc: result.doc, layout: result.layout }));
+  if (capture.format === 'presentation') await writeFile(resolve(destination, 'presentation.json'), JSON.stringify({ version: 1, hash: artifact.hash, meta: capture.meta, slides: capture.slides, doc: result.doc, layout: result.layout, textSlots: textTargets.map(target => target.slot) }));
   process.send?.({ ok: true });
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);

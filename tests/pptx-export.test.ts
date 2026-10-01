@@ -7,9 +7,10 @@ import type { ElementInfo } from '@formepdf/core';
 import type { FormeNode } from '@formepdf/react';
 import { resolve } from 'node:path';
 import { readZip } from '@shbernal/ts-pptx/zip';
+import { setDiagnosticHandler } from '@shbernal/ts-pptx';
 import { fixture, projectRoot, until } from './helpers';
 import { renderOnce } from '../src/server/render';
-import { presentationBytes, readPresentationBytes, presentationTextRuns, firstStrongCharacter, paragraphDirection, rtlParagraphAlignment, type PresentationCapture } from '../src/server/pptx';
+import { presentationBytes, readPresentationBytes, presentationTextRuns, firstStrongCharacter, paragraphDirection, rtlParagraphAlignment, slideObjectNames, type PresentationCapture } from '../src/server/pptx';
 import { ExportStore } from '../src/server/exports';
 import { exportDocuments, parseExportArgs } from '../src/server/export-batch';
 import type { SavedExport } from '../src/shared/export';
@@ -249,6 +250,59 @@ ${paragraphs.map(([id, style, text]) => `<Paragraph id="${id}" style={{${style}}
       }
     }
   } finally { await f.cleanup(); }
+});
+
+test('every exported object has a unique, stable name built from its component', async () => {
+  const f = await fixture();
+  const manifest = JSON.parse(await readFile(resolve(f.root, 'projects.json'), 'utf8'));
+  await writeFile(resolve(f.root, 'projects.json'), JSON.stringify({ ...manifest, formats: { proof: 'presentation' } }));
+  await writeFile(f.entry, `import {Presentation,Slide,Heading,Paragraph,Block,List,DataTable,Callout} from '../../src/document';
+export const meta={title:'Names',description:'Synthetic naming test',theme:'neutral'};
+function Card({ id, title, body }: { id: string; title: string; body: string }) { return <Block id={id} style={{backgroundColor:'#eef2ff',borderTopWidth:2,borderColor:'#123456',padding:8,marginBottom:6}}><Paragraph id={\`\${id}-title\`}>{title}</Paragraph><Paragraph id={\`\${id}-body\`}>{body}</Paragraph></Block>; }
+export default function Proof(){return <Presentation title={meta.title}>
+<Slide id="lists"><Heading id="lists-title">Lists</Heading>
+<List id="steps" items={[{ id: 'call', children: 'Call the vendor' }, { id: 'sign', children: 'Sign both copies' }]}/>
+<List id="order" ordered items={[{ id: 'first', children: 'First' }, { id: 'second', children: 'Second' }]}/>
+<Callout id="note" title="Note">Read twice.</Callout></Slide>
+<Slide id="tables"><DataTable id="costs" caption="Costs" columns={[{ id: 'item', label: 'Item' }, { label: 'Cost' }]} rows={[['Paper', '2'], ['Ink', '3']]} rowIds={['paper', 'ink']}/></Slide>
+<Slide id="cards"><Card id="alpha" title="Same title" body="Same body"/><Card id="beta" title="Same title" body="Same body"/></Slide>
+</Presentation>}`);
+  const diagnostics: string[] = [];
+  setDiagnosticHandler(diagnostic => { diagnostics.push(`${diagnostic.code}: ${diagnostic.message}`); });
+  try {
+    const render = await renderOnce(f.root, 'proof');
+    const bytes = await readPresentationBytes(render.directory, render.artifact.hash);
+    assert.deepEqual(diagnostics.filter(message => message.startsWith('object-name/')), [], 'ts-pptx reports no duplicate or invalid object names');
+    const parts = await readZip(bytes);
+    const names = (slide: number) => [...xml(parts, `ppt/slides/slide${slide}.xml`).matchAll(/<p:cNvPr id="\d+" name="([^"]*)"/g)].map(match => match[1]).slice(1);
+    for (const slide of [1, 2, 3]) {
+      const list = names(slide);
+      assert.ok(list.length && list.every(Boolean), `slide ${slide}: every object is named`);
+      assert.equal(new Set(list).size, list.length, `slide ${slide}: names are unique (${list.join(', ')})`);
+    }
+    const lists = names(1);
+    for (const name of ['lists-title', 'steps-call', 'steps-call marker', 'steps-sign', 'steps-sign marker', 'order-first marker', 'note title', 'note', 'note left border'])
+      assert.ok(lists.includes(name), `${name} in ${lists.join(', ')}`);
+    assert.ok(lists.indexOf('steps-call marker') < lists.indexOf('steps-call'), 'Names follow drawing order; the marker is drawn first');
+    const tables = names(2);
+    for (const name of ['costs caption', 'costs column-item', 'costs column-1', 'costs row-paper-column-0', 'costs row-ink-column-1', 'costs background'])
+      assert.ok(tables.includes(name), `${name} in ${tables.join(', ')}`);
+    const cards = names(3);
+    for (const name of ['alpha background', 'alpha top border', 'alpha-title', 'alpha-body', 'beta background', 'beta-title', 'beta-body'])
+      assert.ok(cards.includes(name), `${name} in ${cards.join(', ')}`);
+    const again = await readZip(await readPresentationBytes(render.directory, render.artifact.hash));
+    for (const slide of [1, 2, 3]) assert.equal(xml(again, `ppt/slides/slide${slide}.xml`), xml(parts, `ppt/slides/slide${slide}.xml`), 'Names are deterministic');
+  } finally { setDiagnosticHandler(null); await f.cleanup(); }
+});
+
+test('object names keep the block ID and add a qualifier or number only when needed', () => {
+  assert.deepEqual(slideObjectNames([
+    { block: 'slide', part: 'background' }, { block: 'body', part: 'children', text: true },
+    { block: 'item', part: 'marker', text: true }, { block: 'item', part: 'children', text: true },
+    { block: 'table', part: 'column-0', text: true }, { block: 'table', part: 'column-0', text: true },
+    { block: 'card', part: 'top border' }, { block: 'card', part: 'top border' }, { block: 'card', part: 'top border 2' },
+    { block: 'only', part: 'title', text: true },
+  ]), ['slide background', 'body', 'item marker', 'item', 'table column-0', 'table column-0 2', 'card top border', 'card top border 2', 'card top border 2 2', 'only']);
 });
 
 test('PPTX receipts preserve recovery, format identity, collisions, delete/Undo, and stale publication', async () => {
