@@ -3,7 +3,8 @@ import type { ArtifactSummary } from '../shared/types';
 import { Icon } from './ui/Icon';
 import { useNearViewport } from './nearViewport';
 
-const coverImage: CSSProperties = { display: 'block', width: '100%', height: '100%' };
+// Positioned like the PDF page it replaces, so the page covers the frame's inset edge line.
+const coverImage: CSSProperties = { display: 'block', position: 'relative', width: '100%', height: '100%' };
 const loadingImage: CSSProperties = { display: 'none' };
 
 /** A library card's first page: an image the service renders once per PDF, without loading PDF.js. */
