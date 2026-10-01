@@ -1,5 +1,6 @@
 /**
- * Word-level differences between two wordings, for the history panel's Then/Now view.
+ * Word-level differences between two wordings, for the history panel's Then/Now view and
+ * the history command's word changes.
  * Words, spaces, and punctuation are separate tokens, so Arabic, Latin, and mixed text
  * compare word by word, and a changed comma does not mark its whole sentence.
  */
@@ -138,3 +139,9 @@ export function compactDiff(chunks: DiffChunk[], context = 6): DiffChunk[] {
 
 /** True when compacting leaves out words, so a "Show full text" control is worth offering. */
 export const compacts = (chunks: DiffChunk[], context = 6) => compactDiff(chunks, context).some(chunk => chunk.type === 'gap');
+
+/** Only the changed passages, such as `[{ removed: '12%', added: '15%' }]`: what an edit did, without its context. */
+export function changedPassages(before: string, after: string): { removed: string; added: string }[] {
+  return diffWords(before, after).chunks.flatMap(chunk => chunk.type === 'change' && (chunk.removed.trim() || chunk.added.trim())
+    ? [{ removed: chunk.removed.trim(), added: chunk.added.trim() }] : []);
+}

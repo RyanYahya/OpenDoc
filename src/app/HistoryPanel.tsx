@@ -2,18 +2,15 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { api } from './api';
 import { Button, IconButton, useNotifications } from './ui';
 import { Icon } from './ui/Icon';
-import { formatFull, formatTime, formatTimeRange, formatWhen } from './dates';
-import { groupVersions, historyHighlightCss, outlinedChanges, type VersionRun } from './historyView';
-import { compactDiff, compacts, diffWords, hasChanges, type DiffChunk } from './wordDiff';
-import { describeVersions, type BlockHistory, type HistoryBlockChange, type HistoryComparison, type HistoryList, type HistorySummaryPart, type HistoryVersionSummary, type RestoreResult, type RestoreScope } from '../shared/history';
+import { formatFull, formatTime, formatTimeRange, formatWhen } from '../shared/dates';
+import { historyHighlightCss, outlinedChanges } from './historyView';
+import { compactDiff, compacts, diffWords, hasChanges, type DiffChunk } from '../shared/word-diff';
+import { describeVersions, groupVersions, historyChangeLabels, type VersionRun, type BlockHistory, type HistoryBlockChange, type HistoryComparison, type HistoryList, type HistorySummaryPart, type HistoryVersionSummary, type RestoreResult, type RestoreScope } from '../shared/history';
 import './history.css';
 
 export type HistoryTarget = { kind: 'document' } | { kind: 'block'; blockId: string };
 
 const codeFile = /\.(?:tsx|jsx|ts|js|mjs)$/;
-const statusLabels: Record<HistoryBlockChange['status'], string> = {
-  changed: 'Edited', contents: 'Changed inside', added: 'Added since', removed: 'Removed since', moved: 'Moved to another file', ambiguous: 'Appears more than once',
-};
 // Long wordings open in a compact view: each change with a few words around it.
 const compactLength = 300;
 
@@ -285,7 +282,7 @@ export function HistoryPanel({ documentId, target, generation, connected, pageLa
               onFocus={() => setFocused(change)} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setFocused(current => current === change ? null : current); }}>
               <div className="history-change-heading">
                 <span className="history-change-name">{change.name ? <>“<bdi>{change.name}</bdi>”</> : change.kindLabel}</span>
-                <span className="history-change-meta">{change.name ? `${change.kindLabel} · ` : ''}{statusLabels[change.status]}</span>
+                <span className="history-change-meta">{change.name ? `${change.kindLabel} · ` : ''}{historyChangeLabels[change.status]}</span>
               </div>
               {change.status === 'contents' ? <p className="history-note">{inside ? `${inside} ${inside === 1 ? 'block' : 'blocks'} inside changed.` : 'Blocks inside it changed.'}</p>
                 : change.status !== 'moved' && change.status !== 'ambiguous' && <WordingDiff before={change.before} after={change.after} />}

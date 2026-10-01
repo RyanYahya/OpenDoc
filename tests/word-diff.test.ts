@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { compactDiff, compacts, diffWords, hasChanges, wordTokens, type DiffChunk } from '../src/app/wordDiff';
+import { compactDiff, compacts, diffWords, hasChanges, wordTokens, type DiffChunk } from '../src/shared/word-diff';
 
 const changes = (chunks: DiffChunk[]) => chunks.flatMap(chunk => chunk.type === 'change' ? [[chunk.removed, chunk.added]] : []);
 const side = (chunks: DiffChunk[], which: 'removed' | 'added') => chunks.map(chunk => chunk.type === 'same' ? chunk.text : chunk.type === 'change' ? chunk[which] : '…').join('');

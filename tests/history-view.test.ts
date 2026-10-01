@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { blockName, describeVersions, readableKind, summaryText, type HistoryBlockChange, type HistoryOrigin, type HistoryVersionSummary } from '../src/shared/history';
-import { blockSelectors, groupVersions, historyHighlightCss, outlinedChanges } from '../src/app/historyView';
-import { formatDay, formatTimeRange, formatWhen } from '../src/app/dates';
+import { blockName, describeVersions, groupVersions, readableKind, summaryText, type HistoryBlockChange, type HistoryOrigin, type HistoryVersionSummary } from '../src/shared/history';
+import { blockSelectors, historyHighlightCss, outlinedChanges } from '../src/app/historyView';
+import { formatDay, formatTimeRange, formatWhen } from '../src/shared/dates';
 
 // Intl output uses narrow no-break spaces in some locales; compare words, not space characters.
 const plain = (value: string) => value.replace(/\s+/gu, ' ');

@@ -1,3 +1,5 @@
+import { formatDay } from './dates';
+
 /** Where a recorded version came from, when OpenDoc knows. */
 export type HistoryOrigin = 'baseline' | 'edit' | 'undo' | 'external' | 'restore';
 export type RestoreScope = 'version' | 'block' | 'section';
@@ -9,6 +11,11 @@ export const historyOriginLabels: Record<HistoryOrigin, string> = {
   undo: 'Undo',
   external: 'Agent',
   restore: 'Restore',
+};
+
+/** How a changed block differs from the current source, as the history panel and command name it. */
+export const historyChangeLabels: Record<HistoryBlockChange['status'], string> = {
+  changed: 'Edited', contents: 'Changed inside', added: 'Added since', removed: 'Removed since', moved: 'Moved to another file', ambiguous: 'Appears more than once',
 };
 
 const kindNames: Record<string, string> = {
@@ -201,3 +208,28 @@ export function describeVersions(versions: HistoryVersionSummary[], shown = 2): 
 
 /** Plain text of a description, with block words in quotation marks. */
 export const summaryText = (parts: HistorySummaryPart[]) => parts.map(part => typeof part === 'string' ? part : `“${part.quote}”`).join('');
+
+/** Consecutive versions from one origin, newest first, shown as one expandable row. */
+export interface VersionRun { key: string; origin: HistoryOrigin; versions: HistoryVersionSummary[] }
+export interface VersionDay { key: string; day: string; runs: VersionRun[] }
+
+// Restores and the first version stay on their own rows: each is a distinct event.
+const groupable = new Set<HistoryOrigin>(['edit', 'external', 'undo']);
+
+/**
+ * Group versions (newest first) by day, then join consecutive versions of the same origin
+ * that are at most `window` apart, so a burst of agent writes reads as one row.
+ */
+export function groupVersions(versions: HistoryVersionSummary[], { now = Date.now(), window = 10 * 60_000, locale }: { now?: number; window?: number; locale?: string } = {}): VersionDay[] {
+  const days: VersionDay[] = [];
+  for (const version of versions) {
+    const day = formatDay(version.at, { now, locale });
+    if (days.at(-1)?.day !== day) days.push({ key: version.id, day, runs: [] });
+    const runs = days.at(-1)!.runs;
+    const run = runs.at(-1);
+    const oldest = run?.versions.at(-1);
+    if (run && oldest && run.origin === version.origin && groupable.has(version.origin) && Date.parse(oldest.at) - Date.parse(version.at) <= window) run.versions.push(version);
+    else runs.push({ key: version.id, origin: version.origin, versions: [version] });
+  }
+  return days;
+}

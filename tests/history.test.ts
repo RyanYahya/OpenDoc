@@ -220,17 +220,35 @@ test('the history CLI lists, compares, and restores with structured output', { t
   try {
     const store = new HistoryStore(f.root);
     const first = (await store.capture('proof', 'external')).version!;
-    await writeFile(f.entry, source().replace('A stable paragraph', 'An agent paragraph'));
+    await writeFile(f.entry, source().replace('first draft', 'second draft'));
+    await store.capture('proof', 'external');
+    await writeFile(f.entry, source().replace('first draft', 'second draft').replace('A stable paragraph', 'An agent paragraph'));
     const { runHistoryCli } = await import('../src/server/history-cli');
     await runHistoryCli(['list', 'proof', '--json'], f.root);
-    assert.deepEqual(JSON.parse(output.pop()!).versions.map((version: { label: string }) => version.label), ['Agent', 'First version'], 'Without a running service, listing first records the pending agent change.');
+    const listed = JSON.parse(output.pop()!);
+    assert.deepEqual(listed.versions.map((version: { label: string }) => version.label), ['Agent', 'Agent', 'First version'], 'Without a running service, listing first records the pending agent change.');
+    assert.equal(listed.versions[0].description, 'Edited “An agent paragraph with figures, confidence…”');
+    // The panel's grouping: one day, a burst of agent versions as one entry, the first version on its own.
+    assert.deepEqual(listed.groups.map((day: { runs: { label: string; versions: string[] }[] }) => day.runs.map(run => [run.label, run.versions.length])), [[['Agent', 2], ['First version', 1]]]);
+    await runHistoryCli(['list', 'proof'], f.root);
+    const text = output.pop()!;
+    assert.match(text, /\n\nToday\n  2 versions +\S.*Agent +Edited “An agent paragraph with…”, “A second draft with office…”\n    \d{8}T\S+ +\S.* +Edited “An agent paragraph/);
+    assert.match(text, new RegExp(`\\n  ${first.id}  .*First version +First recorded version$`));
     await runHistoryCli(['show', 'proof', first.id, '--json'], f.root);
-    assert.deepEqual(JSON.parse(output.pop()!).blocks.map((block: { id: string }) => block.id), ['target']);
+    const shown = JSON.parse(output.pop()!);
+    assert.deepEqual(shown.blocks.map((block: { id: string; words: unknown }) => [block.id, block.words]), [
+      ['title', [{ removed: 'first', added: 'second' }]], ['target', [{ removed: 'A stable', added: 'An agent' }]]]);
+    await runHistoryCli(['show', 'proof', first.id], f.root);
+    const comparison = output.pop()!;
+    assert.match(comparison, /\n  Edited +Paragraph “An agent paragraph with figures, confidence…”  \[target\]\n      words: “A stable” → “An agent”\n      then:  A stable paragraph/);
+    assert.match(comparison, /\n      restore: --block target\n/);
+    await runHistoryCli(['block', 'proof', 'target'], f.root);
+    assert.match(output.pop()!, /^Paragraph “An agent paragraph with figures, confidence…”  \[target\]\n  now: An agent paragraph/);
     await runHistoryCli(['restore', 'proof', first.id, '--block', 'target', '--json'], f.root);
     const result = JSON.parse(output.pop()!);
     assert.equal(result.scope, 'block');
     assert.match(await readFile(f.entry, 'utf8'), /A stable paragraph/);
-    assert.deepEqual((await store.list('proof')).map(version => version.origin), ['restore', 'external', 'baseline'], 'The replaced state was recorded before restoring.');
+    assert.deepEqual((await store.list('proof')).map(version => version.origin), ['restore', 'external', 'external', 'baseline'], 'The replaced state was recorded before restoring.');
     await assert.rejects(runHistoryCli(['restore', 'proof', first.id, '--block', 'title-x', '--section', 'title'], f.root), /not both/);
   } finally { console.log = log; await f.cleanup(); }
 });

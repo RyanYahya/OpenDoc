@@ -1,30 +1,4 @@
-import type { HistoryBlockChange, HistoryOrigin, HistoryVersionSummary } from '../shared/history';
-import { formatDay } from './dates';
-
-/** Consecutive versions from one origin, newest first, shown as one expandable row. */
-export interface VersionRun { key: string; origin: HistoryOrigin; versions: HistoryVersionSummary[] }
-export interface VersionDay { key: string; day: string; runs: VersionRun[] }
-
-// Restores and the first version stay on their own rows: each is a distinct event.
-const groupable = new Set<HistoryOrigin>(['edit', 'external', 'undo']);
-
-/**
- * Group versions (newest first) by day, then join consecutive versions of the same origin
- * that are at most `window` apart, so a burst of agent writes reads as one row.
- */
-export function groupVersions(versions: HistoryVersionSummary[], { now = Date.now(), window = 10 * 60_000, locale }: { now?: number; window?: number; locale?: string } = {}): VersionDay[] {
-  const days: VersionDay[] = [];
-  for (const version of versions) {
-    const day = formatDay(version.at, { now, locale });
-    if (days.at(-1)?.day !== day) days.push({ key: version.id, day, runs: [] });
-    const runs = days.at(-1)!.runs;
-    const run = runs.at(-1);
-    const oldest = run?.versions.at(-1);
-    if (run && oldest && run.origin === version.origin && groupable.has(version.origin) && Date.parse(oldest.at) - Date.parse(version.at) <= window) run.versions.push(version);
-    else runs.push({ key: version.id, origin: version.origin, versions: [version] });
-  }
-  return days;
-}
+import type { HistoryBlockChange } from '../shared/history';
 
 /** Changed blocks to outline on the page: present now, and not inside another outlined block. */
 export function outlinedChanges(changes: HistoryBlockChange[]) {

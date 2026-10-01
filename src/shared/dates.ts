@@ -1,6 +1,7 @@
 /**
- * One date and time vocabulary for the app: "8:42 PM" today, "Yesterday 3:10 PM",
- * then "Oct 1, 3:10 PM" (with the year when it differs). Full dates belong in tooltips.
+ * One date and time vocabulary for the app and the history command: "8:42 PM" today,
+ * "Yesterday 3:10 PM", then "Oct 1, 3:10 PM" (with the year when it differs). Full dates
+ * belong in tooltips.
  */
 type DateInput = string | number | Date;
 
