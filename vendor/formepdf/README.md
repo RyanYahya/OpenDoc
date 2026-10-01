@@ -89,7 +89,8 @@ punctuation, and duplicated letters in layout text. `bidi-rtl.patch`:
 - In a font fallback list, spaces, digits, punctuation, and marks stay in the
   font of the preceding character when it has them, so an Arabic phrase is not
   split at every space. Characters that no listed font covers produce a
-  `Missing glyphs:` warning.
+  `Missing glyphs:` warning, which OpenDoc reports as `missing-glyphs`; such
+  characters print as `?`.
 - Without an explicit `textAlign` in the inheritance chain, a paragraph aligns
   to the edge where it starts (CSS `start`); justified paragraphs widen only
   spaces and end on a start-aligned line. A `flexDirection: 'row'` container or a
@@ -126,8 +127,9 @@ the three readable source patches, runs the engine's library tests, builds all t
 WASM entry points with the upstream lockfile, and packages the existing published JS
 with those engines and the declaration patch. Build files stay in a fresh operating-system temporary directory;
 an optional first argument chooses a new directory that must not already exist.
-The printed directory is retained for inspecting build results. Set
-`RUSTUP_TOOLCHAIN=stable` only if that
+The printed directory is retained for inspecting build results. The script
+then packs `formepdf-core-0.20.1-opendoc.4.tgz` into `vendor/formepdf`,
+replacing the checked-in archive. Set `RUSTUP_TOOLCHAIN=stable` only if that
 installed toolchain is exactly 1.98.1.
 
 The archive is reproducible in behavior, not byte for byte across machines.
@@ -139,13 +141,25 @@ part of `RUSTFLAGS`, which Cargo hashes into crate metadata, so a different home
 or build directory still changes symbol hashes and a few hundred bytes of code.
 Compare rendered PDFs, not archive hashes, when checking a rebuild.
 
-After deliberately replacing the archive, refresh the pnpm lockfile and run
-`pnpm check`, `pnpm test`, and `pnpm build`. Review the PDF specimens for all five
-Google Fonts families and verify their original file hashes. See
-`tests/font-renderer.test.ts` for PDF extraction and geometry regressions and
-`tests/font-subset.test.ts` for lengths, checksums, and hinting metadata read from
-the actual embedded font streams. The subset patch also contains Rust regressions
-for alignment, checksums, and profile preservation using the upstream font fixture.
+After replacing the archive, refresh the pnpm lockfile and run `pnpm verify`
+(type check, build, and tests). Review the PDF specimens of every bundled font
+family in `assets/fonts`, including Geist and Noto Naskh Arabic;
+`tests/bundled-fonts.test.ts` checks the Google Fonts families and Noto Naskh
+Arabic against their recorded file hashes. See `tests/font-renderer.test.ts` for
+PDF extraction and geometry regressions, `tests/font-subset.test.ts` for lengths,
+checksums, and hinting metadata read from the actual embedded font streams,
+`tests/arabic-bidi.test.ts` for right-to-left ordering, joining, and the
+byte-for-byte left-to-right comparison, and `tests/script-fallback.test.ts` for
+the Arabic fallback and missing-glyph reports. The subset patch also contains
+Rust regressions for alignment, checksums, and profile preservation using the
+upstream font fixture, and `bidi-rtl.patch` adds engine tests for paragraph
+levels, line reordering, alignment, mirroring, ligature text, and missing
+glyphs; the rebuild script runs both.
+
+Then render `documents/welcome`, `documents/welcome-presentation`, and every
+template specimen with both the committed archive and the rebuilt one.
+Left-to-right output should stay byte for byte the same unless the change
+targets it; inspect the page images of anything that differs.
 
 ## Upstream replacement
 
