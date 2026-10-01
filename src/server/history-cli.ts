@@ -6,7 +6,7 @@ import { validId } from './render';
 import { HistoryStore } from './history';
 import { recordAgentChanges } from './history-capture';
 import { blockHistory, compareVersion, restoreVersion } from './history-restore';
-import type { HistoryVersionSummary, RestoreScope } from '../shared/history';
+import { describeVersions, summaryText, type HistoryVersionSummary, type RestoreScope } from '../shared/history';
 
 const usage = `Usage: npx opendoc history list <doc> [--json]
        npx opendoc history show <doc> <version> [--json]
@@ -21,11 +21,7 @@ content; --section restores a block together with everything inside it. Every re
 so it can itself be undone by restoring the previous version it reports.`;
 
 const time = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-const describe = (version: HistoryVersionSummary) => {
-  const changes = [version.summary.blocks ? `${version.summary.blocks} ${version.summary.blocks === 1 ? 'block' : 'blocks'} changed` : '',
-    version.summary.files.filter(file => !/\.(?:tsx|jsx|ts|js|mjs)$/.test(file)).join(', ')].filter(Boolean).join('; ');
-  return `${version.id}  ${time.format(new Date(version.at)).padEnd(22)}  ${version.label.padEnd(20)}  ${changes || (version.origin === 'baseline' ? 'First recorded state' : 'Text changed')}`;
-};
+const describe = (version: HistoryVersionSummary) => `${version.id}  ${time.format(new Date(version.at)).padEnd(22)}  ${version.label.padEnd(14)}  ${summaryText(describeVersions([version], 4))}`;
 
 export async function runHistoryCli(args: string[], root = process.cwd()): Promise<void> {
   const { values, positionals } = parseArgs({ args: args[0] === '--' ? args.slice(1) : args, allowPositionals: true, options: {
@@ -47,7 +43,7 @@ export async function runHistoryCli(args: string[], root = process.cwd()): Promi
     const comparison = await compareVersion(store, doc, target);
     const lines = [`${describe(comparison.version)}`, comparison.identical ? 'Identical to the current source.' : 'Compared with the current source:'];
     for (const block of comparison.blocks) {
-      lines.push(`  ${block.status.padEnd(9)} ${block.kind} ${block.id}${block.container ? ' (section)' : ''}`);
+      lines.push(`  ${block.status.padEnd(9)} ${block.kind} ${block.id}${block.container ? ' (section)' : ''}${block.name ? `  “${block.name}”` : ''}`);
       if (block.before !== undefined) lines.push(`      then: ${block.before}`);
       if (block.after !== undefined) lines.push(`      now:  ${block.after}`);
       if (!block.block.ok && !block.section.ok && block.block.reason) lines.push(`      ${block.block.reason}`);

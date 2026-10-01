@@ -5,9 +5,9 @@ import { gunzipSync, gzipSync } from 'node:zlib';
 import { atomicWrite, withLocalLock } from './files';
 import { Conflict } from './comments';
 import { documentEntry, validId } from './render';
-import { compareBlocks, isBlockSource, snapshotBlocks } from './history-blocks';
+import { compareBlocks, describeBlock, isBlockSource, snapshotBlocks } from './history-blocks';
 import { historyFolder, trackedSourcePath } from './history-paths';
-import { historyOriginLabels, type HistoryOrigin, type HistoryVersionSummary, type RestoreScope } from '../shared/history';
+import { historyOriginLabels, type HistoryOrigin, type HistorySummary, type HistoryVersionSummary, type RestoreScope } from '../shared/history';
 
 export { historyFolder, trackedSourcePath } from './history-paths';
 export const historyFormat = 1;
@@ -31,7 +31,7 @@ export interface HistoryVersion {
   files: Record<string, HistoryFileEntry>;
   /** Media and other binary or oversized files: identified by hash, never copied or restored. */
   recorded: Record<string, string>;
-  summary: { blocks: number; ids: string[]; files: string[] };
+  summary: HistorySummary;
   restore?: { from: string; scope: RestoreScope; blockId?: string };
 }
 
@@ -56,9 +56,17 @@ function validRecord(value: unknown): value is HistoryVersion {
     && !!record.summary && Number.isInteger(record.summary.blocks) && Array.isArray(record.summary.ids) && Array.isArray(record.summary.files);
 }
 
+const changeStatuses = new Set(['changed', 'added', 'removed', 'moved', 'ambiguous']);
+/** Named changes are optional display data; a malformed list is dropped rather than trusted. */
+function summaryOf(summary: HistorySummary): HistorySummary {
+  const { blocks, ids, files, changes } = summary;
+  const valid = Array.isArray(changes) && changes.every(item => !!item && typeof item.id === 'string' && typeof item.kindLabel === 'string' && typeof item.name === 'string' && changeStatuses.has(item.status));
+  return { blocks, ids, files, ...(valid ? { changes } : {}) };
+}
+
 export function summarize(record: HistoryVersion, unavailable: string[] = []): HistoryVersionSummary {
   return {
-    id: record.id, at: record.at, origin: record.origin, label: historyOriginLabels[record.origin], summary: record.summary,
+    id: record.id, at: record.at, origin: record.origin, label: historyOriginLabels[record.origin], summary: summaryOf(record.summary),
     ...(record.restore ? { restore: record.restore } : {}), ...(unavailable.length ? { unavailable } : {}),
   };
 }
@@ -158,7 +166,26 @@ export class HistoryStore {
     const available = new Set<string>();
     try { for (const name of await readdir(resolve(await this.history(id), 'blobs'))) { const match = blobName.exec(name); if (match) available.add(match[1]); } }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
-    return versions.map(record => summarize(record, Object.entries(record.files).filter(([, file]) => !available.has(file.hash)).map(([path]) => path))).reverse();
+    const names = await this.currentNames(id, versions);
+    return versions.map(record => {
+      const summary = summarize(record, Object.entries(record.files).filter(([, file]) => !available.has(file.hash)).map(([path]) => path));
+      if (summary.summary.changes || !summary.summary.ids.length || !names) return summary;
+      // Versions recorded before blocks were named borrow the names those blocks have now.
+      const changes = summary.summary.ids.flatMap(block => names.has(block) ? [{ id: block, ...names.get(block)!, status: 'changed' as const }] : []);
+      return { ...summary, summary: { ...summary.summary, changes } };
+    }).reverse();
+  }
+
+  /** Readable names of the current blocks, needed only for versions recorded without them. */
+  private async currentNames(id: string, versions: HistoryVersion[]) {
+    if (!versions.some(record => !record.summary.changes && record.summary.ids.length)) return undefined;
+    try {
+      const files = new Map<string, string>();
+      for (const [path, file] of (await this.snapshot(id)).text) if (isBlockSource(path)) files.set(path, file.content);
+      const names = new Map<string, { kindLabel: string; name: string }>();
+      for (const [block, found] of snapshotBlocks(files).byId) if (found.length === 1) names.set(block, describeBlock(found[0]));
+      return names;
+    } catch { return undefined; }
   }
 
   async version(id: string, versionId: string) {
@@ -244,7 +271,7 @@ export class HistoryStore {
     for (const path of new Set([...Object.keys(previous.files), ...snapshot.text.keys()])) {
       if (previous.files[path]?.hash !== snapshot.text.get(path)?.hash) changed.add(path);
     }
-    let blockChanges: string[] = [];
+    let blockChanges: ReturnType<typeof compareBlocks> = [];
     try {
       const before = new Map<string, string>(), after = new Map<string, string>();
       for (const [path, file] of snapshot.text) if (isBlockSource(path)) after.set(path, file.content);
@@ -253,9 +280,13 @@ export class HistoryStore {
         const current = snapshot.text.get(path);
         before.set(path, current?.hash === file.hash ? current.content : await this.readBlob(id, file.hash));
       }
-      blockChanges = compareBlocks(snapshotBlocks(before), snapshotBlocks(after)).filter(change => change.status !== 'contents').map(change => change.id);
+      blockChanges = compareBlocks(snapshotBlocks(before), snapshotBlocks(after)).filter(change => change.status !== 'contents');
     } catch { /* A missing earlier blob only limits the summary. */ }
-    return { blocks: blockChanges.length, ids: blockChanges.slice(0, 12), files: [...changed].sort() };
+    const named = blockChanges.slice(0, 12);
+    return {
+      blocks: blockChanges.length, ids: named.map(change => change.id), files: [...changed].sort(),
+      changes: named.map(({ id: block, kindLabel, name, status }) => ({ id: block, kindLabel, name, status: status === 'contents' ? 'changed' : status })),
+    };
   }
 
   async prune(id: string) { return this.lock(id, () => this.pruneLocked(id)); }

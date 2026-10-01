@@ -1,11 +1,13 @@
 import ts from 'typescript';
-import type { HistoryBlockChange, RestoreAvailability } from '../shared/history';
+import { blockName, readableKind, type HistoryBlockChange, type RestoreAvailability } from '../shared/history';
 
 /** One JSX element with a literal `id`, located in one authored source file. */
 export interface SourceBlock {
   id: string;
   file: string;
   kind: string;
+  /** A literal `role` attribute, such as a paragraph's "caption". */
+  role?: string;
   start: number;
   end: number;
   parent: string | null;
@@ -30,9 +32,9 @@ export const isBlockSource = (file: string) => blockSource.test(file);
 const marker = (id: string) => `\u0000${id}\u0000`;
 const normalize = (text: string) => text.replace(/\s+/g, ' ').trim();
 
-function literalId(element: ts.JsxOpeningElement | ts.JsxSelfClosingElement): string | undefined {
+function literalAttribute(element: ts.JsxOpeningElement | ts.JsxSelfClosingElement, name: string): string | undefined {
   for (const property of element.attributes.properties) {
-    if (!ts.isJsxAttribute(property) || property.name.getText() !== 'id' || !property.initializer) continue;
+    if (!ts.isJsxAttribute(property) || property.name.getText() !== name || !property.initializer) continue;
     const value = property.initializer;
     if (ts.isStringLiteral(value)) return value.text;
     if (ts.isJsxExpression(value) && value.expression && (ts.isStringLiteral(value.expression) || ts.isNoSubstitutionTemplateLiteral(value.expression))) return value.expression.text;
@@ -40,6 +42,7 @@ function literalId(element: ts.JsxOpeningElement | ts.JsxSelfClosingElement): st
   }
   return undefined;
 }
+const literalId = (element: ts.JsxOpeningElement | ts.JsxSelfClosingElement) => literalAttribute(element, 'id');
 
 function scriptKind(file: string) {
   return file.endsWith('.tsx') ? ts.ScriptKind.TSX : file.endsWith('.jsx') ? ts.ScriptKind.JSX : file.endsWith('.ts') ? ts.ScriptKind.TS : ts.ScriptKind.JS;
@@ -59,7 +62,8 @@ export function indexBlocks(file: string, source: string): BlockIndex {
       const id = literalId(opening);
       if (id !== undefined) {
         const start = node.getStart(tree);
-        block = { id, file, kind: opening.tagName.getText(tree), start, end: node.end, parent: stack.at(-1)?.id ?? null, children: [], source: source.slice(start, node.end), own: '' };
+        const role = literalAttribute(opening, 'role');
+        block = { id, file, kind: opening.tagName.getText(tree), ...(role ? { role } : {}), start, end: node.end, parent: stack.at(-1)?.id ?? null, children: [], source: source.slice(start, node.end), own: '' };
         stack.at(-1)?.children.push(id);
         blocks.push(block);
         stack.push(block);
@@ -110,8 +114,22 @@ export function blockText(file: string, source: string, ownOnly = true) {
   return parts.join(' ').split(separator).map(part => part.trim().replace(/\s+([,.;:!?])/g, '$1')).filter(Boolean).join(' · ');
 }
 
+// Comparisons carry whole paragraphs, so word differences late in a long block stay visible; the panel compacts them.
+export const comparedLength = 2000;
+
 export function excerpt(text: string, limit = 280) {
   return text.length > limit ? `${text.slice(0, limit - 1).trimEnd()}…` : text;
+}
+
+/** How people see a block: its readable kind and opening words, never its ID. */
+export function describeBlock(block: SourceBlock) {
+  return { kindLabel: readableKind(block.kind, block.role), name: blockName(blockText(block.file, block.source, block.children.length > 0)) };
+}
+
+/** A block named in a sentence, such as `section “Plan”`, falling back to its kind alone. */
+function mention(block: SourceBlock) {
+  const { kindLabel, name } = describeBlock(block);
+  return name ? `${kindLabel.toLowerCase()} “${name}”` : kindLabel.toLowerCase();
 }
 
 /** All literal-ID blocks across a snapshot's authored source files. */
@@ -151,41 +169,43 @@ export function compareBlocks(before: SnapshotBlocks, current: SnapshotBlocks): 
     const old = before.byId.get(id) ?? [], now = current.byId.get(id) ?? [];
     const sample = now[0] ?? old[0];
     const order: [string, number] = [sample.file, sample.start];
-    const base = { id, file: sample.file, kind: sample.kind, parent: sample.parent, container: old.some(item => item.children.length > 0) || now.some(item => item.children.length > 0) };
+    const container = old.some(item => item.children.length > 0) || now.some(item => item.children.length > 0);
+    // Names are derived only for blocks that changed; most blocks are skipped below.
+    const base = () => ({ id, file: sample.file, kind: sample.kind, ...describeBlock(sample), parent: sample.parent, container });
     if (old.length > 1 || now.length > 1) {
       if (old.map(item => normalize(item.source)).join('\0') === now.map(item => normalize(item.source)).join('\0')) continue;
-      const reason = `The ID “${id}” appears more than once, so OpenDoc cannot tell which copy to restore. Restore the whole version instead.`;
-      changes.push({ ...base, order, status: 'ambiguous', descendants: [], block: refused(reason), section: refused(reason) });
+      const reason = `This block’s ID (“${id}”) is used more than once, so OpenDoc cannot tell which copy to restore. Restore the whole version instead.`;
+      changes.push({ ...base(), order, status: 'ambiguous', descendants: [], block: refused(reason), section: refused(reason) });
       continue;
     }
     if (!now.length) {
-      const reason = `This block was removed later. Restore the section that contained it${old[0].parent ? ` (“${old[0].parent}”)` : ''}, or the whole version.`;
-      changes.push({ ...base, order, status: 'removed', before: excerpt(blockText(old[0].file, old[0].source, false)), descendants: descendants(before, old[0]), block: refused(reason), section: refused(reason) });
+      const parent = old[0].parent ? before.byId.get(old[0].parent)?.[0] : undefined;
+      const reason = `This block was removed later. Restore ${parent ? `the ${mention(parent)} that contained it` : 'the section that contained it'}, or the whole version.`;
+      changes.push({ ...base(), order, status: 'removed', before: excerpt(blockText(old[0].file, old[0].source, false), 600), descendants: descendants(before, old[0]), block: refused(reason), section: refused(reason) });
       continue;
     }
     if (!old.length) {
       const reason = 'This block did not exist in that version. Restore its section or the whole version to remove it.';
-      changes.push({ ...base, order, status: 'added', after: excerpt(blockText(now[0].file, now[0].source, false)), descendants: descendants(current, now[0]), block: refused(reason), section: refused(reason) });
+      changes.push({ ...base(), order, status: 'added', after: excerpt(blockText(now[0].file, now[0].source, false), 600), descendants: descendants(current, now[0]), block: refused(reason), section: refused(reason) });
       continue;
     }
     const [was, is] = [old[0], now[0]];
     if (was.file !== is.file) {
       const reason = `This block moved from ${was.file} to ${is.file}. Restore the whole version instead.`;
-      changes.push({ ...base, order, status: 'moved', descendants: [], block: refused(reason), section: refused(reason) });
+      changes.push({ ...base(), order, status: 'moved', descendants: [], block: refused(reason), section: refused(reason) });
       continue;
     }
     const ownChanged = normalize(was.own) !== normalize(is.own);
     const subtreeChanged = normalize(was.source) !== normalize(is.source);
     if (!ownChanged && !subtreeChanged) continue;
-    const container = was.children.length > 0 || is.children.length > 0;
     const sameChildren = was.children.join('\0') === is.children.join('\0');
     const block = !ownChanged ? refused('Only blocks inside it changed. Restore the section, or choose a block inside it.')
       : container && !sameChildren ? refused('Blocks inside it were added, removed, or reordered. Restore the whole section instead.')
         : allowed;
     changes.push({
-      ...base, order, container,
+      ...base(), order,
       status: ownChanged ? 'changed' : 'contents',
-      before: excerpt(blockText(was.file, was.source, container)), after: excerpt(blockText(is.file, is.source, container)),
+      before: excerpt(blockText(was.file, was.source, container), comparedLength), after: excerpt(blockText(is.file, is.source, container), comparedLength),
       descendants: [...new Set([...descendants(before, was), ...descendants(current, is)])],
       block, section: container ? allowed : block,
     });

@@ -9,6 +9,7 @@ import { ignoredByWatcher } from '../src/server/watch';
 import { duplicateDocument } from '../src/server/documents';
 import { Workspace } from '../src/server/workspace';
 import { fixture, projectRoot, settled, source, until } from './helpers';
+import { describeVersions, summaryText } from '../src/shared/history';
 
 const day = 86_400_000;
 // The fixture imports only the primitives its default source uses.
@@ -38,11 +39,23 @@ test('capture records a deduplicated baseline, origins, and per-version change s
     time.advance(1000);
     const second = (await store.capture('proof', 'edit')).version!;
     assert.equal(second.origin, 'edit');
-    assert.deepEqual(second.summary, { blocks: 1, ids: ['target'], files: ['index.tsx'] });
+    const { changes, ...counts } = second.summary;
+    assert.deepEqual(counts, { blocks: 1, ids: ['target'], files: ['index.tsx'] });
+    assert.deepEqual(changes, [{ id: 'target', kindLabel: 'Paragraph', name: 'A revised paragraph with figures, confidence…', status: 'changed' }], 'Changed blocks are named by kind and opening words, for people.');
     const blobs = await readdir(resolve(f.root, 'documents/proof/.history/blobs'));
     assert.equal(blobs.length, 3, 'Unchanged files share one compressed blob; media is never copied.');
     const listed = await store.list('proof');
-    assert.deepEqual(listed.map(item => item.label), ['Your edit', 'Earliest saved state']);
+    assert.deepEqual(listed.map(item => item.label), ['You', 'First version']);
+    assert.equal(summaryText(describeVersions([listed[0]])), 'Edited “A revised paragraph with figures, confidence…”');
+    // A manifest recorded before blocks were named borrows the names the blocks have now.
+    const manifest = resolve(f.root, 'documents/proof/.history/versions', `${second.id}.json`);
+    const record = JSON.parse(await readFile(manifest, 'utf8'));
+    delete record.summary.changes;
+    await writeFile(manifest, JSON.stringify(record));
+    assert.deepEqual((await store.list('proof'))[0].summary.changes, changes);
+    record.summary.changes = [{ id: 'target', name: 42 }];
+    await writeFile(manifest, JSON.stringify(record));
+    assert.equal((await store.list('proof'))[0].summary.changes, undefined, 'Malformed names are dropped, not trusted.');
   } finally { await f.cleanup(); }
 });
 
@@ -94,7 +107,7 @@ test('the recorder debounces bursts into one version and ignores feedback, media
     await until(async () => !recorder.pending('proof') && (await store.list('proof')).length === 2, 5_000);
     const [latest] = await store.list('proof');
     assert.equal(latest.origin, 'external');
-    assert.equal(latest.label, 'Agent change');
+    assert.equal(latest.label, 'Agent');
     assert.match(await store.readBlob('proof', (await store.version('proof', latest.id)).files['index.tsx'].hash), /three/);
     await recorder.close();
   } finally { await f.cleanup(); }
@@ -121,6 +134,8 @@ test('block and section restores replace only their element, refuse unsafe targe
     assert.equal(comparison.blocks.find(block => block.id === 'later')?.status, 'added');
     assert.equal(comparison.blocks.find(block => block.id === 'dup')?.status, 'ambiguous');
     assert.equal(comparison.blocks.find(block => block.id === 'inner')?.before, 'Old inner words.');
+    assert.deepEqual([plan.kindLabel, plan.name], ['Section', 'New title'], 'Blocks carry a readable kind and their opening words.');
+    assert.doesNotMatch(comparison.blocks.find(block => block.id === 'dup')!.block.reason!, /appears/);
 
     time.advance(1000);
     const restored = await restoreVersion(store, 'proof', original.id, { scope: 'block', blockId: 'inner', base: comparison.base });
@@ -208,7 +223,7 @@ test('the history CLI lists, compares, and restores with structured output', { t
     await writeFile(f.entry, source().replace('A stable paragraph', 'An agent paragraph'));
     const { runHistoryCli } = await import('../src/server/history-cli');
     await runHistoryCli(['list', 'proof', '--json'], f.root);
-    assert.deepEqual(JSON.parse(output.pop()!).versions.map((version: { label: string }) => version.label), ['Agent change', 'Earliest saved state'], 'Without a running service, listing first records the pending agent change.');
+    assert.deepEqual(JSON.parse(output.pop()!).versions.map((version: { label: string }) => version.label), ['Agent', 'First version'], 'Without a running service, listing first records the pending agent change.');
     await runHistoryCli(['show', 'proof', first.id, '--json'], f.root);
     assert.deepEqual(JSON.parse(output.pop()!).blocks.map((block: { id: string }) => block.id), ['target']);
     await runHistoryCli(['restore', 'proof', first.id, '--block', 'target', '--json'], f.root);

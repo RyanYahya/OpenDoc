@@ -19,9 +19,9 @@ npx opendoc history block <document-id> <block-id>
 npx opendoc history show <document-id> <version-id> --json
 ```
 
-`list` prints versions newest first with their time, origin (Your edit, Agent change, Restored, Undo, or Earliest saved state), and a change summary. `block` lists each distinct earlier wording of one block, or of the authored block that contains it. `show` compares one version with the current source, block by block, and reports for each changed block whether a block or section restore is available and why not. To see what one change did, show the version listed just before it; the comparison also includes any later changes.
+`list` prints versions newest first with their time, origin (You, Agent, Restore, Undo, or First version), and a summary naming the changed blocks by their opening words. `block` lists each distinct earlier wording of one block, or of the authored block that contains it. `show` compares one version with the current source, block by block, and reports for each changed block whether a block or section restore is available and why not. To see what one change did, show the version listed just before it; the comparison also includes any later changes.
 
-Without a running service, as in Headless, versions are recorded when commands run: `history` first records edits made since the latest version, so the newest agent edits appear as their own Agent change.
+Without a running service, as in Headless, versions are recorded when commands run: `history` first records edits made since the latest version, so the newest agent edits appear as their own Agent version.
 
 Match "yesterday", "before your change", or similar to version times and origins. When more than one version fits, or the recorded wording differs from the user's description, show the candidate wording and confirm before restoring.
 

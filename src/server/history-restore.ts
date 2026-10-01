@@ -6,7 +6,7 @@ import { renderOnce } from './render';
 import { RenderFailure } from './render-error';
 import type { SourceOverride } from './source-overrides';
 import { HistoryError, sha256, snapshotDigest, summarize, type HistoryStore, type HistoryVersion, type Snapshot } from './history';
-import { blockText, compareBlocks, excerpt, isBlockSource, restoreBlockSource, RestoreRefusal, snapshotBlocks, type SnapshotBlocks } from './history-blocks';
+import { blockText, comparedLength, compareBlocks, describeBlock, excerpt, isBlockSource, restoreBlockSource, RestoreRefusal, snapshotBlocks, type SnapshotBlocks } from './history-blocks';
 import type { BlockHistory, HistoryComparison, HistoryFileChange, RestoreResult, RestoreScope } from '../shared/history';
 import type { BlockInfo } from '../shared/types';
 
@@ -95,9 +95,9 @@ export async function blockHistory(store: HistoryStore, documentId: string, requ
   for (const run of runs.reverse()) {
     if (seen.has(run.key) || entries.length >= 60) continue;
     seen.add(run.key);
-    entries.push({ version: summarize(run.record), text: excerpt(blockText(now.file, run.source, false), 600), container: run.container });
+    entries.push({ version: summarize(run.record), text: excerpt(blockText(now.file, run.source, false), comparedLength), container: run.container });
   }
-  return { documentId, requested, id, resolution, kind: now.kind, container, current: excerpt(blockText(now.file, now.source, false), 600), base: snapshotDigest(current.text), entries };
+  return { documentId, requested, id, resolution, kind: now.kind, ...describeBlock(now), container, current: excerpt(blockText(now.file, now.source, false), comparedLength), base: snapshotDigest(current.text), entries };
 }
 
 export interface RestoreOptions {

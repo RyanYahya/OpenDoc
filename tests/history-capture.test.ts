@@ -42,7 +42,7 @@ test('without a running service, the commands an agent runs after editing record
     await writeFile(f.entry, source().replace('A stable paragraph', 'An agent paragraph'));
     await runHistoryCli(['list', 'proof', '--json'], f.root);
     const listed = json().versions;
-    assert.deepEqual(listed.map((version: { label: string }) => version.label), ['Earliest saved state'], 'A document first seen by a command starts with its current state.');
+    assert.deepEqual(listed.map((version: { label: string }) => version.label), ['First version'], 'A document first seen by a command starts with its current state.');
 
     await writeFile(f.entry, source().replace('A stable paragraph', 'A second agent paragraph'));
     await runCommentsCli(['list', 'proof', '--json'], f.root);
@@ -50,7 +50,7 @@ test('without a running service, the commands an agent runs after editing record
     await runCommentsCli(['list', 'proof', '--json'], f.root);
     json();
     const afterComments = await store.list('proof');
-    assert.deepEqual(afterComments.map(version => version.label), ['Agent change', 'Earliest saved state'], 'An unchanged source adds nothing.');
+    assert.deepEqual(afterComments.map(version => version.label), ['Agent', 'First version'], 'An unchanged source adds nothing.');
     assert.deepEqual(afterComments[0].summary.ids, ['target']);
 
     await writeFile(f.entry, source().replace('A stable paragraph', 'A reviewed paragraph'));
