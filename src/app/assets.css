@@ -1,7 +1,7 @@
 .assets-content { padding-bottom: 70px; }
 .assets-heading { min-height: var(--control-hit-size); margin-bottom: 24px; }
 .assets-tabs { display: flex; flex-direction: row; gap: 24px; border-bottom: 1px solid var(--line); margin-bottom: 30px; }
-.assets-tabs a { position: relative; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 12px 0; border-radius: 0; background: transparent; color: var(--muted); font-size: var(--label-size); line-height: var(--label-leading); font-weight: 500; text-decoration: none; }
+.assets-tabs a { position: relative; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 12px 0; border-radius: 0; background: transparent; color: var(--muted); font-size: var(--label-size); line-height: var(--label-leading); font-weight: 500; text-decoration: none; }
 .assets-tabs a::after { content: ''; position: absolute; height: 2px; left: 0; right: 0; bottom: -1px; background: transparent; }
 .assets-tabs a:hover { color: var(--ink); background: transparent; }
 .assets-tabs a:hover::after { background: var(--line-strong); }
@@ -96,7 +96,7 @@
 .asset-font-styles li a:hover { color: var(--ink); background: var(--surface); }
 .asset-state-banner { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding: 10px 14px; margin-bottom: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; font-size: 13px; line-height: 1.5; }
 .asset-dialog { max-height: calc(100dvh - 48px); overflow-y: auto; }
-.asset-dialog textarea, .asset-theme-defaults textarea { display: block; width: 100%; resize: vertical; min-height: 75px; border: 1px solid var(--line); border-radius: 5px; padding: 11px 12px; background: var(--surface); color: var(--ink); font: inherit; line-height: 1.5; }
+.asset-dialog textarea { display: block; width: 100%; resize: vertical; min-height: 75px; border: 1px solid var(--control-line); border-radius: var(--control-radius); padding: 11px 12px; background: var(--surface); color: var(--ink); font: inherit; line-height: 1.5; }
 .asset-upload { padding: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
 .asset-upload input[type=file] { display: block; width: 100%; font: inherit; color: var(--muted); font-size: 13px; border: 0; background: transparent; padding: 0; }
 .asset-upload input[type=file]::file-selector-button { min-height: var(--control-hit-size); padding: 6px 10px; font: inherit; font-size: var(--label-size); line-height: var(--label-leading); font-weight: 500; color: var(--ink); border: 1px solid var(--line); border-radius: var(--control-radius); background: var(--surface); margin: 6px 10px 6px 0; cursor: pointer; }

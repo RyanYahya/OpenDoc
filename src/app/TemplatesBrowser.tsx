@@ -139,7 +139,6 @@ export function TemplatesBrowser({ selection, generation, format = 'document', c
           </Dialog.Portal>
         </Dialog.Root>
       </div>
-      <p className="lead template-intro">Choose a structure for your work. Apply a theme when you make it yours.</p>
       {tagging && <div className="template-filters"><ItemFilters manifest={tagManifest} kind="templates" items={items} value={filters} onChange={setFilters} /></div>}
       <Tabs.Root value={format} onValueChange={value => { location.hash = value === 'presentation' ? 'templates?format=presentation' : 'templates'; }}>
         <Tabs.List className="ui-tabs" aria-label="Template format">

@@ -49,4 +49,6 @@
 .template-detail-presentation .template-preview { min-height: 0; }
 
 .template-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 16px; }
+/* Without any filters to offer, the tabs sit under the heading as they do on Media & Assets. */
+.template-filters:empty { display: none; }
 .template-options .template-tags { margin-top: 28px; }

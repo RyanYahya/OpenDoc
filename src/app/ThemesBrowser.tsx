@@ -209,7 +209,6 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
       {organization?.error && <p className="field-error" role="alert">{organization.error}</p>}
       <div className="library-heading"><h1 id={themesHeadingId} tabIndex={-1}>Themes</h1>
         <div className="theme-heading-actions"><Button onClick={() => setPromptOpen(true)}><Icon name="plus" size={17} />Create theme</Button></div></div>
-      <p className="lead theme-intro">Explore complete print systems: color, typography, components, and page layouts.</p>
       {(organizing || tagging) && <div className="theme-filters">
         {organizing && <FolderFilter manifest={manifest} themes={themes} value={folderFilter} disabled={!loaded || !connected} onChange={value => { location.hash = filterHash({ folder: value }); }} onAction={onFolderAction} onDropTheme={dropTheme} />}
         {tagging && <TagFilter className="theme-tag-filter" manifest={tagManifest} kind="themes" ids={themes.map(item => item.id)} value={activeTag} onChange={value => { location.hash = filterHash({ tag: value }); }} />}

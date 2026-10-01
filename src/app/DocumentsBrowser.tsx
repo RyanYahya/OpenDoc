@@ -20,9 +20,9 @@ function searchText(document: DocumentSummary, tags: TagsManifest, extra = '') {
 
 type ViewProps = { view: DocumentView; onViewChange: (view: DocumentView) => void };
 
-function DocumentTools({ noun = 'document', query, onQueryChange, view, onViewChange, filter }: ViewProps & { noun?: string; query: string; onQueryChange: (query: string) => void; filter?: ReactNode }) {
+function DocumentTools({ searchLabel, query, onQueryChange, view, onViewChange, filter }: ViewProps & { searchLabel: string; query: string; onQueryChange: (query: string) => void; filter?: ReactNode }) {
   return <div className="library-tools document-browser-tools">
-    <SearchField label={`Search ${noun}s`} value={query} onValueChange={onQueryChange} />
+    <SearchField label={searchLabel} value={query} onValueChange={onQueryChange} />
     {filter}
     <div className="document-view-tools"><DocumentViewControl value={view} onChange={onViewChange} /></div>
   </div>;
@@ -41,7 +41,7 @@ export function DocumentsBrowser({ format = 'document', projects, documents, tag
     && searchText(document, manifest, projectById.get(document.projectId ?? '')?.name).includes(query.toLowerCase()));
   return <section className="library-content documents-content">
     <div className="library-heading"><h1>{plural}</h1><Button className="primary" aria-label={`Create ${format}`} onClick={onCreate} disabled={!loaded || disabled}><Icon name="plus" size={17} /><span>Create {format}</span></Button></div>
-    <DocumentTools noun={format} query={query} onQueryChange={setQuery} view={view} onViewChange={onViewChange}
+    <DocumentTools searchLabel={`Search ${format}s`} query={query} onQueryChange={setQuery} view={view} onViewChange={onViewChange}
       filter={<ItemFilters manifest={manifest} kind="documents" items={documents} value={filters} onChange={setFilters} />} />
     <div className={view === 'list' ? 'documents-list' : 'document-grid'} role="list">{visible.map(document => {
       const project = projectById.get(document.projectId ?? '');
@@ -75,7 +75,7 @@ export function ProjectDocuments({ project, documents, tags, loaded, view, onVie
         <Menu.Item className="ui-menu-item" onClick={onCreatePresentation}><Icon name="monitor" size={16} />Presentation</Menu.Item>
       </Menu.Popup></Menu.Positioner></Menu.Portal></Menu.Root>
     </div></div>
-    <DocumentTools noun="item" query={query} onQueryChange={setQuery} view={view} onViewChange={onViewChange}
+    <DocumentTools searchLabel="Search this project" query={query} onQueryChange={setQuery} view={view} onViewChange={onViewChange}
       filter={<><SelectControl label="Filter by format" value={format} onValueChange={value => { if (value === 'all' || value === 'document' || value === 'presentation') setFormat(value); }} items={[
         { label: 'All formats', value: 'all' }, { label: 'Documents', value: 'document' }, { label: 'Presentations', value: 'presentation' },
       ]} /><ItemFilters manifest={manifest} kind="documents" items={documents} value={filters} onChange={setFilters} /></>} />
