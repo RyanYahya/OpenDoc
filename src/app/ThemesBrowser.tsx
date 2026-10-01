@@ -12,7 +12,7 @@ import { CreateDocumentDialog } from './CreateDocumentDialog';
 import { Button, Dialog, Input } from './ui';
 import { Icon } from './ui/Icon';
 import {
-  displayPath, FolderBreadcrumb, FolderList, FolderMenu, folderSummary, startThemeDrag, TagFilter, ThemeCardMeta, ThemeFolderDialog, ThemeMenu, themesHash, themesHeadingId,
+  displayPath, FolderBreadcrumb, isolate, FolderList, FolderMenu, folderSummary, startThemeDrag, TagFilter, ThemeCardMeta, ThemeFolderDialog, ThemeMenu, themesHash, themesHeadingId,
   useThemeFolderMutations, type ThemeFolderAction, type ThemeOrganization,
 } from './ThemeFolders';
 import './themes.css';
@@ -184,7 +184,7 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
             {usingDocuments.length > 0 && <section className="theme-used-by"><h2>Documents using {theme.name}</h2>{usingDocuments.map(document => <a key={document.id} href={`#document/${document.id}`}><Icon name={documentFormat(document) === 'presentation' ? 'monitor' : 'document'} size={16} /><span><bdi>{documentName(document)}</bdi><span className="theme-used-format"> · {formatLabel(documentFormat(document))}</span></span><Icon name="arrow" size={15} /></a>)}</section>}
             {defaultProjects.length > 0 && <section className="theme-used-by"><h2>Project default</h2>{defaultProjects.map(project => <a key={project.id} href={`#project/${project.id}`}><Icon name="folder" size={16} /><span dir="auto">{project.name}</span><Icon name="arrow" size={15} /></a>)}</section>}
             {organizing && (themeFolder || themeTags.length > 0) && <section className="theme-organization"><h2>Folder &amp; tags</h2>
-              <dl><div><dt>Folder</dt><dd>{themeFolder ? <a href={themesHash({ folder: themeFolder.id })}>{displayPath(manifest, themeFolder.id)}</a> : 'Themes (top level)'}</dd></div><div><dt>Tags</dt><dd>{themeTags.length ? themeTags.join(' · ') : 'None'}</dd></div></dl>
+              <dl><div><dt>Folder</dt><dd>{themeFolder ? <a href={themesHash({ folder: themeFolder.id })}>{displayPath(manifest, themeFolder.id)}</a> : 'Themes (top level)'}</dd></div><div><dt>Tags</dt><dd>{themeTags.length ? themeTags.map(isolate).join(' · ') : 'None'}</dd></div></dl>
               <div className="theme-organization-actions"><Button className="text-button" data-theme-menu={theme.id} disabled={!connected} onClick={() => setFolderAction({ kind: 'move-theme', theme })}>Move to folder…</Button><Button className="text-button" disabled={!connected} onClick={() => setFolderAction({ kind: 'tags', theme })}>Edit tags…</Button></div>
             </section>}
           </div>
@@ -194,7 +194,7 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
       {organization?.error && <p className="field-error" role="alert">{organization.error}</p>}
       {inFolder && <FolderBreadcrumb manifest={manifest} folderId={currentFolder!.id} onDropTheme={dropTheme} />}
       <div className="library-heading">{inFolder
-        ? <div className="theme-folder-title"><h1 id={themesHeadingId} tabIndex={-1}>{currentFolder!.name}</h1><FolderMenu folder={currentFolder!} disabled={!connected} onAction={onFolderAction} /></div>
+        ? <div className="theme-folder-title"><h1 id={themesHeadingId} tabIndex={-1} dir="auto">{currentFolder!.name}</h1><FolderMenu folder={currentFolder!} disabled={!connected} onAction={onFolderAction} /></div>
         : <h1 id={themesHeadingId} tabIndex={-1}>Themes</h1>}
         <div className="theme-heading-actions">{organizing && !activeTag && !missingFolder && <Button data-new-folder disabled={!loaded || !connected} onClick={() => setFolderAction({ kind: 'create', parent: currentFolder?.id ?? null })}><Icon name="folderPlus" size={17} />New folder</Button>}<Button onClick={() => setPromptOpen(true)}><Icon name="plus" size={17} />Create theme</Button></div></div>
       {!inFolder && <p className="lead theme-intro">Explore complete print systems: color, typography, components, and page layouts.</p>}

@@ -28,8 +28,11 @@ export function themesHash({ folder, tag }: { folder?: string | null; tag?: stri
   return `#themes${query ? `?${query}` : ''}`;
 }
 
+/** Isolates user-named text so an Arabic name beside Latin ones keeps its own direction in labels and paths. */
+export const isolate = (text: string) => `\u2068${text}\u2069`;
+
 export function displayPath(manifest: ThemeFoldersManifest, id: string | null | undefined) {
-  return folderPath(manifest, id)?.split(folderPathSeparator).join(' / ') ?? null;
+  return folderPath(manifest, id)?.split(folderPathSeparator).map(isolate).join(' / ') ?? null;
 }
 
 export function folderSummary(manifest: ThemeFoldersManifest, themes: ThemeSummary[], folderId: string) {
@@ -88,7 +91,7 @@ export function ThemeMenu({ theme, disabled, onAction }: { theme: ThemeSummary; 
 
 function Crumb({ href, label, onDropTheme }: { href: string; label: string; onDropTheme?: (themeId: string) => void }) {
   const drop = useThemeDrop(onDropTheme);
-  return <li><a href={href} className={drop.over ? 'is-drop-target' : undefined} {...drop.handlers}>{label}</a><span aria-hidden="true">/</span></li>;
+  return <li><a href={href} className={drop.over ? 'is-drop-target' : undefined} {...drop.handlers}><bdi>{label}</bdi></a><span aria-hidden="true">/</span></li>;
 }
 
 /** Ancestors of the current folder; the folder itself is the page title. */
@@ -105,7 +108,7 @@ function FolderRow({ folder, manifest, themes, disabled, onAction, onDropTheme }
   const contents = folderSummary(manifest, themes, folder.id);
   return <li className={`theme-folder-row${drop.over ? ' is-drop-target' : ''}`} {...drop.handlers}>
     <a href={themesHash({ folder: folder.id })} data-folder-link={folder.id}>
-      <Icon name="folder" size={18} /><span className="theme-folder-name" title={folder.name}>{folder.name}</span>
+      <Icon name="folder" size={18} /><span className="theme-folder-name" title={folder.name} dir="auto">{folder.name}</span>
       <span className="theme-folder-count">{contents.empty ? 'Empty' : describeContents(contents)}</span>
     </a>
     <FolderMenu folder={folder} disabled={disabled} onAction={onAction} />
@@ -125,7 +128,7 @@ export function ThemeCardMeta({ theme, manifest, showFolder }: { theme: ThemeSum
   if (!path && !tags.length) return null;
   return <div className="theme-card-meta">
     {path && <a className="theme-card-folder" href={themesHash({ folder })}><Icon name="folder" size={15} /><span>{path}</span></a>}
-    {tags.length > 0 && <p className="theme-card-tags"><span className="sr-only">Tags: </span>{tags.join(' · ')}</p>}
+    {tags.length > 0 && <p className="theme-card-tags"><span className="sr-only">Tags: </span>{tags.map(isolate).join(' · ')}</p>}
   </div>;
 }
 
@@ -294,7 +297,7 @@ function TagsForm({ theme, manifest, busy, actions, shell, onSubmit }: { theme: 
     <form onSubmit={submit} aria-busy={busy}>
       <div className="create-field">
         <label htmlFor="theme-tag-input">Tags</label>
-        {tags.length > 0 && <ul className="theme-tag-list" aria-label="Current tags">{tags.map(tag => <li key={tag}><span>{tag}</span><Button className="icon-button" aria-label={`Remove tag ${tag}`} onClick={() => remove(tag)} disabled={busy}><Icon name="close" size={12} /></Button></li>)}</ul>}
+        {tags.length > 0 && <ul className="theme-tag-list" aria-label="Current tags">{tags.map(tag => <li key={tag}><span dir="auto">{tag}</span><Button className="icon-button" aria-label={`Remove tag ${tag}`} onClick={() => remove(tag)} disabled={busy}><Icon name="close" size={12} /></Button></li>)}</ul>}
         <div className="theme-tag-entry">
           <Input ref={input} id="theme-tag-input" value={draft} onChange={event => { setDraft(event.target.value); setProblem(''); }} onKeyDown={keyDown} disabled={busy} maxLength={themeFolderLimits.tag * 4} autoComplete="off" placeholder={tags.length ? 'Add another tag' : 'For example, Reports'} aria-describedby="theme-tag-hint" aria-invalid={Boolean(problem) || undefined} />
           <Button onClick={() => add(draft.split(','))} disabled={busy || !draft.trim()}>Add</Button>
