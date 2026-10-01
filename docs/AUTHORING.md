@@ -94,7 +94,7 @@ In the browser, comments, text corrections, search, and name fields follow the d
 
 ### Presentations
 
-Create a presentation with `npx opendoc create <id> --project <project-id> --title "Title" --format presentation`. It uses the same document folder, theme adapter, assets, media, selection, comments, and text corrections. The format is recorded in `projects.json` before source publication; older entries remain documents. Use the matching root rather than changing the format by swapping components alone.
+Create a presentation with `npx opendoc create <id> --project <project-id> --title "Title" --format presentation`. It uses the same document folder, theme adapter, assets, media, selection, comments, and text corrections. Without `--theme`, it starts from the project's default presentation theme, or Neutral. The format is recorded in `projects.json` before source publication; older entries remain documents. Use the matching root rather than changing the format by swapping components alone.
 
 ```tsx
 import { Presentation, Slide, Heading, Paragraph } from 'opendoc';

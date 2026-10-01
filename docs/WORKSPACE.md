@@ -24,7 +24,7 @@ npx @ryanyahya/opendoc init
 
 The default location is `~/Documents/My OpenDoc`. Choose another location by passing it as the destination, for example `npx @ryanyahya/opendoc init ~/Documents/ClientPublications`. The destination must be new or empty. Initialization installs a pinned OpenDoc version, copies the welcome documents and editable catalogs, starts the local service in the foreground, and opens your browser. Use `--no-start` to create the workspace without launching, or `--no-open` to start without opening a browser.
 
-Keep the terminal running while you use the app; press **Ctrl-C** to stop it. Open the localhost URL printed there if the browser does not open. The workspace starts with **Getting started → Welcome to OpenDoc**. Use the **+ beside Projects** in the sidebar to create a home for your work. **Create document** and **Create presentation** give you a prompt to paste into your coding agent. Write an optional brief in the dialog to include it in the prompt, and share your material with the agent. The prompt carries any selected project, template, or theme. The resulting work appears automatically.
+Keep the terminal running while you use the app; press **Ctrl-C** to stop it. Open the localhost URL printed there if the browser does not open. The workspace starts with **Getting started → Welcome to OpenDoc**. Use the **+ beside Projects** in the sidebar to create a home for your work. **Create document** and **Create presentation** give you a prompt to paste into your coding agent. Write an optional brief in the dialog to include it in the prompt, and share your material with the agent. The prompt carries any selected project, template, or theme, and the project's default theme for that format. The resulting work appears automatically.
 
 To return later:
 
@@ -84,7 +84,7 @@ npx opendoc projects create client-work --name "Client work" --theme neutral
 npx opendoc create my-brief --project client-work --title "A better handoff"
 ```
 
-Creation makes a minimal draft, its project assignment, exact asset selections in `assets.json`, and a `theme.tsx` adapter. The agent develops `documents/my-brief/index.tsx` using native PDF components. A project theme is a default for future documents; moving a document or changing that default leaves existing choices intact.
+Creation makes a minimal draft, its project assignment, exact asset selections in `assets.json`, and a `theme.tsx` adapter. The agent develops `documents/my-brief/index.tsx` using native PDF components. A project can set one default theme for documents and another for presentations; `--format presentation` and presentation templates use the presentation default. Defaults apply to future work; moving a document or changing a default leaves existing choices intact. See [Projects](PROJECTS.md#commands).
 
 **Templates** offers reusable layouts with real PDF specimens and a readable **View AGENTS.md** guide. **Themes** offers design systems with their own components, palettes, typography, and design guides. Pick a template when its structure helps; the brief can also call for a bespoke document. [Authoring](AUTHORING.md) describes the component API.
 

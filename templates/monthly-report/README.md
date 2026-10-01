@@ -2,7 +2,7 @@
 
 A pure, reusable English report with flowing sections, a scorecard, risks, and an action register. The supplied data is clearly marked synthetic in every exported PDF.
 
-Create a working instance with `pnpm run create -- monthly-report --project <project-id> --template monthly-report --title "Monthly report"`. It is also available from Templates in the app. Its source binds this template to a neighboring `data.json` through the generated `theme.tsx` adapter; retain that adapter and the exact selections in `assets.json`. Update the data for a new edition; the layout stays in one place. The project default theme applies at creation, with `--theme <id>` available to override it.
+Create a working instance with `pnpm run create -- monthly-report --project <project-id> --template monthly-report --title "Monthly report"`. It is also available from Templates in the app. Its source binds this template to a neighboring `data.json` through the generated `theme.tsx` adapter; retain that adapter and the exact selections in `assets.json`. Update the data for a new edition; the layout stays in one place. The project's default document theme applies at creation, with `--theme <id>` available to override it.
 
 ## Data contract
 
