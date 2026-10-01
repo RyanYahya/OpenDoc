@@ -35,7 +35,7 @@ import { ThemeFoldersError, themeFoldersFile } from './theme-folders';
 import { handleThemeFoldersRequest } from './theme-folders-http';
 import { TagsError, tagsFile } from './tags';
 import { handleTagsRequest } from './tags-http';
-import { documentLanguage } from './language';
+import { sourceLanguage } from './language';
 
 import { readAssetHead as selectedAssetHead, readAssetRevision as selectedAssetRevision } from '../assets/files';
 import type { SelectedAsset } from '../shared/assets';
@@ -143,8 +143,8 @@ const server = createServer(async (req, res) => {
       const states = workspace.list();
       await Promise.all(states.map(async state => { state.manualEdit = await edits.summary(state.id); }));
       if (url.searchParams.get('view') !== 'summary') { json(res, states); return; }
-      // Language is derived from each current render, or from source until one exists.
-      json(res, await Promise.all(states.map(async state => ({ ...summarizeDocument(state), language: await documentLanguage(root, state.id, state.artifact).catch(() => undefined) })))); return;
+      // Language is derived from source, as on the command line, so both editions classify an item alike.
+      json(res, await Promise.all(states.map(async state => ({ ...summarizeDocument(state), language: await sourceLanguage(root, 'documents', state.id).catch(() => undefined) })))); return;
     }
     if (req.method === 'GET' && url.pathname === '/api/projects') { json(res, await readProjects(root)); return; }
     const documentRoute = url.pathname.match(/^\/api\/documents\/([a-z0-9-]+)$/);

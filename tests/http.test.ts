@@ -27,7 +27,7 @@ test('local HTTP loop: discovery, watch, errors, exact export, and request bound
     const detail = await fetch(`${origin}/api/documents/proof`).then(r => r.json());
     assert.equal(summary.artifact.hash, detail.artifact.hash);
     assert.equal(summary.revision, detail.revision);
-    assert.equal(summary.language, 'english', 'Summaries carry the language derived from the render.');
+    assert.equal(summary.language, 'english', 'Summaries carry the language derived from source.');
     assert.equal(summary.artifact.pages.length, detail.artifact.pages.length);
     assert.ok(!('blocks' in summary.artifact) && !('textTargets' in summary.artifact));
     assert.ok(summary.artifact.pages.every((page: object) => !('fragments' in page)));

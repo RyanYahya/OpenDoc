@@ -11,7 +11,6 @@ import type { MediaUse } from '../shared/media';
 import type { AssetUse, DocumentAssets } from '../shared/assets';
 import { readDocumentAssetsAt, resolveThemeAssets } from '../assets/files';
 import type { LayoutInfo, ElementInfo } from '@formepdf/core';
-import type { FormeDocument } from '@formepdf/react';
 import type { BlockInfo, DocumentMeta, DocumentProvenance, RenderArtifact, Fragment, DocumentFormat, SlideInfo } from '../shared/types';
 import { RenderFailure } from './render-error';
 import { inspectLayout, assertLayoutSafe, assertSlideLayout, missingGlyphIssues } from './preflight';
@@ -72,12 +71,6 @@ globalState.__opendocResolveTextField = field => {
   if (!resolver) { resolver = createJsonTextSourceResolver(relative(root, absolute), overrides.get(absolute)?.contents ?? readFileSync(absolute, 'utf8')); fieldResolvers.set(absolute, resolver); }
   return originalBinding(resolver(field), overrides.get(absolute));
 };
-
-/** The Document's declared language and base direction, kept so its language can be derived later. */
-function declaredLanguage(doc: FormeDocument): Pick<RenderArtifact, 'lang' | 'direction'> {
-  const lang = doc.metadata?.lang, direction = doc.defaultStyle?.direction;
-  return { ...(typeof lang === 'string' ? { lang } : {}), ...(direction === 'ltr' || direction === 'rtl' || direction === 'auto' ? { direction } : {}) };
-}
 
 function pagesFromLayout(layout: LayoutInfo, blocks: Record<string, BlockInfo>) {
   return layout.pages.map(page => {
@@ -185,7 +178,7 @@ try {
   for (const message of result.warnings) if (!message.startsWith('Missing glyphs:')) issues.push({ code: 'renderer-warning', severity: 'warning', message });
   assertLayoutSafe(issues);
   if (capture.format === 'presentation') issues.push(...inspectPresentationCompatibility(result.doc, result.layout, capture.slides, capture.blocks));
-  const artifact: RenderArtifact = { meta: capture.meta, format: capture.format, ...(capture.format === 'presentation' ? { slides: capture.slides } : {}), media: capture.media ?? [], assets, assetBindings: capture.assetBindings, assetDependencies, textTargets, blocks: capture.blocks, pages, provenance, issues, outline, ...declaredLanguage(result.doc), hash: createHash('sha256').update(result.pdf).digest('hex'), renderedAt: new Date().toISOString() };
+  const artifact: RenderArtifact = { meta: capture.meta, format: capture.format, ...(capture.format === 'presentation' ? { slides: capture.slides } : {}), media: capture.media ?? [], assets, assetBindings: capture.assetBindings, assetDependencies, textTargets, blocks: capture.blocks, pages, provenance, issues, outline, hash: createHash('sha256').update(result.pdf).digest('hex'), renderedAt: new Date().toISOString() };
   await mkdir(destination, { recursive: true });
   await writeFile(resolve(destination, 'document.pdf'), result.pdf);
   await writeFile(resolve(destination, 'artifact.json'), JSON.stringify(artifact, null, 2));

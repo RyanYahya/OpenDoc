@@ -14,13 +14,11 @@ import { runTemplatesCli } from '../src/server/templates-cli';
 import { runThemesCli } from '../src/server/themes-cli';
 import { createThemeFolder, readThemeFolders } from '../src/server/theme-folders';
 import { deleteDocument, duplicateDocument, restoreDocument } from '../src/server/documents';
-import { artifactLanguage, sourceLanguage, sourceProse, themeLanguage } from '../src/server/language';
-import { renderOnce } from '../src/server/render';
+import { sourceLanguage, sourceProse, themeLanguage } from '../src/server/language';
 import { classifyLanguage, countScripts } from '../src/shared/language';
 import {
   documentStatus, documentStatuses, hasTags, resolveTags, standardType, standardTypes, tagCounts, tagKey, typeCounts, type TagsManifest,
 } from '../src/shared/tags';
-import type { RenderArtifact } from '../src/shared/types';
 import { excludedFromCopy, forbiddenInPackage } from '../scripts/package-rules.mjs';
 
 /** A fixture with one document, the checkout's themes, and two templates, without tags. */
@@ -337,11 +335,9 @@ test('language is derived from text weighed with the declared direction', () => 
   assert.equal(themeLanguage({}), 'english');
   // Source text counts prose, not identifiers, IDs, or import paths.
   assert.deepEqual(sourceProse('index.tsx', `import x from './some path';\nconst id = 'intro'; <Paragraph id="body" style={{ textAlign: 'right' }}>نص عربي</Paragraph>; const t = 'Two words';`), ['نص عربي', 'Two words']);
-  const artifact = { blocks: { a: { id: 'a', kind: 'paragraph', text: 'نص عربي طويل بما يكفي لتحديد اللغة بثقة كاملة' } }, lang: 'ar', direction: 'rtl' } as unknown as RenderArtifact;
-  assert.equal(artifactLanguage(artifact), 'arabic');
 });
 
-test('documents and templates are classified from source, and from a render when one exists', { timeout: 60_000 }, async () => {
+test('documents and templates are classified from source', { timeout: 60_000 }, async () => {
   const f = await workspace();
   try {
     assert.equal(await sourceLanguage(f.root, 'documents', 'proof'), 'english');
@@ -366,12 +362,6 @@ export default function Proof(){return <Document title="تقرير" direction="r
     await writeFile(resolve(f.root, 'templates/arabic-letter/index.tsx'), `export const render = () => <Document direction="rtl" lang="ar"><Paragraph id="greeting">السلام عليكم ورحمة الله وبركاته</Paragraph></Document>;`);
     await writeFile(resolve(f.root, 'templates/arabic-letter/AGENTS.md'), 'Use this template for formal Arabic letters to government and business recipients.');
     assert.equal(await sourceLanguage(f.root, 'templates', 'arabic-letter'), 'arabic');
-
-    // A render records the declared language and direction, and its text decides.
-    await writeFile(f.entry, arabic);
-    const { artifact } = await renderOnce(f.root, 'proof');
-    assert.deepEqual([artifact.lang, artifact.direction], ['ar', 'rtl']);
-    assert.equal(artifactLanguage(artifact), 'arabic');
   } finally { await f.cleanup(); }
 });
 

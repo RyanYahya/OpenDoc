@@ -2,28 +2,15 @@ import { lstat, readdir, readFile } from 'node:fs/promises';
 import { extname, relative, resolve, sep } from 'node:path';
 import ts from 'typescript';
 import { classifyLanguage, countScripts, declaredLanguage, type DeclaredLanguage, type Language, type ScriptCounts } from '../shared/language';
-import type { RenderArtifact } from '../shared/types';
 import { validId } from './render';
 
 /**
- * Derived languages. A rendered document is classified from its PDF text and the language and
- * direction its Document declared. Without a render (the command line, or a document that does
- * not render yet), OpenDoc reads the text in its source instead: JSX text, and string values that
- * read like prose (containing a space or a non-ASCII letter), so identifiers, IDs, and import
- * paths do not count. Results are cached per render, or per source file revision.
+ * Derived languages. Documents and templates are classified from the text in their source: JSX
+ * text, and string values that read like prose (containing a space or a non-ASCII letter), so
+ * identifiers, IDs, and import paths do not count. The app and the command line of both editions
+ * read the same source the same way, so an item has one language everywhere, rendered or not.
+ * Results are cached per source file revision.
  */
-
-const rendered = new WeakMap<RenderArtifact, Language>();
-
-export function artifactLanguage(artifact: RenderArtifact): Language {
-  const cached = rendered.get(artifact);
-  if (cached) return cached;
-  const counts: ScriptCounts = { arabic: 0, latin: 0 };
-  for (const block of Object.values(artifact.blocks)) countScripts(block.text, counts);
-  const language = classifyLanguage(counts, { lang: artifact.lang, direction: artifact.direction });
-  rendered.set(artifact, language);
-  return language;
-}
 
 /** A theme has no text of its own; its declared direction and language decide. */
 export function themeLanguage(theme: DeclaredLanguage): Language {
@@ -133,9 +120,4 @@ export async function sourceLanguage(root: string, kind: 'documents' | 'template
   if (fromSource.size > 500) fromSource.clear();
   fromSource.set(folder, { signature, language });
   return language;
-}
-
-/** A document's language: from its current render when there is one, otherwise from its source. */
-export async function documentLanguage(root: string, id: string, artifact?: RenderArtifact): Promise<Language> {
-  return artifact ? artifactLanguage(artifact) : sourceLanguage(root, 'documents', id);
 }

@@ -39,10 +39,10 @@ A document has no status until one is set: `draft`, `in-review`, `final`, or `ar
 
 - At least 75% Arabic letters is `arabic`, below 15% is `english`, and anything between is `bilingual`. When the item declares Arabic (`direction="rtl"` or a `lang` starting with `ar`), the bounds are 60% and 5%.
 - With fewer than 24 letters, the declaration decides. Substantial text outweighs it, so a right-to-left document written only in English is `english`.
-- A document uses the text of its current render in the app, and the prose in its source files on the command line or before its first render: JSX text and string values containing a space or a non-ASCII letter. Media, history, asset bindings, theme files, guides, and schemas do not count. A template uses its source the same way.
+- A document or template uses the prose in its source files: JSX text and string values containing a space or a non-ASCII letter. Media, history, asset bindings, theme files, guides, and schemas do not count. The app and the command line of both editions read the same source the same way, so an item has the same language everywhere, before and after it renders.
 - A theme uses its declared `direction` and `lang`: Arabic is `arabic`, Arabic with `direction: 'auto'` is `bilingual`, and anything else is `english`.
 
-Results are cached per render or source revision.
+Results are cached per source revision.
 
 ## Custom tags
 
