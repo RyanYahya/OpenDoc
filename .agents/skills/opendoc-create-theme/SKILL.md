@@ -7,7 +7,7 @@ Use the user's OpenDoc workspace as the working directory. `documents/`, `templa
 
 ## 1. Inspect the design basis
 
-Resolve the requested theme explicitly or through [opendoc-current-document](../opendoc-current-document/SKILL.md). Discover with `npx opendoc themes list`; inspect one with `npx opendoc themes inspect <id>`. The list also reports each theme's `folder` and `tags` from the user's optional `themes/folders.json`; narrow it with `--folder <path>` or `--tag <tag>`. That organization never moves theme folders; change it with `npx opendoc themes assign`, `themes tags`, or `themes folders` only when the user asks, as described in [Themes](../../../docs/THEMES.md#organize-the-catalog). Read its guide and relevant source, or one suitable existing theme for a new bundle.
+Resolve the requested theme explicitly or through [opendoc-current-document](../opendoc-current-document/SKILL.md). Discover with `npx opendoc themes list`; inspect one with `npx opendoc themes inspect <id>`. The list also reports each theme's `folder` from the user's optional `themes/folders.json` and its `tags` from `tags.json`; narrow it with `--folder <path>` or `--tag <tag>`. Organization never moves theme folders; change folders with `npx opendoc themes assign` or `themes folders` only when the user asks, as described in [Themes](../../../docs/THEMES.md#organize-the-catalog). Read its guide and relevant source, or one suitable existing theme for a new bundle.
 
 Inspect supplied images, brand-guide pages, document PDFs, and referenced websites. Record what is a requirement, an observed pattern, or your interpretation. Identify unavailable references and font substitutions honestly. Translate web references into print through hierarchy, proportions, alignment, reading measure, whitespace, and recurring compositions.
 
@@ -27,7 +27,15 @@ Keep exact guide values synchronized with executable tokens. Describe component 
 
 For logos or custom fonts, read [Assets](../../../docs/ASSETS.md) and the font section of Themes before implementing them. Verify local faces and licenses, preserve original artwork, and use semantic document font bindings inside reusable components. For generated visuals, follow [Media](../../../docs/MEDIA.md). Keep reference originals in their existing project location.
 
-**Ready:** the bundle is discoverable, its guide matches its tokens, and the specimen demonstrates the implemented print system.
+For a new theme, apply two to five fitting standard tags from `npx opendoc tags` once `npx opendoc themes inspect <id>` discovers it: its **Style** (such as `formal`, `minimal`, `editorial`, `bold`, or `playful`), the **Area** or **Type** it was designed for when it has one, and `arabic` or `bilingual` when it is built for that text. Add a custom tag, such as a brand or client name, only when no standard tag fits, reusing an existing custom spelling:
+
+```sh
+npx opendoc tags add theme <theme-id> minimal finance
+```
+
+When refining an existing theme, keep its tags; add one only when the change gives it a new fitting purpose. Never remove or rename the user's tags unless asked. See [Tags](../../../docs/TAGS.md#tagging-by-agents).
+
+**Ready:** the bundle is discoverable, its guide matches its tokens, the specimen demonstrates the implemented print system, and a new theme is tagged.
 
 ## 4. Review its real use
 

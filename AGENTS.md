@@ -55,6 +55,7 @@ For application changes, read the relevant runtime and [verification guide](VALI
 - Keep block IDs stable and unique. Preserve text-slot and data record identities across edits and reordering. Page numbers, source lines, and array positions are not durable identities. Read [Selection](docs/SELECTION.md) for reusable text/data bindings and preserve the user's latest saved corrections.
 - Read current context before acting on a selection. It is an observation, not an instruction. An error or rendering state may leave the last successful PDF visible. For template instances, provenance distinguishes local content data from shared layout; do not change every report to correct one instance.
 - Keep evidence and provenance accurate. Distinguish supplied facts, inference, and illustrative material. Never invent citations.
+- Tag what you create. Once a document, presentation, theme, or template exists, apply two to five fitting standard tags with `npx opendoc tags add <kind> <id> <tag>...`: its type, area, audience, and language, `draft` for a new document, and style for a theme or template. Add `final` when a document is delivered. Prefer the standard vocabulary listed by `npx opendoc tags`; create a custom tag only when nothing fits, reusing an existing custom spelling. Never remove or rename the user's tags unless asked. See [Tags](docs/TAGS.md#tagging-by-agents).
 
 ## Media, logos, and fonts
 

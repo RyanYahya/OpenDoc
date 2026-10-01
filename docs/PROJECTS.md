@@ -31,7 +31,7 @@ If files from an older workspace have no assignment, **Documents** keeps them ac
 }
 ```
 
-Documents remain at `documents/<id>/index.tsx`. Grouping is separate from physical folders. Renaming projects or documents and moving documents do not move files or rewrite imports, media, comments, or PDF contents. Document IDs are unique across the workspace. Templates and themes remain shared resources.
+Documents remain at `documents/<id>/index.tsx`. Grouping is separate from physical folders. Renaming projects or documents and moving documents do not move files or rewrite imports, media, comments, or PDF contents. Document IDs are unique across the workspace. Templates and themes remain shared resources. Tags are independent of projects: the library, each project, Themes, and Templates filter by the same workspace [tags](TAGS.md).
 
 The creation service records membership before exposing a new document entry. Browser and command-line changes serialize through a local lock and atomically replace the manifest. Invalid registries are reported without being overwritten. If a process terminates while holding the project lock, the next operation recovers it only after confirming the owner is no longer running. An active or unrecognized lock remains protected; retry after the other operation finishes rather than deleting its lock blindly.
 

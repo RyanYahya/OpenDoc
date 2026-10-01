@@ -25,7 +25,15 @@ Write a brief `AGENTS.md` explaining the layout's character, useful defaults, an
 
 For visual assets, follow [Media](../../../docs/MEDIA.md) or [Assets](../../../docs/ASSETS.md) as applicable. Use Neutral for the catalog specimen so layouts remain comparable.
 
-**Ready:** the template, starter, guide, and native PDF specimen implement the chosen contract without prescribing the document's argument.
+For a new template, apply two to five fitting standard tags from `npx opendoc tags` once `npx opendoc templates inspect <template-id>` discovers it: its **Type** (such as `report`, `proposal`, or `invoice`), the **Area** and **Audience** it serves, its **Style** when distinctive, and `arabic` or `bilingual` when it is built for that text. Do not tag the format; the catalog already separates document and presentation templates. Add a custom tag only when no standard tag fits, reusing an existing custom spelling:
+
+```sh
+npx opendoc tags add template <template-id> report finance executive
+```
+
+Never remove or rename the user's tags unless asked. See [Tags](../../../docs/TAGS.md#tagging-by-agents).
+
+**Ready:** the template, starter, guide, and native PDF specimen implement the chosen contract without prescribing the document's argument, and a new template is tagged.
 
 ## 3. Exercise the contract
 

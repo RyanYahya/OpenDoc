@@ -170,7 +170,7 @@ Before opening a pull request, run `pnpm verify` for typechecking, the full test
 
 ## Workspace boundaries
 
-`documents/` holds authored work; `templates/` holds reusable layouts and data contracts; `themes/` holds executable visual systems; `assets/` holds shared local resources. `projects.json` records document membership. The optional `themes/folders.json` groups themes into folders and tags without moving them. `.opendoc/` holds generated context, previews, recovery records, and session state; `output/` holds exported PDFs and PowerPoint files. Generated state and exports are ignored by Git.
+`documents/` holds authored work; `templates/` holds reusable layouts and data contracts; `themes/` holds executable visual systems; `assets/` holds shared local resources. `projects.json` records document membership. The optional `tags.json` labels documents, themes, and templates for filtering ([Tags](TAGS.md)), and the optional `themes/folders.json` groups themes into folders without moving them. `.opendoc/` holds generated context, previews, recovery records, and session state; `output/` holds exported PDFs and PowerPoint files. Generated state and exports are ignored by Git.
 
 Authoring uses the public imports `opendoc`, `opendoc/template`, `opendoc/assets`, and `opendoc/themes`. Keep references to your editable local catalogs relative to the workspace. The pinned application dependency lives in `node_modules/opendoc`; ordinary document work does not change it. The workspace's `package.json`, lockfile, and `.opendoc/workspace.json` identify its installation and format.
 

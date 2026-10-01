@@ -95,9 +95,9 @@ Run `npx opendoc check` after changing source. Review every exported specimen pa
 
 ## Organize the catalog
 
-Folders and tags are optional. Without them, the Themes view is one gallery. **New folder** creates a folder in the current location, and folders can nest to any depth. A folder's **…** menu offers **Rename**, **Move to folder…**, and **Delete**. Deleting a folder moves its themes and subfolders to its parent; it never deletes a theme, and a folder with contents asks for confirmation first. A theme card's **…** menu offers **Move to folder…** and **Edit tags…**; on desktop, a card can also be dragged onto a folder or onto the folder path above the title. **Filter by tag** searches every folder and shows the folder of each result. Theme lists elsewhere, such as a project's default theme, show the folder after the theme name.
+Folders and tags are optional. Without them, the Themes view is one gallery. **New folder** creates a folder in the current location, and folders can nest to any depth. A folder's **…** menu offers **Rename**, **Move to folder…**, and **Delete**. Deleting a folder moves its themes and subfolders to its parent; it never deletes a theme, and a folder with contents asks for confirmation first. A theme card's **…** menu offers **Move to folder…** and **Edit tags…**; on desktop, a card can also be dragged onto a folder or onto the folder path above the title. **Filter by tag** searches every folder and shows the folder of each result. Theme lists elsewhere, such as a project's default theme, show the folder after the theme name. Tags are shared with documents and templates and use the standard vocabulary described in [Tags](TAGS.md); `Style` tags such as `minimal` or `editorial` suit themes especially.
 
-`themes/folders.json` stores this organization separately from the theme bundles:
+`themes/folders.json` stores folders separately from the theme bundles:
 
 ```json
 {
@@ -106,24 +106,23 @@ Folders and tags are optional. Without them, the Themes view is one gallery. **N
     { "id": "clients", "name": "Clients", "parent": null },
     { "id": "acme", "name": "Acme", "parent": "clients" }
   ],
-  "assignments": { "field-manual": "acme" },
-  "tags": { "field-manual": ["Reports", "Technical"] }
+  "assignments": { "field-manual": "acme" }
 }
 ```
 
-A theme belongs to at most one folder; a theme without an assignment is at the top level. Organizing never moves `themes/<id>/`, changes a theme ID, or edits theme source, so documents, project defaults, and imports are unaffected. Folder names are unique among their siblings regardless of case and cannot contain `/`. Tags are trimmed and compared without regard to case; a theme keeps the first spelling, and a tag already used on another theme reuses that spelling. Browser and command-line changes serialize through a local lock and atomically replace the file. Entries for themes whose folders no longer exist are ignored and dropped on the next change. An invalid file is reported without being overwritten, and the gallery stays flat until it is repaired. New workspaces start without this file.
+A theme belongs to at most one folder; a theme without an assignment is at the top level. Organizing never moves `themes/<id>/`, changes a theme ID, or edits theme source, so documents, project defaults, and imports are unaffected. Folder names are unique among their siblings regardless of case and cannot contain `/`. Theme tags live in the workspace's `tags.json`; a `tags` field left in this file by an earlier version is still read and moves to `tags.json` on the next tag change. Browser and command-line changes serialize through a local lock and atomically replace the file. Entries for themes whose folders no longer exist are ignored and dropped on the next change. An invalid file is reported without being overwritten, and the gallery stays flat until it is repaired. New workspaces start without this file.
 
 ```sh
-npx opendoc themes list --folder Clients --tag Reports
+npx opendoc themes list --folder Clients --tag technical
 npx opendoc themes folders
 npx opendoc themes folders create Clients/Acme
 npx opendoc themes folders update Clients/Acme --name "Acme Corp" --parent none
 npx opendoc themes folders delete Clients
 npx opendoc themes assign field-manual Clients/Acme
-npx opendoc themes tags field-manual --add Reports --remove Draft
+npx opendoc tags add theme field-manual technical bold
 ```
 
-`themes list` reports each theme's `folder` path and `tags`. `--folder` includes nested folders; `--folder none` selects top-level themes; repeated `--tag` options must all match. `folders create` also creates missing parent folders. `assign <theme-id> none` returns a theme to the top level, and `tags <theme-id> --set ""` clears its tags. Organization belongs to the user: change it only when asked.
+`themes list` reports each theme's `folder` path and `tags`. `--folder` includes nested folders; `--folder none` selects top-level themes; repeated `--tag` options must all match. `folders create` also creates missing parent folders. `assign <theme-id> none` returns a theme to the top level. `npx opendoc themes tags <theme-id> [--set "A, B"] [--add <tag>] [--remove <tag>]` remains available for theme tags. Folders belong to the user: change them only when asked. Tag a new theme when creating it, as described in [Tags](TAGS.md#tagging-by-agents), and leave existing tags unless asked.
 
 ## Themes, templates, and projects
 

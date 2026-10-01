@@ -182,6 +182,7 @@ Updates preserve your edition, documents, templates, themes, assets, and feedbac
 | Produce finished files remotely | [Headless](docs/HEADLESS.md) |
 | Author documents and presentations | [Authoring API](docs/AUTHORING.md) |
 | Create reusable designs | [Templates](docs/TEMPLATES.md) · [Themes](docs/THEMES.md) |
+| Tag and filter documents, themes, and templates | [Tags](docs/TAGS.md) |
 | Work with images, fonts, and logos | [Media](docs/MEDIA.md) · [Assets](docs/ASSETS.md) |
 | Apply precise corrections and feedback | [Selection](docs/SELECTION.md) |
 | Contribute to the framework | [Contributing](CONTRIBUTING.md) · [Validation](VALIDATION.md) |
