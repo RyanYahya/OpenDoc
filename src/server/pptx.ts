@@ -179,9 +179,9 @@ export async function presentationBytes(capture: PresentationCapture): Promise<U
         if (!runs) throw new Error(`Slide ${label}: PowerPoint export cannot preserve this text transformation.`);
         // PowerPoint orders and shapes mixed-direction text itself once the paragraph is marked RTL.
         // The PDF engine reports each line's resolved direction; follow it so the deck matches the preview.
-        // Layouts without one (older engines) fall back to the authored style, then the first strong letter.
+        // Layouts without one (older engines) fall back to the source's authored style, then the first strong letter.
         const resolved = (lines[0]?.style as { direction?: unknown } | undefined)?.direction;
-        const declared = resolved === 'rtl' || resolved === 'ltr' ? resolved : (style as { direction?: unknown }).direction ?? (source.style as { direction?: unknown } | undefined)?.direction;
+        const declared = resolved === 'rtl' || resolved === 'ltr' ? resolved : (source.style as { direction?: unknown } | undefined)?.direction ?? (style as { direction?: unknown }).direction;
         const direction = paragraphDirection(declared, source.kind.runs?.map(run => run.content).join('') ?? source.kind.content);
         const bidi: TextPropsOptions = direction.rtl ? { rtlMode: true, ...(direction.lang ? { lang: direction.lang } : {}) } : {};
         const rich = runs.map(run => ({ text: run.text, options: { ...textStyle({ ...style, ...run.style } as ElementStyleInfo), ...bidi, ...(run.href ? { hyperlink: { url: run.href } } : {}) } }));
