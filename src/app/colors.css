@@ -16,7 +16,6 @@
   --placeholder: #777777;
   --badge-fill: #caface;
   --badge-ink: #0e762c;
-  --switch-track: #0077e6;
   --line: #dedede;
   --line-strong: #b8b8b8;
   --control-line: #8c8c8c;
@@ -65,7 +64,6 @@
   --shadow-thumbnail: 0 2px 5px #00000012;
   --shadow-preview: 0 3px 12px #00000017;
   --shadow-media: 0 2px 8px #00000008;
-  --shadow-panel-left: -12px 0 30px #00000010;
   --shadow-panel-right: 12px 0 30px #00000014;
   --wordmark-filter: none;
   /* Page and media colors remain faithful to the exported artifact in either appearance. */
@@ -125,7 +123,6 @@
   --shadow-thumbnail: 0 2px 5px #00000040;
   --shadow-preview: 0 3px 12px #00000045;
   --shadow-media: 0 2px 8px #00000040;
-  --shadow-panel-left: -12px 0 30px #00000055;
   --shadow-panel-right: 12px 0 30px #00000055;
   --wordmark-filter: invert(1);
 }

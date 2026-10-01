@@ -1,68 +1,10 @@
-.correction-editor {
-  position: fixed;
-  z-index: 35;
-  width: min(368px, calc(100vw - 24px));
-  max-height: calc(100dvh - 104px);
-  overflow: auto;
-  padding: 12px;
-  background: var(--popup-surface);
-  color: var(--ink);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  box-shadow: var(--shadow-popup);
-}
-.correction-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  margin: -4px -4px 8px 2px;
-}
-.correction-heading h2 {
-  margin: 0;
-  font-family: inherit;
-  font-size: var(--label-size);
-  font-weight: 500;
-  line-height: var(--label-leading);
-  color: var(--muted);
-}
-.correction-heading .ui-button.icon-button {
-  min-width: var(--control-hit-size);
-  min-height: var(--control-hit-size);
-  padding: 5px;
-  border-radius: var(--control-radius);
-  color: var(--muted);
-}
-.correction-editor textarea {
-  display: block;
-  width: 100%;
-  min-height: 104px;
-  resize: vertical;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  padding: 10px 11px;
-  background: var(--background);
-  color: var(--ink);
-  font: inherit;
-  font-size: 13px;
-  line-height: 1.65;
-  caret-color: var(--accent);
-}
-.correction-editor textarea:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: -1px;
-}
-.correction-editor textarea::selection { background: var(--selection); }
-.correction-note, .correction-error, .correction-conflict {
+.correction-note, .correction-error {
   font-size: var(--caption-size);
   line-height: 1.5;
   margin: 10px 2px 0;
   color: var(--muted);
 }
 .correction-error { color: var(--error-ink); }
-.correction-conflict { padding: 9px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--notice-surface); }
-.correction-conflict p { margin: 0; }
-.correction-conflict .text-button { margin: 6px 0 0; }
 .correction-actions { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-top: 10px; }
 .correction-actions .ui-button {
   min-width: 0;
@@ -86,8 +28,6 @@
 .correction-actions .ui-button.primary:active:not(:disabled) { background: color-mix(in srgb, var(--accent) 26%, var(--popup-surface)); }
 .correction-actions .ui-button:disabled { opacity: 0.55; }
 .correction-actions kbd { font: inherit; font-size: var(--tag-size); }
-.anchor-status { display: block; margin-top: 7px; font-size: var(--tag-size); font-weight: 600; color: var(--muted); }
-.selection-outline { position: absolute; border: 1px solid var(--document-accent); border-radius: 2px; background: var(--inspection-selected); pointer-events: none; }
 .ui-button.comment-marker { position: absolute; z-index: 4; width: 22px; height: 22px; min-width: 22px !important; min-height: 22px !important; padding: 4px !important; border: 1px solid var(--paper); border-radius: 50%; color: var(--on-accent); background: var(--comment-marker); }
 .ui-button.comment-marker:hover { background: var(--accent-hover); color: var(--on-accent); }
 .ui-button.comment-marker:active:not(:disabled) { background: var(--accent-active); color: var(--on-accent); }
@@ -96,10 +36,7 @@
   .ui-button.comment-marker::after { content: ""; position: absolute; inset: -9px; border-radius: 50%; }
 }
 @media (max-width: 620px) {
-  .correction-editor { top: auto !important; bottom: max(10px, env(safe-area-inset-bottom)); left: 10px !important; width: calc(100% - 20px); max-height: min(75dvh, 560px) !important; border-radius: 14px; padding: 14px; }
-  .correction-editor textarea { font-size: 16px; }
-  .correction-actions .ui-button, .correction-heading .ui-button.icon-button { min-height: 40px; }
-  .correction-heading .ui-button.icon-button { min-width: 40px; }
+  .correction-actions .ui-button { min-height: 40px; }
 }
 
 .text-selection-highlight { position: absolute; pointer-events: none; background: var(--inspection-selected); border-radius: 2px; }
@@ -117,8 +54,6 @@
   .comment-phrase-highlight { forced-color-adjust: none; background: transparent; box-shadow: inset 0 -2px Highlight; }
 }
 
-.comment-popover .comment-composer { padding: 0; border: 0; }
-.comment-popover .comment-composer label { color: var(--ink); }
 .comment-card { padding: 8px 0; border-top: 1px solid var(--line); }
 .comment-card:first-of-type { border-top: 0; padding-top: 0; }
 .comment-card:last-of-type { padding-bottom: 0; }

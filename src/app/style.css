@@ -1,17 +1,5 @@
 @import "./colors.css";
 @import "./ui/fonts.css";
-@font-face {
-  font-family: "OpenDoc Serif";
-  src: url("/assets/fonts/OpenDocSerif-Regular.ttf") format("truetype");
-  font-weight: 400;
-  font-display: swap;
-}
-@font-face {
-  font-family: "OpenDoc Serif";
-  src: url("/assets/fonts/OpenDocSerif-Semibold.ttf") format("truetype");
-  font-weight: 600 800;
-  font-display: swap;
-}
 :root {
   font-family: "OpenDoc UI", -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: var(--body-size);
@@ -24,7 +12,6 @@
   text-rendering: optimizeLegibility;
   font-feature-settings: "ss01" on, "cv11" on, "calt" on;
   font-weight: 400;
-  --scale-factor: 1;
 }
 * {
   box-sizing: border-box;
@@ -134,6 +121,9 @@ nav a.active {
   background: transparent;
   padding: 0;
   color: var(--muted);
+  display: block;
+  min-height: var(--control-hit-size);
+  line-height: var(--control-hit-size);
   max-width: 35%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -259,27 +249,12 @@ nav a.active {
   content: "·";
   margin-right: 8px;
 }
-.tag {
-  font-size: inherit;
-  color: inherit;
-}
 .document-card h2 {
   font-weight: 500;
   line-height: var(--title-leading);
   font-size: var(--title-size);
   letter-spacing: -0.01em;
   margin-top: 12px;
-}
-.workspace-note {
-  padding-top: 22px;
-  border-top: 1px solid var(--line);
-  font-size: var(--caption-size);
-  line-height: 1.6;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  color: var(--muted);
-  margin-top: 32px;
 }
 .empty-state {
   padding: 70px 30px;
@@ -341,6 +316,10 @@ nav a.active {
 .error-banner {
   background: var(--error-surface);
   color: var(--error-ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 .reading {
   height: 100dvh;
@@ -369,7 +348,8 @@ nav a.active {
   font-variant-numeric: tabular-nums;
 }
 .page-input input {
-  width: 31px;
+  width: 40px;
+  min-height: var(--control-hit-size);
   border: 1px solid var(--control-line);
   border-radius: 4px;
   text-align: center;
@@ -380,18 +360,6 @@ nav a.active {
 }
 .page-input input::-webkit-inner-spin-button {
   appearance: none;
-}
-.pill {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--badge-height);
-  font-size: var(--label-size);
-  line-height: var(--label-leading);
-  font-weight: 500;
-  color: var(--badge-ink);
-  background: var(--badge-fill);
-  padding: 2px 6px;
-  border-radius: var(--badge-radius);
 }
 .reader-body {
   position: relative;
@@ -464,6 +432,7 @@ nav a.active {
   overflow: auto;
   background: var(--reader-canvas);
   scroll-behavior: auto;
+  overscroll-behavior: contain;
 }
 .sheets {
   padding: 27px var(--sheet-gutter) 60px;
@@ -612,16 +581,6 @@ nav a.active {
   line-height: var(--tag-leading);
   white-space: nowrap;
 }
-.comment-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--comment-marker);
-  position: absolute;
-  right: -4px;
-  top: -4px;
-  box-shadow: 0 0 0 2px var(--paper);
-}
 .page-error {
   position: absolute;
   inset: 0;
@@ -632,13 +591,6 @@ nav a.active {
   background: var(--error-surface);
   padding: 20px;
 }
-.comment-composer label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: var(--caption-size);
-}
-.comment-composer textarea::placeholder { color: var(--muted); }
-.comment-composer textarea:disabled { background: var(--surface); }
 .no-comments {
   font-size: var(--caption-size);
   color: var(--muted);
@@ -731,9 +683,6 @@ nav a.active {
     font-size: 0;
     padding: 9px;
   }
-  .library-content h1 {
-    font-size: var(--page-title-size);
-  }
   .document-grid {
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   }
@@ -763,12 +712,8 @@ nav a.active {
   .card-paper {
     height: 330px;
   }
-
   .lead {
     font-size: 13px;
-  }
-  .topbar {
-    padding: 0 8px;
   }
   .tool-button {
     padding: 6px;
@@ -777,12 +722,16 @@ nav a.active {
     max-width: calc(100% - 28px);
     padding: 28px;
   }
-  .workspace-note {
-    font-size: var(--tag-size);
+  .library-tools {
+    gap: 12px;
   }
   .library-tools > span {
     font-size: var(--caption-size);
     white-space: nowrap;
+  }
+  .ui-notifications {
+    right: 16px;
+    bottom: max(16px, var(--notification-clearance, 0px));
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -809,6 +758,8 @@ nav a.active {
   border-radius: 2px;
   padding: 0;
   background: transparent;
+  min-width: 0;
+  min-height: 0;
 }
 .link-layer .ui-button {
   position: absolute;
@@ -816,16 +767,8 @@ nav a.active {
   border: 0;
   padding: 0;
   border-radius: 0;
-}
-.lead {
-  color: var(--muted);
-}
-.page-input input {
-  min-height: var(--control-hit-size);
-  width: 40px;
-}
-.reader-scroll {
-  overscroll-behavior: contain;
+  min-width: 0;
+  min-height: 0;
 }
 @media (pointer: coarse) {
   .ui-button.icon-button,
@@ -837,17 +780,6 @@ nav a.active {
   /* Keyboard shortcut hints are noise on touch screens. */
   kbd {
     display: none;
-  }
-}
-@media (max-width: 620px) {
-  .library-tools {
-    gap: 12px;
-  }
-
-
-  .ui-notifications {
-    right: 16px;
-    bottom: max(16px, var(--notification-clearance, 0px));
   }
 }
 
@@ -893,20 +825,7 @@ a {
 .lead {
   text-wrap: pretty;
 }
-.pill {
-  font-variant-numeric: tabular-nums;
-}
-.breadcrumb a { min-height: var(--control-hit-size); }
-.breadcrumb a {
-  display: block;
-  line-height: var(--control-hit-size);
-}
 
-.ui-button.block-target,
-.link-layer .ui-button {
-  min-width: 0;
-  min-height: 0;
-}
 @media (max-width: 480px) {
   .breadcrumb a, .breadcrumb > span:first-of-type { display: none; }
   .document-move > span { display: none; }
@@ -982,12 +901,6 @@ a {
   margin-top: 30px;
 }
 .skill-invocation { width: 100%; }
-.error-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
 .error-banner > span {
   min-width: 0;
   overflow-wrap: anywhere;
