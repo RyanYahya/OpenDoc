@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import * as F from '@formepdf/react';
-import { Block, Heading, MediaFrame, Paragraph, Presentation, Slide, TextSlot, type ImageFrameOptions } from 'opendoc';
+import { Block, Decoration, Heading, MediaFrame, Paragraph, Presentation, Slide, TextSlot, type ImageFrameOptions } from 'opendoc';
 import { themePage, themeType, type DocTheme } from 'opendoc/themes';
 
 type Box = { x: number; y: number; w: number; h: number };
@@ -20,7 +20,7 @@ export function PitchSlide({id,theme,title,eyebrow,children,dark=false,titleSize
     {title && <F.View style={at({x:48,y:66,w:titleWidth,h:102})}><Heading id={`${id}-title`} level={2} style={{fontSize:titleSize,lineHeight:1.12,marginTop:0,marginBottom:0,color:ink}}><TextSlot slot="title" from="title">{title}</TextSlot></Heading></F.View>}
     {children}
     {footer && <F.View style={at({x:48,y:502,w:802,h:20})}><Paragraph id={`${id}-footer`} role="caption" style={{fontFamily:theme.body,fontSize:10,lineHeight:1.15,marginBottom:0,color:ink}}><TextSlot slot="footer" from="footer">{footer}</TextSlot></Paragraph></F.View>}
-    <F.View style={at({x:888,y:502,w:24,h:20})}><F.Text style={{...themeType(theme,'small'),fontFamily:theme.body,fontSize:10,lineHeight:1.15,textAlign:'left',color:ink}}>{'{{pageNumber}}'}</F.Text></F.View>
+    <F.View style={at({x:888,y:502,w:24,h:20})}><F.Text style={{...themeType(theme,'small'),fontFamily:theme.body,fontSize:10,lineHeight:1.15,textAlign:'left',color:ink}}><Decoration>{'{{pageNumber}}'}</Decoration></F.Text></F.View>
   </Slide>;
 }
 

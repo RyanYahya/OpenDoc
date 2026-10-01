@@ -1,5 +1,5 @@
 import * as F from '@formepdf/react';
-import { TextSlot, Block, DataTable } from 'opendoc';
+import { TextSlot, Decoration, Block, DataTable } from 'opendoc';
 import type { DocTheme } from 'opendoc/themes';
 import { calculatePricing, money, unitPriceMinor, type PricingData } from './commerce';
 
@@ -22,7 +22,7 @@ export function Pricing({ id = 'pricing', data, theme, totalLabel = 'Total', pay
       { label: `Unit price (${data.currency.code})`, width: 1.6, align: 'right' }, { label: `Amount (${data.currency.code})`, width: 1.7, align: 'right' },
     ]} rowIds={totals.items.map(item => item.id)} rows={totals.items.map(item => [
       <TextSlot slot={`item-${item.id.length}-${item.id}-description`} field={['pricing', 'items', { id: item.id }, 'description']}>{item.description}</TextSlot>,
-      <TextSlot slot={`item-${item.id.length}-${item.id}-quantity-unit`}><TextSlot slot="quantity" reason="Calculated input—ask your agent to change quantities.">{item.quantity}</TextSlot>{item.unit ? <> <TextSlot slot="unit" field={['pricing', 'items', { id: item.id }, 'unit']}>{item.unit}</TextSlot></> : ''}</TextSlot>,
+      <TextSlot slot={`item-${item.id.length}-${item.id}-quantity-unit`}><TextSlot slot="quantity" reason="Calculated input—ask your agent to change quantities.">{item.quantity}</TextSlot>{item.unit ? <><Decoration>{' '}</Decoration><TextSlot slot="unit" field={['pricing', 'items', { id: item.id }, 'unit']}>{item.unit}</TextSlot></> : ''}</TextSlot>,
       <TextSlot slot={`item-${item.id.length}-${item.id}-unit-price`} reason={calculated}>{money(unitPriceMinor(item, data.currency), data.currency, false)}</TextSlot>,
       <TextSlot slot={`item-${item.id.length}-${item.id}-amount`} reason={calculated}>{money(item.amountMinor, data.currency, false)}</TextSlot>,
     ])} />
@@ -35,7 +35,7 @@ export function Pricing({ id = 'pricing', data, theme, totalLabel = 'Total', pay
           ...theme.design?.table?.text, ...(final ? theme.design?.table?.headerText : undefined),
         };
         return <F.View key={label} style={{ paddingTop: 8, paddingBottom: 8, borderTopWidth: final ? 0.8 : 0, borderColor: theme.line, ...theme.design?.table?.cell, ...(final ? theme.design?.table?.header : undefined), flexDirection: 'row', gap: 12 }}>
-          <F.Text style={{ ...textStyle, flex: 1 }}>{taxRow ? <><TextSlot slot="tax-label" field={['pricing', 'tax', 'label']}>{data.tax!.label}</TextSlot> ({data.tax!.ratePercent}%)</> : <TextSlot slot={`label-${index}`} reason={templateLabel}>{label}</TextSlot>}</F.Text>
+          <F.Text style={{ ...textStyle, flex: 1 }}>{taxRow ? <><TextSlot slot="tax-label" field={['pricing', 'tax', 'label']}>{data.tax!.label}</TextSlot><Decoration> (</Decoration><TextSlot slot="tax-rate" reason="Calculated input—ask your agent to change the tax rate.">{data.tax!.ratePercent}</TextSlot><Decoration>%)</Decoration></> : <TextSlot slot={`label-${index}`} reason={templateLabel}>{label}</TextSlot>}</F.Text>
           <F.Text style={{ ...textStyle, textAlign: 'right' }}><TextSlot slot={`amount-${index}`} reason={calculated}>{amount < 0n ? '−' : ''}{money(amount < 0n ? -amount : amount, data.currency)}</TextSlot></F.Text>
         </F.View>;
       })}
