@@ -1,6 +1,6 @@
-import React, { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import React, { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Menu } from '@base-ui/react/menu';
-import { LoadBoundary } from "./LoadBoundary";
+import { LoadBoundary, lazyView } from "./LoadBoundary";
 import { Popover } from '@base-ui/react/popover';
 import { PdfPage } from "./Pdf";
 import { useReaderPreview } from "./useReaderPreview";
@@ -41,7 +41,7 @@ import {
 } from "./ui";
 
 // Version history loads when its tab first opens; the panel shows its own loading placeholder meanwhile.
-const HistoryPanel = lazy(() => import("./HistoryPanel").then(module => ({ default: module.HistoryPanel })));
+const HistoryPanel = lazyView(() => import("./HistoryPanel").then(module => module.HistoryPanel));
 const historyLoading = <section className="history-panel" aria-busy="true"><div className="history-content"><div className="history-skeleton" aria-hidden="true"><span /><span /><span /></div></div></section>;
 
 type CorrectionDraft = { selection: DocumentSelection; text: string; linked: number; baseline?: EditorBaseline };
@@ -925,7 +925,7 @@ export function Reader({
             onShowAll={() => setPanel(current => showPanel(current, 'comments'))} onClose={closeReaderPanel}
             footer={<DeletedComments documentId={id} blockId={commentFilter} connected={connected} refreshKey={comments}
               onRestored={value => { ++commentRequest.current; commentAbort.current?.abort(); setComments(value); notify.success('Comment restored'); }} onError={notify.error} />} />}
-          history={<LoadBoundary compact><Suspense fallback={historyLoading}><HistoryPanel key={panel.targets.history.kind === 'block' ? `block:${panel.targets.history.blockId}` : 'document'} documentId={id} target={panel.targets.history} generation={generation} connected={connected} pageLabel={pageLabel}
+          history={<LoadBoundary compact connected={connected}><Suspense fallback={historyLoading}><HistoryPanel key={panel.targets.history.kind === 'block' ? `block:${panel.targets.history.blockId}` : 'document'} documentId={id} target={panel.targets.history} generation={generation} connected={connected} pageLabel={pageLabel}
             unsaved={editing.count} saving={editPending || undoPending} onSave={saveAll} onDiscard={discardChanges} onJump={showHistoryBlock}
             onShowDocument={() => setPanel(current => showPanel(current, 'history'))} onClose={closeReaderPanel} /></Suspense></LoadBoundary>} />}
       </div>

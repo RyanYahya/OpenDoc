@@ -1,6 +1,6 @@
 import { ExportHistoryDialog } from "./ExportHistoryDialog";
-import { LoadBoundary } from "./LoadBoundary";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { LoadBoundary, lazyView, preloadLazyViews } from "./LoadBoundary";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 // The reader and catalog views load when first opened. Their styles stay in the
 // main stylesheet, imported here in their original order, so the cascade is unchanged.
@@ -44,10 +44,10 @@ import { splitHash } from "./libraryFilters";
 import { DetailsDialog, StatusBadge, TagsProvider, type TagState, type TagTarget } from "./Tags";
 import "./style.css";
 
-const AssetsBrowser = lazy(() => import("./AssetsBrowser").then(module => ({ default: module.AssetsBrowser })));
-const TemplatesBrowser = lazy(() => import("./TemplatesBrowser").then(module => ({ default: module.TemplatesBrowser })));
-const ThemesBrowser = lazy(() => import("./ThemesBrowser").then(module => ({ default: module.ThemesBrowser })));
-const Reader = lazy(() => import("./Reader").then(module => ({ default: module.Reader })));
+const AssetsBrowser = lazyView(() => import("./AssetsBrowser").then(module => module.AssetsBrowser));
+const TemplatesBrowser = lazyView(() => import("./TemplatesBrowser").then(module => module.TemplatesBrowser));
+const ThemesBrowser = lazyView(() => import("./ThemesBrowser").then(module => module.ThemesBrowser));
+const Reader = lazyView(() => import("./Reader").then(module => module.Reader));
 
 /** The view and item from the hash; library filters in its query stay with the view they belong to. */
 function route() {
@@ -130,6 +130,12 @@ function App() {
     })().finally(() => { refreshing.current = null; });
     return refreshing.current;
   }, []);
+  // Fetch the on-demand views while the server is reachable, so an outage later cannot strand them.
+  useEffect(() => {
+    if (!loaded || !connected) return;
+    const timer = window.setTimeout(preloadLazyViews, 1500);
+    return () => window.clearTimeout(timer);
+  }, [loaded, connected]);
   useEffect(() => {
     requestAbort.current = new AbortController();
     void refresh();
@@ -269,7 +275,7 @@ function App() {
       {detailError && activeSummary && <div className="error-banner" role="alert"><span>{detailError}</span><Button onClick={() => setDetailAttempt(value => value + 1)}>Try again</Button></div>}
       {error && <div className="error-banner" role="alert"><span>{error}</span><Button className="text-button" onClick={() => void refresh()}>Try again</Button></div>}
       {tagState.error && current.view !== "document" && current.view !== "assets" && <div className="error-banner" role="alert"><span>{tagState.error}</span><Button className="text-button" onClick={() => void refresh()}>Try again</Button></div>}
-      <LoadBoundary key={current.view}>
+      <LoadBoundary key={current.view} connected={connected}>
       <Suspense fallback={<div className="empty-state" role="status"><div className="loading-mark" /><p>Loading…</p></div>}>
       {current.view === "document" ? active ? <Reader key={active.id} state={active} generation={generation} connected={connected} language={activeSummary?.language} onShowExports={() => setExportDocument(active)}
         identity={<>
