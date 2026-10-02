@@ -106,6 +106,17 @@ OpenDoc keeps every saved edit, agent change, and restore for 90 days; the **His
 
 Use the document **…** menu to rename, duplicate, move, or delete it. Rename changes the library name, while the PDF title remains authored content. Duplicate copies saved source, local data, media, and feedback. Delete offers Undo and keeps a recovery folder in `.opendoc/trash/`; existing exports remain in `output/`. `npx opendoc documents rename|duplicate|delete|trash|restore` does the same from the command line, in either edition. [Projects](PROJECTS.md) covers membership and recovery.
 
+## Find work in the library
+
+**Documents**, **Presentations**, each project, **Themes**, **Templates**, and **Media & Assets** share one filter bar, in the same order on every page:
+
+- **Search** comes first. It matches names and descriptions, and on documents and templates also their type, status, and custom tags. Every word you type must match, in any order.
+- The page's main choice follows as buttons with counts: **All**, **Documents**, and **Presentations** in a project that holds both; the theme folders on **Themes**; **Documents** and **Presentations** on **Templates**; and **Media**, **Logos**, and **Fonts** on **Media & Assets**.
+- **Filter** holds every other way to narrow the list: **Type**, **Status**, **Language**, and **Tag** for documents; **Type**, **Language**, and **Tag** for templates; **Language** and **Tag** for themes; **Document** and **Kind** for media; and archived logos or fonts under **Status**. A choice appears only when it would narrow the list, so a page whose items are all drafts offers no status filter. The button counts the active filters, and each one shows beside it as a chip; select a chip to remove that filter, or **Clear** to remove them all.
+- **Sort** comes last, with the gallery or list view on document pages. Documents and presentations sort by **Last edited** (the default), **Title A–Z**, **Project**, or **Status**, and a project by **Last edited**, **Title A–Z**, or **Status**. Themes and templates sort by name or **Last edited**, templates also by **Type**; media sorts by **Document** or **Title A–Z**; logos and fonts by name or **Last updated**. Each page remembers its sort order in this browser. **Last edited** is when the item's source files last changed; new comments do not count.
+
+The address keeps the search and filters, for example `#project/client-work?status=draft&language=arabic`, so a link reopens the same view and **Back** and **Forward** step through filter changes. Typing in search updates the address without adding a history step, and returning from a document, theme, or template restores the view you left.
+
 ## Use media, logos, and fonts
 
 **Media & Assets** separates document-owned visuals from reusable families:
@@ -188,7 +199,7 @@ Before opening a pull request, run `pnpm verify` for typechecking, the full test
 
 ## Workspace boundaries
 
-`documents/` holds authored work, with each document's version history in its own `.history/` folder; `templates/` holds reusable layouts and data contracts; `themes/` holds executable visual systems; `assets/` holds shared local resources. `projects.json` records document membership. The optional `tags.json` holds each document's and template's type, each document's status, and custom tags ([Tags](TAGS.md)), and the optional `themes/folders.json` groups themes into single-level folders, shown as filter buttons on the Themes tab, without moving them ([Themes](THEMES.md#organize-the-catalog)). `.opendoc/` holds generated context, previews, recovery records, and session state; `output/` holds exported PDFs and PowerPoint files. Generated state and exports are ignored by Git.
+`documents/` holds authored work, with each document's version history in its own `.history/` folder; `templates/` holds reusable layouts and data contracts; `themes/` holds executable visual systems; `assets/` holds shared local resources. `projects.json` records document membership. The optional `tags.json` holds each document's and template's type, each document's status, and custom tags ([Tags](TAGS.md)), and the optional `themes/folders.json` groups themes into single-level folders, shown as folder buttons in the Themes filter bar, without moving them ([Themes](THEMES.md#organize-the-catalog)). `.opendoc/` holds generated context, previews, recovery records, and session state; `output/` holds exported PDFs and PowerPoint files. Generated state and exports are ignored by Git.
 
 Authoring uses the public imports `opendoc`, `opendoc/template`, `opendoc/assets`, and `opendoc/themes`. Keep references to your editable local catalogs relative to the workspace. The pinned application dependency lives in `node_modules/opendoc`; ordinary document work does not change it. The workspace's `package.json`, lockfile, and `.opendoc/workspace.json` identify its installation and format.
 

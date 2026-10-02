@@ -19,7 +19,8 @@
 ### Organization
 
 - Tags use a version 2 model: one of nine types for documents and templates, one status per document (`draft`, `in-review`, `final`, `archived`), a language derived from source text, and custom tags. `npx opendoc tags` sets, shows, and finds them, with `--type`, `--status`, and `--language` filters. Version 1 `tags.json` files are read as version 2 and saved in the new form on the next change.
-- Theme folders are single-level and appear as filter buttons on the Themes tab. Nested folders from earlier versions are flattened, and the flat form is saved on the next folder or assignment change.
+- Library pages share one filter bar: search, the page's main choice as buttons (a project's formats, theme folders, template formats, or media, logos, and fonts), one **Filter** button with removable chips for type, status, language, tags, and similar choices, and a remembered sort order such as **Last edited** or **Title A–Z**. Choices that would not narrow the list are hidden, and the address keeps the search and filters. Document, theme, and template summaries report when their source last changed (`updatedAt`), and logo and font summaries when their current version was saved.
+- Theme folders are single-level and appear as folder buttons in the Themes filter bar. Nested folders from earlier versions are flattened, and the flat form is saved on the next folder or assignment change.
 - Projects can set separate default themes for documents and presentations with `--document-theme` and `--presentation-theme`. Earlier versions report a `projects.json` with different defaults as invalid.
 - `npx opendoc documents rename|duplicate|delete|trash|restore` manages documents from the command line in both editions. Deleted documents keep their history, comments, tags, and status in Trash.
 

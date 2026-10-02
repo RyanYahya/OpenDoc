@@ -51,10 +51,10 @@ Any other text is a custom tag, such as a client or programme name. Custom tags 
 ## In the app
 
 - Cards and list rows show the type beside the format, and the status badge. Custom tags appear only in **Details**.
-- **Documents**, **Presentations**, and each project filter by **Type** and **Status** when any item has one, by **Language** when any item is not in English, and by custom tag under **More filters** when any item has one. Search also matches the type, status, and custom tags.
+- **Documents**, **Presentations**, and each project offer **Type**, **Status**, **Language**, and **Tag** under the filter bar's **Filter** button, each with item counts and only when it would narrow the list: a type or status when items differ in it, a language when items are in more than one, and a tag when some items carry it. Active filters show as removable chips beside **Filter**, and the address keeps them. Search also matches the type, status, and custom tags. See [Find work in the library](WORKSPACE.md#find-work-in-the-library).
 - A document's **…** menu and the reader's options menu offer **Details…** (type, status, custom tags) and **Status**.
-- **Templates** shows each template's type, filters by type, and edits a template's details from its page.
-- **Themes** filters by custom tag beside the folder filter buttons, and the two combine. Tags show on a theme's page, not its card, and each theme's menu keeps **Edit tags…**.
+- **Templates** shows each template's type, filters by **Type**, **Language**, and **Tag**, and edits a template's details from its page.
+- **Themes** filters by **Language** and **Tag** under **Filter**, beside the folder buttons, and folders and filters combine. Tags show on a theme's page, not its card, and each theme's menu keeps **Edit tags…**.
 
 ## Command line
 
