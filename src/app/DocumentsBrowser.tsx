@@ -94,6 +94,7 @@ export function DocumentsBrowser({ format = 'document', projects, documents, tag
     <FilterBar search={{ label: `Search ${format}s`, value: query, onChange: setQuery }}
       facets={itemFacets(manifest, 'documents', documents, filters)} onFacetChange={setFacet} onClearFacets={clearFacets}
       sort={{ value: sort, options: sortOptions, onChange: setSort }} view={{ value: view, onChange: onViewChange }} />
+    {loaded && documents.length > 0 && <p className="library-count" role="status">{visible.length} {visible.length === 1 ? format : plural.toLowerCase()}{hasFilters ? ' matching the filters' : ''}</p>}
     {pending?.({ format, narrowed: hasFilters })}
     <div className={view === 'list' ? 'documents-list' : 'document-grid'} role="list">{visible.map(document => {
       const project = projectById.get(document.projectId ?? '');
@@ -125,9 +126,9 @@ export function ProjectDocuments({ project, documents, tags, loaded, view, onVie
   const formatCount = (value: DocumentFormat) => documents.filter(document => documentFormat(document) === value).length;
   // Formats are worth a choice only when the project holds both, or one is already chosen.
   const formats = format !== 'all' || (formatCount('document') > 0 && formatCount('presentation') > 0);
-  return <section className="library-content project-documents">
   // The shortcut opens Create with the format the page shows, as its menu's first choice does.
   useCreateShortcut(format === 'presentation' ? onCreatePresentation : onCreate, loaded && !disabled);
+  return <section className="library-content project-documents">
     <div className="library-heading"><h1 dir="auto" lang={textLang(project.name)}>{project.name}</h1><div className="project-actions">
       <IconButton label="Project settings" onClick={onSettings}><Icon name="gear" size={18} /></IconButton>
       <Menu.Root><Menu.Trigger render={<HintButton className="primary project-create-trigger" hint={shortcutHint} disabled={!loaded || disabled} />}>
@@ -145,6 +146,7 @@ export function ProjectDocuments({ project, documents, tags, loaded, view, onVie
       ]} />}
       facets={itemFacets(manifest, 'documents', inFormat, filters)} onFacetChange={setFacet} onClearFacets={clearFacets}
       sort={{ value: sort, options: sortOptions, onChange: setSort }} view={{ value: view, onChange: onViewChange }} />
+    {loaded && documents.length > 0 && <p className="library-count" role="status">{visible.length} {format === 'all' ? visible.length === 1 ? 'item' : 'items' : visible.length === 1 ? format : `${format}s`}{hasFilters ? ' matching the filters' : ''}</p>}
     {pending?.({ format, narrowed: Boolean(query) || filtering(filters) })}
     <div className={view === 'list' ? 'documents-list' : 'document-grid'} role="list">{visible.map(document => <article className="project-document" key={document.id} role="listitem"><DocumentCard document={document} view={view} onAction={onAction} disabled={disabled} /></article>)}</div>
     {!visible.length && <div className="empty-state"><h2>{!loaded ? 'Loading project…' : hasFilters ? 'No matching items' : 'Your project is ready'}</h2><p>{!loaded ? 'Opening your local workspace.' : hasFilters ? 'Try another search, format, or filter.' : 'Create a document or presentation with your agent.'}</p>{loaded && (hasFilters ? <Button onClick={() => clearAll(['format'])}>Clear filters</Button> : <a href="#templates" className="project-templates-link">Browse templates<Icon name="arrow" size={16} /></a>)}</div>}

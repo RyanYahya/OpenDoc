@@ -259,6 +259,8 @@ nav a.active {
 /* Detail pages return to their gallery from the same place, at the same size. */
 .back-link { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; margin-bottom: 20px; color: var(--muted); font-size: var(--label-size); line-height: var(--label-leading); }
 .back-link:hover { color: var(--ink); }
+/* Every library page counts what it shows below its filter bar, and announces the count as filters change. */
+.library-count { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; margin: 24px 0 20px; padding-bottom: 12px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: var(--caption-size); line-height: var(--caption-leading); }
 .empty-state {
   padding: 70px 30px;
   text-align: center;

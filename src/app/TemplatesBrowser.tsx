@@ -172,7 +172,7 @@ export function TemplatesBrowser({ selection, generation, format = 'document', c
         facets={itemFacets(tagManifest, 'templates', inFormat, filters).filter(facet => tagging || facet.key === 'language')}
         onFacetChange={(key, value) => update({ [key]: value })} onClearFacets={() => update(Object.fromEntries(itemFilterKeys.map(key => [key, null])))}
         sort={{ value: sort, options: sortOptions, onChange: setSort }} />
-      <div className="template-gallery-label"><span role="status">{loaded ? `${visible.length} ${visible.length === 1 ? 'template' : 'templates'}${narrowed ? ' matching the filters' : ''}` : 'Preparing templates…'}</span><span>Previews use the Neutral theme</span></div>
+      <div className="library-count"><span role="status">{loaded ? `${visible.length} ${visible.length === 1 ? 'template' : 'templates'}${narrowed ? ' matching the filters' : ''}` : 'Preparing templates…'}</span><span>Previews use the Neutral theme</span></div>
       <div className={`template-grid${format === 'presentation' ? ' template-grid-presentations' : ''}`}>{visible.map(item => <article className="template-card" key={item.id}>
         <a href={`#templates/${item.id}`} className="template-card-link" aria-labelledby={`template-title-${item.id}`}>
           <div className="template-card-mat" aria-hidden="true"><TemplatePreview item={item} /></div>

@@ -238,7 +238,7 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
         primary={organizing && <FolderFilter manifest={manifest} themes={themes} value={folderFilter} disabled={!loaded || !connected} onChange={value => update({ folder: value })} onAction={onFolderAction} onDropTheme={dropTheme} />}
         facets={facets} onFacetChange={(key, value) => update({ [key]: value })} onClearFacets={() => update({ tag: null, language: null })}
         sort={{ value: sort, options: sortOptions, onChange: setSort }} />
-      <p className="theme-gallery-label" role="status">{loaded ? summary : 'Reading local themes…'}</p>
+      <p className="library-count" role="status">{loaded ? summary : 'Reading local themes…'}</p>
       <ThemeGallery themes={visible} generation={generation} onRefresh={onRefresh} organize={organizing || tagging ? { manifest, tags: cardTags, folders: organizing, tagging, showFolder: organizing && !currentFolder, tag: filters.tag, disabled: !connected, onAction: onFolderAction } : undefined} />
       {loaded && themes.length === 0 && <div className="empty-state"><h2>No themes yet</h2><p>Create a print system with your coding agent. Its reviewed PDF will appear here.</p><Button onClick={() => setPromptOpen(true)}>Create theme</Button></div>}
       {loaded && missingFolder && <div className="empty-state"><h2>Folder not found</h2><p>It may have been deleted or renamed in another window. Your themes are still in the library.</p><a href={showAllHash()} className="project-templates-link">Show all themes<Icon name="arrow" size={16} /></a></div>}

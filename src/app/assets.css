@@ -2,7 +2,6 @@
 /* Detail pages follow the heading with a back link; list pages with the filter bar, whose 24px margin wins. */
 .assets-heading { min-height: var(--control-hit-size); margin-bottom: 16px; }
 .assets-content > .materials-content { padding: 0; max-width: none; }
-.asset-collection-status { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
 .asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(235px, 1fr)); gap: 30px 24px; }
 .asset-card { display: flex; flex-direction: column; gap: 14px; min-width: 0; color: var(--ink); text-decoration: none; border-radius: 7px; }
 .asset-card-preview { display: grid; place-items: center; aspect-ratio: 4 / 3; border-radius: 7px; padding: 28px; overflow: hidden; outline: 1px solid var(--media-edge); outline-offset: -1px; }

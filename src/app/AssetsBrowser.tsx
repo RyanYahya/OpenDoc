@@ -3,6 +3,7 @@ import { Menu } from '@base-ui/react/menu';
 import type { AssetCatalog, AssetFile, AssetInspection, AssetKind, AssetSummary, FontRevision, LogoVariation } from '../shared/assets';
 import { documentFormat, formatLabel, type DocumentSummary } from '../shared/types';
 import type { ThemeSummary } from '../shared/themes';
+import { groupMedia, type Materials } from '../shared/media';
 import { textLang } from '../shared/language';
 import { api } from './api';
 import { CreateLogoDialog, AddLogoVariationsDialog } from './LogoUploadDialog';
@@ -181,7 +182,7 @@ function AssetCollection({ kind, catalog, kinds, onAdd, error }: { kind: AssetKi
       facets={[{ key: 'status', label: 'Status', anyLabel: 'Active', total: all.length, value: archived ? 'archived' : '', offer: archivedCount > 0, options: [{ value: 'archived', label: 'Archived', count: archivedCount }] }]}
       onFacetChange={(key, value) => update({ [key]: value })} onClearFacets={() => update({ status: null })}
       sort={{ value: sort, options: assetSorts, onChange: setSort }} />
-    {!catalog && <p className="asset-collection-status" role="status">{error ? 'Could not read local assets.' : `Reading ${collection(kind)}…`}</p>}
+    {(!catalog || all.length > 0) && <p className="library-count" role="status">{!catalog ? error ? 'Could not read local assets.' : `Reading ${collection(kind)}…` : `${items.length} ${archived ? 'archived ' : ''}${items.length === 1 ? kind : collection(kind)}${query ? ' matching the search' : ''}`}</p>}
     <div className="asset-grid">{items.map(item => <a href={`#assets/${collection(kind)}/${item.id}`} className={`asset-card ${item.error ? 'asset-card-error' : ''}`} key={item.id}>
       {kind === 'logo' ? <div className="asset-card-preview asset-background-transparent"><LogoImage id={item.id} revision={item.revision} file={item.preview} name={item.name} /></div> : <FontCardPreview item={item} />}
       <div className="asset-card-caption"><strong><bdi lang={textLang(item.name)}>{item.name}</bdi><Icon name="arrow" size={16} /></strong><span>{(kind === 'logo' ? `${item.count} ${item.count === 1 ? 'variation' : 'variations'}` : item.builtIn ? 'Built-in family' : item.description || 'Local font family')}</span>{item.error ? <span className="media-problem">{item.error}</span> : kind === 'font' && item.compatibility && !item.compatibility.defaultEligible ? <span className="asset-health-note">{item.compatibility.status === 'needs-attention' ? 'Needs attention' : 'Additional styles needed for theme defaults'}</span> : null}{item.builtIn && kind === 'logo' && <span>Built in</span>}</div>
@@ -206,6 +207,7 @@ export function AssetsBrowser({ selection, generation, documents, themes, connec
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [counts, setCounts] = useState<Partial<Record<'media' | 'logos' | 'fonts', number>>>({});
   const working = useRef(false);
   const notifications = useNotifications();
   const requestKey = `${kind}/${id}/${selectedRevision}`;
@@ -217,6 +219,15 @@ export function AssetsBrowser({ selection, generation, documents, themes, connec
     void api<AssetCatalog>(`/api/assets?kind=${kind}&archived=true`, { signal: controller.signal }).then(value => { setCatalog({ kind, value }); if (!id) setError(''); }).catch(error => { if (!controller.signal.aborted) setError(error.message); });
     return () => controller.abort();
   }, [tab, kind, id, generation, retry]);
+  // The collection buttons count what each one shows by default: media cards, and active logos and fonts.
+  useEffect(() => {
+    if (!connected) return;
+    const controller = new AbortController();
+    void Promise.all([api<AssetCatalog>('/api/assets', { signal: controller.signal }), api<Materials>('/api/materials', { signal: controller.signal })]).then(([assets, materials]) => setCounts({
+      media: groupMedia(materials.media).length, logos: assets.items.filter(item => item.kind === 'logo').length, fonts: assets.items.filter(item => item.kind === 'font').length,
+    })).catch(() => { /* Counts are a convenience; each collection reports its own loading problems. */ });
+    return () => controller.abort();
+  }, [generation, connected, retry]);
   useEffect(() => {
     if (tab === 'media' || !id) return;
     const controller = new AbortController();
@@ -250,7 +261,7 @@ export function AssetsBrowser({ selection, generation, documents, themes, connec
   }
   // Media, logos, and fonts are separate collections; their buttons lead the filter bar of each.
   const kinds = <FilterChoices label="Collection" value={tab} onChange={value => { location.hash = `assets/${value}`; }}
-    choices={[{ value: 'media', label: 'Media' }, { value: 'logos', label: 'Logos' }, { value: 'fonts', label: 'Fonts' }]} />;
+    choices={[{ value: 'media', label: 'Media', count: counts.media }, { value: 'logos', label: 'Logos', count: counts.logos }, { value: 'fonts', label: 'Fonts', count: counts.fonts }]} />;
   return <section className="library-content assets-content">
     <div className="library-heading assets-heading"><h1>Media &amp; Assets</h1>{tab !== 'media' && !id && <Button onClick={() => setEdit({ action: 'create', kind })} disabled={!connected}><Icon name="plus" size={17} />{kind === 'logo' ? 'Add logo' : 'Add fonts'}</Button>}</div>
     {tab === 'media' ? <MaterialsBrowser connected={connected} selection={id} generation={generation} documents={documents} collections={kinds} /> : <>
