@@ -24,7 +24,7 @@ npx @ryanyahya/opendoc init
 
 The default location is `~/Documents/My OpenDoc`. Choose another location by passing it as the destination, for example `npx @ryanyahya/opendoc init ~/Documents/ClientPublications`. The destination must be new or empty. Initialization installs a pinned OpenDoc version, copies the welcome documents and editable catalogs, starts the local service in the foreground, and opens your browser. Use `--no-start` to create the workspace without launching, or `--no-open` to start without opening a browser.
 
-Keep the terminal running while you use the app; press **Ctrl-C** to stop it. Open the localhost URL printed there if the browser does not open. The workspace starts with **Getting started → Welcome to OpenDoc**. Use the **+ beside Projects** in the sidebar to create a home for your work. **Create document** and **Create presentation** give you a prompt to paste into your coding agent. Write an optional brief in the dialog to include it in the prompt, and share your material with the agent. The prompt carries any selected project, template, or theme, and the project's default theme for that format. The resulting work appears automatically.
+Keep the terminal running while you use the app; press **Ctrl-C** to stop it. Open the localhost URL printed there if the browser does not open. The workspace starts with **Getting started → Welcome to OpenDoc**. Use the **+ beside Projects** in the sidebar to create a home for your work. **Create document** and **Create presentation** prepare a prompt for your coding agent; see [Create in the app](#create-in-the-app). The resulting work appears automatically.
 
 To return later:
 
@@ -70,6 +70,18 @@ Updates preserve the chosen edition: normal OpenDoc updates from `@ryanyahya/ope
 Both editions use the same [agent guide](../AGENTS.md) and skills. In Headless, the agent works from explicit task context and catalog IDs and delivers files remotely; it does not require an active browser selection. The following browser interactions apply to normal OpenDoc.
 
 **Skills** in the sidebar footer, and **Agent skills** in the reader's **Help and appearance** menu, open a quick index of the ten `opendoc-` skills with each skill's name and purpose. The root [AGENTS.md](../AGENTS.md) routes ordinary requests to the matching workflow; naming a skill is optional. The app does not run the agent itself.
+
+### Create in the app
+
+OpenDoc has no built-in AI: your coding agent writes every document, and the app prepares the request and shows the result. **Create document**, **Create presentation**, a project's **Create** menu, **Use this template**, and **Create with this theme** all open **Create with your agent**, which works in three steps:
+
+1. **Describe it.** Write an optional brief: who it is for, what it should say, and which sources you will share with the agent. Check the choices beside it: **Format** (Document or Presentation), **Project**, **Theme**, and **Template**. Each entry point fills in what it knows: a project page its project, a template page its template and format, a theme page its theme. **Theme** starts from the project's default for the chosen format and lists every theme with its folder; **Template** lists the templates for that format with their type. Changing the format clears a template of the other format. **Let your agent choose** leaves a project or theme to the agent, which asks when the choice matters.
+2. **Copy the prompt.** The prompt beside the choices updates as you change them. Choose **Copy prompt** or press Ctrl+Enter (⌘+Enter on a Mac). If the browser blocks copying, select the prompt and copy it yourself.
+3. **Paste it into your agent** with your source material.
+
+After you copy, the project page and the Documents or Presentations library show a **Waiting for your agent** card with the brief's opening words, the chosen format, theme, and template, and when it was copied. **Copy prompt again** copies the same prompt; the close button dismisses the card. When a new document or presentation appears in that project, the card turns to **Ready** with an **Open** button and a notification announces it; a ready card clears after 15 minutes, and a waiting one after 24 hours. Waiting cards live in this browser's storage only. They are not workspace content, so they are never synced with the workspace or read by the agent, and another browser does not show them.
+
+### Ask your agent directly
 
 Open your workspace folder in your coding agent and ask:
 

@@ -32,6 +32,10 @@
 - Each comment shows when it was created, and deleting one offers Undo. Export suggests the document title as the filename.
 - Each reader page is one tab stop, with arrow keys moving in reading order. Text fields share the buttons' focus ring, badge text meets WCAG AA contrast, the type scale is larger, and keyboard hints are hidden on touch screens.
 
+### Creating with your agent
+
+- **Create with your agent** replaces the copy-prompt dialog. It shows three steps, keeps the prompt visible beside the brief, and lets you change the format, project, theme (defaulting to the project's default for that format, listed with folders), and template (filtered by format, with its type) before copying. Ctrl+Enter copies. Project pages, **Use this template**, and **Create with this theme** fill in their choice. After copying, a **Waiting for your agent** card on the project and library pages turns to **Ready** when the new work appears; it is kept in browser storage only.
+
 ### PowerPoint export
 
 - Every exported object has a unique, descriptive name.

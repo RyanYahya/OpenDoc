@@ -101,6 +101,8 @@ The workspace's `AGENTS.md` routes requests to ten skills for creation, current 
 
 For an older workspace, preserve its instructions and use the [compatibility setup](docs/HEADLESS.md#agent-setup) to add the shared Claude entry points. Reading the guides works without registering a plugin or publishing the workspace to GitHub.
 
+In normal OpenDoc, **Create** prepares the request for you: describe the work, check the project, theme, and template, copy the prompt, and paste it into your agent. The library shows a waiting card until the new document or presentation appears. [Create in the app →](docs/WORKSPACE.md#create-in-the-app)
+
 Agents author TSX using OpenDoc's components, check the source, inspect the rendered pages, revise, and export. For remote work, the agent delivers real attachments or accessible downloads through its existing tools.
 
 ## Agent skills
