@@ -13,7 +13,7 @@ export const historyOriginLabels: Record<HistoryOrigin, string> = {
   restore: 'Restore',
 };
 
-/** How a changed block differs from the current source, as the history panel and command name it. */
+/** How a changed item differs from the current source, as the history panel and command name it. */
 export const historyChangeLabels: Record<HistoryBlockChange['status'], string> = {
   changed: 'Edited', contents: 'Changed inside', added: 'Added since', removed: 'Removed since', moved: 'Moved to another file', ambiguous: 'Appears more than once',
 };
@@ -43,7 +43,7 @@ export function readableKind(element: string, role?: string) {
   const pattern = kindPatterns.find(([test]) => test.test(name));
   if (pattern) return pattern[1];
   const words = name.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[-_]+/g, ' ').trim().toLowerCase();
-  return words ? words.charAt(0).toUpperCase() + words.slice(1) : 'Block';
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : 'Item';
 }
 
 /** A block's opening words, for naming it in lists: the first text part, cut at a word boundary. */
@@ -199,8 +199,8 @@ export function describeVersions(versions: HistoryVersionSummary[], shown = 2): 
     if (rest > 0) parts.push(` and ${rest} more`);
     return parts;
   }
-  if (total) return [`${restoring ? 'Restored' : 'Edited'} ${total} ${total === 1 ? 'block' : 'blocks'}`];
-  if (restoring) return [`Restored a ${first.restore!.scope}`];
+  if (total) return [`${restoring ? 'Restored' : 'Edited'} ${total} ${total === 1 ? 'item' : 'items'}`];
+  if (restoring) return [first.restore!.scope === 'section' ? 'Restored a section and its contents' : 'Restored one item'];
   const files = [...new Set(versions.flatMap(version => version.summary.files))].filter(file => !codeSource.test(file));
   if (files.length) return [files.length === 1 ? `Updated ${files[0]}` : `Updated ${files.length} files`];
   return ['Layout or code change with no wording change'];

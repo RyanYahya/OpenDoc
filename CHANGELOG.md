@@ -12,7 +12,7 @@
 ### Version history
 
 - Each document keeps 90 days of versions in `documents/<id>/.history/`. The app records saved edits, agent writes, and restores. Without a running service, as always in Headless, `create`, `check`, `review`, `export`, `comments`, `documents`, and `history` record agent edits first.
-- The reader's **History** tab names changes by block and opening words, groups versions by day and by ten-minute bursts, marks changed words, and restores one block, one section, or a whole version, each with Undo.
+- The reader's **History** tab names each change by its kind and opening words, groups versions by day and by ten-minute bursts, and marks changed words. One **Restore** action brings back one item, a section or slide with or without its contents, or a whole version; its confirmation names the scope, and each restore offers Undo.
 - `npx opendoc history list|show|block|restore` works in both editions. `list --json` adds `groups` and each version's `description`; `show --json` adds `words` to changed blocks.
 - Deleted comments stay restorable for 90 days under **Recently deleted**, `comments list --deleted`, and `comments restore`. `comments delete` is available from the command line.
 

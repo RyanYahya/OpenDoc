@@ -54,7 +54,7 @@ test('version descriptions name what changed', () => {
   assert.equal(summaryText(describeVersions([data])), 'Updated data.json');
   const unnamed = version('external', at(1, 9, 0));
   unnamed.summary = { blocks: 3, ids: ['a', 'b', 'c'], files: ['index.tsx'] };
-  assert.equal(summaryText(describeVersions([unnamed])), 'Edited 3 blocks', 'Versions without names fall back to a count, never to IDs.');
+  assert.equal(summaryText(describeVersions([unnamed])), 'Edited 3 items', 'Versions without names fall back to a count, never to IDs.');
   // A run names each block once, newest first.
   const run = [version('external', at(1, 20, 52), [['b', 'Budget']]), version('external', at(1, 20, 40), [['a', 'Results'], ['b', 'Budget']])];
   assert.deepEqual(describeVersions(run), ['Edited ', { quote: 'Budget' }, ', ', { quote: 'Results' }]);

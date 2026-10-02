@@ -111,11 +111,6 @@
 .history-summary-line { margin: 0 0 8px; color: var(--muted); font-size: var(--caption-size); line-height: var(--caption-leading); }
 .ui-button.history-action { min-height: 30px; padding: 5px 9px; font-size: var(--caption-size); white-space: nowrap; }
 .ui-button.history-action[aria-expanded="true"] { background: var(--control-active); }
-/* The narrow restore and its menu of wider scopes read as one control. */
-.history-split { display: inline-flex; }
-.history-split > .ui-button.history-action:first-child { border-start-end-radius: 0; border-end-end-radius: 0; }
-.history-split .ui-button.history-action.history-more { min-width: 28px; min-height: 30px; padding: 5px 7px; margin-inline-start: -1px; border: 1px solid var(--line); border-start-start-radius: 0; border-end-start-radius: 0; color: var(--muted); }
-.history-split .ui-button.history-action.history-more[data-popup-open] { background: var(--control-active); color: var(--ink); }
 
 .history-change, .history-entry { padding: 12px 0; border-top: 1px solid var(--line); }
 .history-change:first-child, .history-entry:first-child { border-top: 0; padding-top: 4px; }
@@ -144,40 +139,45 @@
 .history-entry-meta { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: var(--caption-size); line-height: var(--caption-leading); }
 .history-entry-meta time { color: var(--ink); }
 .history-entry .history-diff { margin-top: 6px; }
-.history-entry-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.history-entry-actions .text-button { margin-inline-end: auto; font-size: var(--caption-size); }
+/* Quiet text actions lead the row; the item's one Restore ends it. */
+.history-entry-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; }
+.history-entry-actions .text-button { font-size: var(--caption-size); }
+.history-entry-actions .history-action { margin-inline-start: auto; }
 .history-block-current { padding: 2px 0 12px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
 .history-meta { display: block; margin-bottom: 4px; color: var(--muted); font-size: var(--caption-size); line-height: var(--caption-leading); }
 .ui-button.history-link { margin-top: 14px; font-size: var(--caption-size); }
 
 /* The authoring ID stays one click away for agents, never in the reading path. */
-.history-details { margin-top: 6px; color: var(--muted); font-size: var(--caption-size); line-height: var(--caption-leading); }
-.history-details summary { width: fit-content; cursor: pointer; border-radius: 4px; }
-.history-details summary:hover { color: var(--ink); }
-.history-details summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-.history-details p { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; margin: 4px 0 0; }
+.ui-button.text-button.history-details-toggle { color: var(--muted); font-weight: 400; }
+.ui-button.text-button.history-details-toggle:hover, .ui-button.text-button.history-details-toggle[aria-expanded="true"] { color: var(--ink); }
+.history-details { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; margin: 6px 0 0; color: var(--muted); font-size: var(--caption-size); line-height: var(--caption-leading); }
 .history-details code { color: var(--ink); font-size: var(--tag-size); user-select: all; overflow-wrap: anywhere; }
+.history-block-details { margin-top: 10px; }
+.history-block-details .ui-button.text-button { font-size: var(--caption-size); }
 .history-details .ui-button.icon-button.history-copy { min-width: 24px; min-height: 24px; padding: 4px; }
 
 .history-confirm { margin-top: 8px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); }
 .history-confirm p { margin: 0; font-size: var(--caption-size); line-height: 1.55; }
 .history-confirm-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px; }
 .history-confirm-actions .ui-button { min-height: 30px; padding: 5px 10px; font-size: var(--caption-size); }
+/* A container chooses its own text or everything inside it, the narrower scope first. */
+.history-scope { display: flex; flex-wrap: wrap; gap: 2px; width: fit-content; max-width: 100%; margin-bottom: 8px; padding: 2px; border: 1px solid var(--line); border-radius: var(--control-radius); background: var(--surface-raised); }
+.history-scope .ui-button.tool-button { min-height: 26px; padding: 3px 9px; border-radius: calc(var(--control-radius) - 2px); font-size: var(--caption-size); }
 
 .history-files { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
 .history-files li { font-size: var(--caption-size); line-height: 1.7; color: var(--muted); }
 .history-files code { color: var(--ink); }
 
-/* Restoring everything comes after the per-block choices, as the secondary path. */
+/* Restoring everything comes after the per-item restores, as the secondary path. */
 .history-whole { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
-.history-whole > p { margin: 0 0 8px; color: var(--muted); font-size: var(--caption-size); line-height: 1.55; }
+.history-whole-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.history-whole h3 { margin: 0; font-size: var(--body-size); line-height: var(--label-leading); font-weight: 500; color: var(--ink); }
+.history-whole-row p { margin: 1px 0 0; color: var(--muted); font-size: var(--caption-size); line-height: var(--caption-leading); }
 
 /* Phones and touch screens get finger-sized controls. */
 @media (max-width: 620px), (pointer: coarse) {
-  .ui-button.history-action, .history-confirm-actions .ui-button, .history-notice-actions .ui-button { min-height: 40px; }
+  .ui-button.history-action, .history-confirm-actions .ui-button, .history-notice-actions .ui-button, .history-scope .ui-button.tool-button { min-height: 40px; }
   .history-details .ui-button.icon-button.history-copy { min-width: 40px; min-height: 40px; }
-  .history-details summary { padding-block: 10px; }
-  .history-details p { margin-top: 0; }
   .ui-button.history-version { padding-block: 8px; }
   .history-heading .ui-button.icon-button { min-width: 40px; min-height: 40px; }
 }

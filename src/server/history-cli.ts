@@ -55,7 +55,7 @@ function passagesText(passages: { removed: string; added: string }[], shown = 4)
 /** A changed block as the panel names it, then its wording and how to restore it. */
 function changeText(block: HistoryBlockChange & { words?: { removed: string; added: string }[] }, inside: number) {
   const lines = [`  ${historyChangeLabels[block.status].padEnd(22)} ${block.kindLabel}${block.name ? ` “${block.name}”` : ''}  [${block.id}]`];
-  if (block.status === 'contents') lines.push(`      ${inside ? `${inside} ${inside === 1 ? 'block' : 'blocks'} inside changed.` : 'Blocks inside it changed.'}`);
+  if (block.status === 'contents') lines.push(`      ${inside ? `${inside} ${inside === 1 ? 'change' : 'changes'} inside it, listed separately.` : 'Its contents changed.'}`);
   else {
     if (block.before !== undefined && block.after !== undefined && block.words?.length) lines.push(`      words: ${passagesText(block.words)}`);
     if (block.before) lines.push(`      then:  ${block.before}`);
@@ -63,8 +63,9 @@ function changeText(block: HistoryBlockChange & { words?: { removed: string; add
   }
   const kind = block.kindLabel.toLowerCase();
   const options = [
-    ...(block.block.ok ? [`--block ${block.id}${block.container ? ` (only this ${kind}'s own text)` : ''}`] : []),
-    ...(block.container && block.section.ok ? [`--section ${block.id} (the whole ${kind}, with everything inside)`] : []),
+    // The same scopes the History panel offers: a container's own text, or the container with its contents.
+    ...(block.block.ok ? [`--block ${block.id}${block.container ? ` (its own text only)` : ''}`] : []),
+    ...(block.container && block.section.ok ? [`--section ${block.id} (the ${kind} with its contents)`] : []),
   ];
   if (options.length) lines.push(`      restore: ${options.join(' or ')}`);
   else if (block.block.reason ?? block.section.reason) lines.push(`      ${block.block.reason ?? block.section.reason}`);
@@ -115,7 +116,7 @@ export async function runHistoryCli(args: string[], root = process.cwd()): Promi
       if (current?.documentId === doc && (current.manualEdit?.pendingEdits ?? 0) > 0) throw new Error('This document has unsaved text edits in OpenDoc. Save or discard them before restoring.');
     }
     const result = await restoreVersion(store, doc, target, { scope, blockId });
-    const what = scope === 'version' ? 'the whole version' : `${scope} ${blockId}`;
+    const what = scope === 'version' ? 'the whole version' : scope === 'section' ? `${blockId} with its contents` : blockId;
     const undo = `npx opendoc history restore ${doc} ${result.previous}${scope === 'version' ? '' : ` --${scope} ${blockId}`}`;
     print(result, `Restored ${what} from ${target} (${result.files.join(', ')}).\nUndo with: ${undo}`);
   } else throw new Error(`Unknown history command or missing arguments.\n${usage}`);

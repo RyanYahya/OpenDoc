@@ -37,7 +37,7 @@ npx opendoc history restore <document-id> <version-id> --section <block-id>
 npx opendoc history restore <document-id> <version-id>
 ```
 
-`--block` restores one block's own content; on a section, it restores only the section's title or lead and keeps the current blocks inside. `--section` restores a section, slide, or other container with everything inside it. Without either flag, every text source returns to that version; files created since are kept and media is unchanged. Each restore first records the state it replaces and prints the command that undoes it.
+`--block` restores one block's own content; on a section, it restores only the section's title or lead and keeps the current blocks inside. `--section` restores a section, slide, or other container with everything inside it. In the History panel these are the **Its own text** and **With its contents** choices of a container's **Restore**. Without either flag, every text source returns to that version; files created since are kept and media is unchanged. Each restore first records the state it replaces and prints the command that undoes it.
 
 A refused restore writes nothing. Act on its reason:
 
