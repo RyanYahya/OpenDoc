@@ -97,6 +97,10 @@ export function TemplatesBrowser({ selection, generation, format = 'all', connec
     return () => controller.abort();
   }, [generation, attempt]);
   const item = items.find(item => item.id === selection);
+  const templateType = item ? itemType(tagManifest, 'templates', item.id) : undefined;
+  const templateTags = item ? itemCustomTags(tagManifest, 'templates', item.id) : [];
+  // Language is detected; English, the default, goes without saying.
+  const shownLanguage = item?.language && item.language !== 'english' ? item.language : undefined;
   const presentation = item?.descriptor.documentFormat === 'presentation';
   const artifact = item && proof?.revision === item.revision ? proof.preview.artifact : undefined;
   // The gallery shows every template or one format; search, filters, and sort apply within it.
@@ -152,12 +156,13 @@ export function TemplatesBrowser({ selection, generation, format = 'all', connec
               Use this template
             </Button>
             <GuideDialog key={item.id} kind="template" id={item.id} name={item.descriptor.name} generation={generation} />
+            {/* Only details that are set are listed; with none, one line says so beside the way to add them. */}
             {tagging && <section className="tag-details template-tags"><h2>Details</h2>
-              <dl>
-                <div><dt>Type</dt><dd>{itemType(tagManifest, 'templates', item.id) ? typeLabel(itemType(tagManifest, 'templates', item.id)!) : 'None'}</dd></div>
-                {item.language && item.language !== 'english' && <div><dt>Language</dt><dd>{languageLabel(item.language)}</dd></div>}
-                <div><dt>Tags</dt><dd>{itemCustomTags(tagManifest, 'templates', item.id).length ? tagText(itemCustomTags(tagManifest, 'templates', item.id)) : 'None'}</dd></div>
-              </dl>
+              {templateType || templateTags.length || shownLanguage ? <dl>
+                {templateType && <div><dt>Type</dt><dd>{typeLabel(templateType)}</dd></div>}
+                {shownLanguage && <div><dt>Language</dt><dd>{languageLabel(shownLanguage)}</dd></div>}
+                {templateTags.length > 0 && <div><dt>Tags</dt><dd>{tagText(templateTags)}</dd></div>}
+              </dl> : <p>No type or tags yet.</p>}
               <div className="tag-details-actions"><Button className="text-button" data-template-tags={item.id} disabled={!connected} onClick={() => onEditTags?.({ kind: 'templates', id: item.id, name: item.descriptor.name, returnFocus: `[data-template-tags="${item.id}"]` })}>Edit details…</Button></div>
             </section>}
           </div>
