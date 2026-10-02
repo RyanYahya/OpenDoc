@@ -22,6 +22,11 @@ import { FilterBar, useHashQuery, useSortPreference } from './FilterBar';
 import { compareNewest, compareText, filtering, hashWith, itemFacets, splitHash, matchesFilters, matchesSearch, noFilters, sortItems, type ItemFilterValue, type SortOption } from './libraryFilters';
 import './themes.css';
 
+/** The one loading state of a theme preview, from before its PDF arrives until a card's first page is drawn. */
+function PreviewPlaceholder() {
+  return <div className="theme-preview-placeholder" role="status"><Icon name="document" size={24} /><p>Preparing preview…</p></div>;
+}
+
 function ThemePdf({ id, preview, allPages, onRetry }: { id: string; preview: ThemePreview; allPages: boolean; onRetry: () => void }) {
   const frame = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(220);
@@ -40,8 +45,11 @@ function ThemePdf({ id, preview, allPages, onRetry }: { id: string; preview: The
   const pageWidth = allPages ? width : Math.min(width, width * (841.89 / 595.28) * pageRatio);
   return <div className="theme-pdf" ref={frame} style={allPages ? undefined : { aspectRatio: '595.28 / 841.89' }}>
     {error ? <div className="theme-preview-message" role="alert"><p>Could not display this preview.</p><p>{error}</p><Button onClick={onRetry}>Try again</Button></div>
-      : pdf ? Array.from({ length: allPages ? pdf.numPages : 1 }, (_, index) => <PdfPage key={index} pdf={pdf} number={index + 1} width={pageWidth} thumbnail={!allPages} onNavigate={page => frame.current?.querySelector(`[data-page="${page}"]`)?.scrollIntoView({ behavior: 'auto', block: 'start' })} />)
-        : <p className="theme-preview-message" role="status">Opening PDF…</p>}
+      : pdf ? <>
+        {Array.from({ length: allPages ? pdf.numPages : 1 }, (_, index) => <PdfPage key={index} pdf={pdf} number={index + 1} width={pageWidth} thumbnail={!allPages} onNavigate={page => frame.current?.querySelector(`[data-page="${page}"]`)?.scrollIntoView({ behavior: 'auto', block: 'start' })} />)}
+        {/* A gallery card keeps the placeholder over its page until the page is drawn; see themes.css. */}
+        {!allPages && <PreviewPlaceholder />}
+      </> : <PreviewPlaceholder />}
   </div>;
 }
 
@@ -75,7 +83,7 @@ function ThemeSpecimen({ theme, generation, allPages = false, onRefresh }: { the
     {allPages && <div className="theme-proof-label"><span>Print system</span><span>{preview?.artifact ? `${preview.artifact.pages.length} ${preview.artifact.pages.length === 1 ? 'page' : 'pages'}` : 'PDF preview'}</span></div>}
     {error ? <div className="theme-preview-message" role="alert"><p>Preview needs attention.</p><p>{error}</p><Button onClick={retry}>Try again</Button></div>
       : preview?.artifact ? <ThemePdf key={requestKey} id={theme.id} preview={preview} allPages={allPages} onRetry={retry} />
-        : <div className="theme-preview-placeholder" role="status"><Icon name="document" size={24} /><p>{visible ? 'Preparing preview…' : 'PDF preview'}</p></div>}
+        : <PreviewPlaceholder />}
   </div>;
 }
 

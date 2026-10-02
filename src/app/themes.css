@@ -9,7 +9,11 @@
 .theme-gallery-preview:hover .theme-specimen { background: var(--surface-hover); }
 .theme-preview-placeholder { aspect-ratio: 595 / 842; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--muted); font-size: 13px; text-align: center; }
 .theme-pdf { display: flex; flex-direction: column; align-items: center; gap: 24px; width: 100%; min-width: 0; }
-.theme-gallery-card .theme-pdf { justify-content: center; }
+.theme-gallery-card .theme-pdf { position: relative; justify-content: center; }
+/* Until its page is drawn, a card shows the placeholder it showed before the PDF arrived, not a blank page. */
+.theme-gallery-card .theme-pdf > .theme-preview-placeholder { display: none; position: absolute; inset: 0; aspect-ratio: auto; }
+.theme-gallery-card .theme-pdf:has(> .pdf-page[data-rendered="false"]) > .theme-preview-placeholder { display: flex; }
+.theme-gallery-card .theme-pdf > .pdf-page[data-rendered="false"] { visibility: hidden; }
 .theme-pdf .pdf-page { flex-shrink: 0; box-shadow: var(--shadow-preview); max-width: 100%; scroll-margin-top: 24px; }
 .theme-preview-message { padding: 20px 0; font-size: 13px; line-height: 1.6; color: var(--muted); overflow-wrap: anywhere; }
 .theme-preview-message p + p { margin-top: 8px; }
