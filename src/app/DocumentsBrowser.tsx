@@ -90,7 +90,7 @@ export function DocumentsBrowser({ format = 'document', projects, documents, tag
     && matchesSearch(searchText(document, manifest, projectName(document)), query)), sort, manifest, projectName);
   useCreateShortcut(onCreate, loaded && !disabled);
   return <section className="library-content documents-content">
-    <div className="library-heading"><h1>{plural}</h1><HintButton className="primary" aria-label={`Create ${format}`} aria-keyshortcuts={createShortcutKeys} hint={shortcutHint} onClick={onCreate} disabled={!loaded || disabled}><Icon name="plus" size={17} /><span>Create {format}</span></HintButton></div>
+    <div className="library-heading"><h1>{plural}</h1><HintButton className="primary" data-create-trigger aria-label={`Create ${format}`} aria-keyshortcuts={createShortcutKeys} hint={shortcutHint} onClick={onCreate} disabled={!loaded || disabled}><Icon name="plus" size={17} /><span>Create {format}</span></HintButton></div>
     <FilterBar search={{ label: `Search ${format}s`, value: query, onChange: setQuery }}
       facets={itemFacets(manifest, 'documents', documents, filters)} onFacetChange={setFacet} onClearFacets={clearFacets}
       sort={{ value: sort, options: sortOptions, onChange: setSort }} view={{ value: view, onChange: onViewChange }} />
@@ -131,7 +131,7 @@ export function ProjectDocuments({ project, documents, tags, loaded, view, onVie
   return <section className="library-content project-documents">
     <div className="library-heading"><h1 dir="auto" lang={textLang(project.name)}>{project.name}</h1><div className="project-actions">
       <IconButton label="Project settings" onClick={onSettings}><Icon name="gear" size={18} /></IconButton>
-      <Menu.Root><Menu.Trigger render={<HintButton className="primary project-create-trigger" hint={shortcutHint} disabled={!loaded || disabled} />}>
+      <Menu.Root><Menu.Trigger render={<HintButton className="primary project-create-trigger" data-create-trigger hint={shortcutHint} disabled={!loaded || disabled} />}>
         <Icon name="plus" size={16} /><span>Create</span><Icon name="down" size={14} />
       </Menu.Trigger><Menu.Portal><Menu.Positioner className="ui-positioner" sideOffset={6} align="end"><Menu.Popup className="ui-menu-popup">
         <Menu.Item className="ui-menu-item" onClick={onCreate}><Icon name="document" size={16} />Document</Menu.Item>

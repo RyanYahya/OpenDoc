@@ -41,9 +41,11 @@ function rememberedProject(projects: Project[]) {
  * OpenDoc never authors documents itself: this dialog prepares a prompt for the user's own agent,
  * with the choices it should honor, and the library then waits for the result to appear.
  */
-export function CreateDocumentDialog({ open, onOpenChange, preset = {}, projects, themes = [], themeFolders, tags, generation = 0, onCopied }: {
+export function CreateDocumentDialog({ open, onOpenChange, finalFocus, preset = {}, projects, themes = [], themeFolders, tags, generation = 0, onCopied }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Where focus goes when the dialog closes; by default, the element that had it before. */
+  finalFocus?: () => HTMLElement | boolean;
   preset?: CreatePreset;
   projects: Project[];
   /** The workspace themes, to choose from, to name the project's default, and to notice a removed one. */
@@ -150,7 +152,7 @@ export function CreateDocumentDialog({ open, onOpenChange, preset = {}, projects
   return <Dialog.Root open={open} onOpenChange={onOpenChange}>
     <Dialog.Portal>
       <Dialog.Backdrop className="ui-dialog-backdrop" />
-      <Dialog.Popup className="help-dialog agent-handoff-dialog" initialFocus={briefField} onKeyDown={shortcutCopy}>
+      <Dialog.Popup className="help-dialog agent-handoff-dialog" initialFocus={briefField} finalFocus={finalFocus} onKeyDown={shortcutCopy}>
         <Dialog.Close render={<Button className="icon-button modal-close" aria-label="Close" />}><Icon name="close" /></Dialog.Close>
         <Dialog.Title>Create with your agent</Dialog.Title>
         <Dialog.Description>OpenDoc prepares the prompt. Your coding agent writes the {noun} in this workspace, and it appears here when it’s ready.</Dialog.Description>

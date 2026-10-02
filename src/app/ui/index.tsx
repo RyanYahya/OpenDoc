@@ -37,9 +37,20 @@ export function Button({
   );
 }
 
+// Whether focus last moved by keyboard navigation. Focus returned by code, such as to a button after its
+// dialog closes, can still match :focus-visible, but it should not pop that button's tooltip.
+let navigatingByKeyboard = false;
+const navigationKeys = new Set(["Tab", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"]);
+if (typeof document !== "undefined") {
+  document.addEventListener("keydown", event => { navigatingByKeyboard = navigationKeys.has(event.key); }, true);
+  document.addEventListener("pointerdown", () => { navigatingByKeyboard = false; }, true);
+}
+
 function Hint({ label, disabled, children }: { label: string; disabled?: boolean; children: ReactElement }) {
   return (
-    <Tooltip.Root disabled={disabled}>
+    <Tooltip.Root disabled={disabled} onOpenChange={(open, details) => {
+      if (open && details.reason === "trigger-focus" && !navigatingByKeyboard) details.cancel();
+    }}>
       <Tooltip.Trigger render={children} />
       <Tooltip.Portal>
         <Tooltip.Positioner sideOffset={8}>

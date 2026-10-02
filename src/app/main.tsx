@@ -240,7 +240,13 @@ function App() {
   // Cards, menus, and the reader read type and status from here; status changes need a connection.
   const tagContext = useMemo(() => ({ manifest: tagState.manifest, setStatus: connected && !tagState.error ? setDocumentStatus : undefined }), [tagState, connected, setDocumentStatus]);
   const createProject = () => setProjectDialog({ project: null });
-  const openCreate = (preset: CreatePreset) => { setCreatePreset(preset); setCreating(true); };
+  // Closing the dialog returns focus to what opened it, or to the page's Create button after the keyboard shortcut or its menu.
+  const createOpener = useRef<HTMLElement | null>(null);
+  const openCreate = (preset: CreatePreset) => {
+    const active = document.activeElement;
+    createOpener.current = active instanceof HTMLElement && active !== document.body && !active.closest('[role="menu"]') ? active : document.querySelector<HTMLElement>('[data-create-trigger]');
+    setCreatePreset(preset); setCreating(true);
+  };
   const createDocument = (format: DocumentFormat = 'document') => openCreate({ format, projectId: current.view === "project" ? project?.id : undefined });
   // Copied creation prompts wait in this browser until their document appears in the workspace.
   const handoffs = useSyncExternalStore(subscribePendingHandoffs, pendingHandoffs, () => []);
@@ -294,7 +300,7 @@ function App() {
       </Suspense>
       </LoadBoundary>
     </main>
-    <CreateDocumentDialog open={creating} onOpenChange={setCreating} preset={createPreset} projects={manifest.projects} themes={themes} themeFolders={themeOrganization.manifest} tags={tagState.manifest} generation={generation}
+    <CreateDocumentDialog open={creating} onOpenChange={setCreating} finalFocus={() => createOpener.current?.isConnected ? createOpener.current : true} preset={createPreset} projects={manifest.projects} themes={themes} themeFolders={themeOrganization.manifest} tags={tagState.manifest} generation={generation}
       onCopied={handoff => { if (loaded) recordHandoff({ ...handoff, knownIds: documents.map(document => document.id) }); }} />
     <ProjectDialog themes={themes} themeFolders={themeOrganization.manifest} open={Boolean(projectDialog)} project={projectDialog?.project ?? null} documentCount={documents.filter(document => document.projectId === projectDialog?.project?.id).length} connected={connected} onOpenChange={open => { if (!open) setProjectDialog(null); }} onSaved={saved => {
       setManifest(previous => ({ ...previous, projects: previous.projects.some(project => project.id === saved.id) ? previous.projects.map(project => project.id === saved.id ? saved : project) : [...previous.projects, saved] }));
