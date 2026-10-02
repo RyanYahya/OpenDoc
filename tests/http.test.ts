@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
-import { mkdir, readFile, writeFile, rm } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, rm, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { fixture, projectRoot, until, source } from './helpers';
@@ -28,6 +28,8 @@ test('local HTTP loop: discovery, watch, errors, exact export, and request bound
     assert.equal(summary.artifact.hash, detail.artifact.hash);
     assert.equal(summary.revision, detail.revision);
     assert.equal(summary.language, 'english', 'Summaries carry the language derived from source.');
+    const { mtimeMs } = await stat(f.entry);
+    assert.ok(Date.parse(summary.updatedAt) >= Math.floor(mtimeMs) && Date.parse(summary.updatedAt) <= Date.now(), 'Summaries carry when the source last changed, for sorting by last edited.');
     assert.equal(summary.artifact.pages.length, detail.artifact.pages.length);
     assert.ok(!('blocks' in summary.artifact) && !('textTargets' in summary.artifact));
     assert.ok(summary.artifact.pages.every((page: object) => !('fragments' in page)));
@@ -99,6 +101,7 @@ test('local HTTP loop: discovery, watch, errors, exact export, and request bound
       assert.ok(themeCatalog.some((theme: { id: string }) => theme.id === id), `Theme ${id} is discoverable over HTTP.`);
     }
     assert.ok(themeCatalog.every((theme: { revision?: string; error?: string }) => theme.revision && !theme.error));
+    assert.ok(themeCatalog.every((theme: { updatedAt?: string }) => theme.updatedAt && !Number.isNaN(Date.parse(theme.updatedAt))), 'Themes carry a last-edited time for sorting.');
     const guide = await fetch(`${origin}/api/themes/civic-spectrum/guide`);
     assert.equal(guide.headers.get('cache-control'), 'no-store');
     assert.match((await guide.json()).markdown, /Civic Spectrum/);

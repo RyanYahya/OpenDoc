@@ -36,6 +36,7 @@ import { handleThemeFoldersRequest } from './theme-folders-http';
 import { TagsError, tagsFile } from './tags';
 import { handleTagsRequest } from './tags-http';
 import { sourceLanguage } from './language';
+import { sourceFiles, sourceUpdatedAt } from './source-files';
 import { coverImage } from './covers';
 
 import { readAssetHead as selectedAssetHead, readAssetRevision as selectedAssetRevision } from '../assets/files';
@@ -145,7 +146,11 @@ const server = createServer(async (req, res) => {
       await Promise.all(states.map(async state => { state.manualEdit = await edits.summary(state.id); }));
       if (url.searchParams.get('view') !== 'summary') { json(res, states); return; }
       // Language is derived from source, as on the command line, so both editions classify an item alike.
-      json(res, await Promise.all(states.map(async state => ({ ...summarizeDocument(state), language: await sourceLanguage(root, 'documents', state.id).catch(() => undefined) })))); return;
+      // The same files give the last-edited time used to sort the library.
+      json(res, await Promise.all(states.map(async state => {
+        const files = await sourceFiles(root, 'documents', state.id).catch(() => []);
+        return { ...summarizeDocument(state), language: await sourceLanguage(root, 'documents', state.id, files).catch(() => undefined), updatedAt: sourceUpdatedAt(files) };
+      }))); return;
     }
     if (req.method === 'GET' && url.pathname === '/api/projects') { json(res, await readProjects(root)); return; }
     const documentRoute = url.pathname.match(/^\/api\/documents\/([a-z0-9-]+)$/);

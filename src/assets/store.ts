@@ -262,6 +262,7 @@ export class AssetStore {
             name: asset.name,
             description: asset.description,
             revision: head.revision,
+            updatedAt: asset.createdAt,
             archived: !!head.archived,
             builtIn: head.builtIn,
             count: asset.kind === 'logo' ? asset.variations.length : asset.faces.length,

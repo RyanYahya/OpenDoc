@@ -22,6 +22,8 @@ export interface ThemeSummary {
   geometry?: string[];
   /** Derived from the theme's declared direction and language. */
   language?: Language;
+  /** When the theme's files last changed, for sorting by last edited. */
+  updatedAt?: string;
   error?: string;
 }
 export interface ThemePreview { artifact?: RenderArtifact; error?: string; issues?: ReviewIssue[] }

@@ -113,6 +113,8 @@ export interface AssetSummary {
   name: string;
   description: string;
   revision: string;
+  /** When the current version was saved, for sorting by last updated. */
+  updatedAt?: string;
   archived: boolean;
   builtIn?: boolean;
   count: number;

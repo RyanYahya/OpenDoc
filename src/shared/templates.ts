@@ -15,6 +15,8 @@ export interface TemplateItem {
   revision: string;
   /** Derived from the template's source text and declared direction. */
   language?: Language;
+  /** When the template's files last changed, for sorting by last edited. */
+  updatedAt?: string;
   error?: string;
 }
 

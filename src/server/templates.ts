@@ -9,6 +9,7 @@ import { RenderFailure } from './render-error';
 import { renderEntry, validId } from './render';
 import { createDocumentFromFiles } from './create';
 import { sourceLanguage } from './language';
+import { sourceFiles, sourceUpdatedAt } from './source-files';
 
 export async function templateFile(root: string, id: string, name: string) {
   if (!validId(id)) throw new Error('Invalid template ID.');
@@ -78,7 +79,10 @@ export class TemplateCatalog {
       const result = (async () => {
         const entries = await readdir(resolve(this.root, 'templates'), { withFileTypes: true }).catch(error => { if (error.code === 'ENOENT') return []; throw error; });
         return Promise.all(entries.filter(folder => folder.isDirectory() && validId(folder.name)).sort((a, b) => a.name.localeCompare(b.name)).map(async folder => {
-          try { return { id: folder.name, descriptor: await readTemplate(this.root, folder.name), revision: this.revision(folder.name), language: await sourceLanguage(this.root, 'templates', folder.name) }; }
+          try {
+            const files = await sourceFiles(this.root, 'templates', folder.name);
+            return { id: folder.name, descriptor: await readTemplate(this.root, folder.name), revision: this.revision(folder.name), language: await sourceLanguage(this.root, 'templates', folder.name, files), updatedAt: sourceUpdatedAt(files) };
+          }
           catch (error) { return { id: folder.name, descriptor: { name: folder.name, description: 'This template needs attention.', format: '', structure: [] }, revision: this.revision(folder.name), error: error instanceof Error ? error.message : String(error) }; }
         }));
       })();

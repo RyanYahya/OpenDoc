@@ -1,8 +1,9 @@
-import { lstat, readdir, readFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { extname, relative, resolve, sep } from 'node:path';
 import ts from 'typescript';
 import { classifyLanguage, countScripts, declaredLanguage, type DeclaredLanguage, type Language, type ScriptCounts } from '../shared/language';
 import { validId } from './render';
+import { sourceFiles, type SourceFile } from './source-files';
 
 /**
  * Derived languages. Documents and templates are classified from the text in their source: JSX
@@ -58,27 +59,6 @@ export function sourceDeclaration(text: string): DeclaredLanguage {
   return { ...(direction ? { direction } : {}), ...(lang ? { lang } : {}) };
 }
 
-const maximumFileSize = 512_000;
-const maximumFiles = 60;
-const textExtensions = new Set(['.tsx', '.ts', '.jsx', '.json', '.md', '.txt']);
-
-interface SourceFile { path: string; name: string; size: number; mtimeMs: number }
-
-/** Local text files of one item, skipping media, history, and dot folders. */
-async function itemFiles(folder: string, depth = 0, found: SourceFile[] = []): Promise<SourceFile[]> {
-  const entries = await readdir(folder, { withFileTypes: true }).catch(() => []);
-  for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-    if (found.length >= maximumFiles || entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'media') continue;
-    const path = resolve(folder, entry.name);
-    if (entry.isDirectory() && depth < 2) await itemFiles(path, depth + 1, found);
-    else if (entry.isFile() && textExtensions.has(extname(entry.name))) {
-      const info = await lstat(path).catch(() => undefined);
-      if (info?.isFile() && info.size <= maximumFileSize) found.push({ path, name: entry.name, size: info.size, mtimeMs: info.mtimeMs });
-    }
-  }
-  return found;
-}
-
 /** Files that hold settings rather than content: asset bindings, theme definitions, guides, and schemas. */
 const settingsFile = (name: string) => ['assets.json', 'template.json', 'AGENTS.md', 'README.md', 'preview.tsx'].includes(name) || /^(?:theme|schema)\.tsx?$/u.test(name);
 const declaringFile = (name: string) => /^(?:index|starter|theme)\.tsx?$/u.test(name);
@@ -87,12 +67,12 @@ const fromSource = new Map<string, { signature: string; language: Language }>();
 
 /**
  * Classify a document or template folder from its source. A declaration in the item's own files
- * wins over one in a workspace theme it imports.
+ * wins over one in a workspace theme it imports. Pass `listed` when the folder's files were already read.
  */
-export async function sourceLanguage(root: string, kind: 'documents' | 'templates', id: string): Promise<Language> {
+export async function sourceLanguage(root: string, kind: 'documents' | 'templates', id: string, listed?: readonly SourceFile[]): Promise<Language> {
   if (!validId(id)) return 'english';
   const folder = resolve(root, kind, id);
-  const files = await itemFiles(folder);
+  const files = listed ?? await sourceFiles(root, kind, id);
   const signature = JSON.stringify(files.map(file => [relative(folder, file.path), file.size, file.mtimeMs]));
   const cached = fromSource.get(folder);
   if (cached?.signature === signature) return cached.language;

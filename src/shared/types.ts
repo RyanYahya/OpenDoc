@@ -25,8 +25,11 @@ export function getBlock(artifact: RenderArtifact | null | undefined, id: string
 export interface DocumentState { format?: DocumentFormat; id: string; name?: string; projectId?: string | null; status: 'rendering' | 'ready' | 'error'; error?: string; revision: number; artifact?: RenderArtifact; manualEdit?: ManualEditSummary }
 /** Browsing needs metadata and paper sizes, not text targets or layout fragments. */
 export type ArtifactSummary = Pick<RenderArtifact, 'meta' | 'hash' | 'renderedAt' | 'format'> & { pages: Pick<PageInfo, 'width' | 'height'>[] };
-/** `language` is derived by the server from the render or source; it is never stored. */
-export type DocumentSummary = Omit<DocumentState, 'artifact'> & { artifact?: ArtifactSummary; language?: Language };
+/**
+ * `language` is derived by the server from the render or source; it is never stored. `updatedAt` is
+ * when the document's source files last changed (comments excluded), for sorting by last edited.
+ */
+export type DocumentSummary = Omit<DocumentState, 'artifact'> & { artifact?: ArtifactSummary; language?: Language; updatedAt?: string };
 export function summarizeDocument(state: DocumentState): DocumentSummary {
   const { artifact, ...summary } = state;
   return { ...summary, ...(artifact ? { artifact: { format: artifact.format, meta: artifact.meta, hash: artifact.hash, renderedAt: artifact.renderedAt, pages: artifact.pages.map(({ width, height }) => ({ width, height })) } } : {}) };

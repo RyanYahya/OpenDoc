@@ -191,6 +191,7 @@ test('archiving a theme default requires explicit clearing and Undo restores unt
     assert.deepEqual(await f.store.defaults('neutral'), defaults);
     assert.deepEqual(readDocumentAssets(f.root, 'proof'), binding);
     assert.equal((await f.store.list('logo')).items[0].revision, first.revision);
+    assert.equal((await f.store.list('logo')).items[0].updatedAt, first.createdAt, 'The catalog reports when the current version was saved, for sorting.');
   } finally { await f.cleanup(); }
 });
 

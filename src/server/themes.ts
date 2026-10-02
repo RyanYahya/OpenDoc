@@ -12,6 +12,7 @@ import { bindingDependencies, readAssetRevision, readThemeAssetDefaults, resolve
 import { documentDependencies, includesDependency, type DocumentDependencies, isRenderRuntimePath, isManagedAssetPath } from './dependencies';
 import { authoringResolutionPlugin } from './source-overrides';
 import { themeLanguage } from './language';
+import { sourceFiles, sourceUpdatedAt } from './source-files';
 
 export async function themeFile(root: string, id: string, name: 'index.ts' | 'design.md' | 'preview.tsx' | 'components.tsx') {
   if (typeof id !== 'string' || !validId(id)) throw new Error('Invalid theme ID.');
@@ -147,7 +148,8 @@ export class ThemeCatalog {
           }
           catch (error) { items.push({ id: folder.name, name: folder.name, description: 'This theme needs attention.', body: '', heading: '', pageSize: '', useFor: [], principles: [], error: error instanceof Error ? error.message : String(error) }); }
         }
-        return items.map(item => ({ ...item, revision: this.revision(item.id) }));
+        // The newest theme file gives its last-edited time for sorting the gallery.
+        return Promise.all(items.map(async item => ({ ...item, revision: this.revision(item.id), updatedAt: sourceUpdatedAt(await sourceFiles(this.root, 'themes', item.id).catch(() => [])) })));
       })();
       this.summaries = { version, result };
     }
