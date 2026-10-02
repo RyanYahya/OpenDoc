@@ -61,7 +61,8 @@ function HandoffCard({ handoff, document, now, showProject, onDismiss, onStatus 
       <p className="handoff-card-status" id={titleId}>{ready && document
         ? <>Ready: <bdi lang={textLang(documentName(document), document.language)}>{documentName(document)}</bdi></>
         : 'Waiting for your agent'}</p>
-      {!ready && <p className="handoff-card-brief" dir="auto" lang={textLang(excerpt)}>{excerpt || `A new ${handoff.format} with no brief`}</p>}
+      {/* The brief keeps its own direction but starts where the card's title does, as card titles do. */}
+      {!ready && <p className="handoff-card-brief">{excerpt ? <bdi dir="auto" lang={textLang(excerpt)}>{excerpt}</bdi> : `A new ${handoff.format} with no brief`}</p>}
       <p className="handoff-card-meta">{ready ? 'It updates here as your agent works' : details.map((detail, index) => <span key={detail}>{index > 0 && <span aria-hidden="true"> · </span>}<bdi>{detail}</bdi></span>)}<span aria-hidden="true"> · </span>{ready ? 'Arrived ' : 'Copied '}<CommentTime value={new Date(handoff.resolvedAt ?? handoff.copiedAt).toISOString()} now={now} /></p>
       {manual && <>
         <p className="comment-error" role="alert">Copying isn’t available here. Select the prompt and copy it manually.</p>
