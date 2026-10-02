@@ -7,6 +7,39 @@ export function outlinedChanges(changes: HistoryBlockChange[]) {
   return shown.filter(change => !inside.has(change.id)).map(change => change.id);
 }
 
+/** One row of a version comparison: a changed item, or a container label over the changes inside it. */
+export type VersionRow = { type: 'item'; change: HistoryBlockChange } | {
+  type: 'label'; change: HistoryBlockChange;
+  /** Some change inside it cannot be restored on its own, so the label keeps the container's restore. */
+  restorable: boolean;
+};
+export interface VersionGroup { key: string; rows: VersionRow[] }
+
+/**
+ * Changes grouped by the top-level item they belong to, in document order. A container whose only change
+ * is what is inside it becomes the label of that group instead of a row of its own, so its changes are
+ * listed once. It has nothing to compare and no ID worth showing; it keeps its restore only when some
+ * change inside it cannot be restored alone, so “restore the section that contains it” stays possible.
+ */
+export function versionGroups(changes: HistoryBlockChange[], restorable: (change: HistoryBlockChange) => boolean): VersionGroup[] {
+  const listed = new Map(changes.map(change => [change.id, change]));
+  const childrenOf = (id: string) => changes.filter(change => change.parent === id);
+  const groups: VersionGroup[] = [];
+  const groupOf = new Map<string, VersionGroup>();
+  for (const change of changes) {
+    const row: VersionRow = change.status === 'contents' && childrenOf(change.id).length
+      ? { type: 'label', change, restorable: change.section.ok && changes.some(inner => inner !== change && change.descendants.includes(inner.id) && !restorable(inner)) }
+      : { type: 'item', change };
+    // A change starts a group unless its container is listed too; nested changes join their container's group.
+    const container = change.parent && listed.has(change.parent) ? groupOf.get(change.parent) : undefined;
+    const group = container ?? { key: `${change.file}:${change.id}`, rows: [] };
+    if (!container) groups.push(group);
+    group.rows.push(row);
+    groupOf.set(change.id, group);
+  }
+  return groups;
+}
+
 // Composite blocks render child targets from their own literal ID, such as a section's heading.
 const derivedSuffixes = ['-heading', '-lead', '-title', '-subtitle', '-byline', '-eyebrow', '-caption'];
 const quoted = (value: string) => `"${value.replace(/["\\]/g, '\\$&')}"`;

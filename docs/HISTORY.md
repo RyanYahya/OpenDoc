@@ -22,15 +22,17 @@ Text sources are the files the document owns in `documents/<id>/`: `index.tsx`, 
 
 Choose the **History** button in the reader toolbar to open the **History** tab of the side panel, which it shares with **Comments**: docked beside the pages on wide screens and a bottom sheet on narrow ones. Versions are listed newest first and grouped by day. Each row says what changed, naming blocks by their opening words (for example: Edited “Quarterly results”, “Budget”), with its time and where it came from. Consecutive You, Agent, or Undo versions within ten minutes, such as a burst of agent writes, share one row that opens to list each of them; restores and first versions keep their own rows. Times read “8:42 PM” today, “Yesterday 3:10 PM”, then “Oct 1, 3:10 PM”.
 
-Select a version to see how it differs from the current source, for example “6 changes from now”. Every changed item shows its kind, such as Paragraph, Title, or Table, and its earlier and current wording, with removed words struck through and added words underlined. Long paragraphs show only the changed passages until you choose **Show full text**. **Details** shows the item's stable ID, ready to copy for your agent. Changed items are outlined on the page, one outline each; hovering or focusing an entry outlines it more strongly, and **Show on page** scrolls to it.
+Select a version to see how it differs from the current source, for example “6 changes from now”. Changes are grouped by the section or other item they belong to; a section whose only change is inside it labels its group instead of being listed as a change itself. Every changed item shows its kind, such as Paragraph, Title, or Table, and its earlier and current wording, with removed words struck through and added words underlined. Long paragraphs show only the changed passages until you choose **Show full text**. **Details** shows the item's stable ID, ready to copy for your agent. Changed items are outlined on the page, one outline each; hovering or focusing an entry outlines it more strongly, and choosing its name scrolls to it on the page. Escape steps back one level: from a confirmation, then from a version or item to the list of versions, then closes the panel.
 
 Every restore is one action, **Restore**, and its confirmation names what it replaces:
 
 - On a paragraph, heading, callout, table, or other item, **Restore** returns that item to its wording in the version.
 - On a section, slide, group, or other container, the confirmation offers **Its own text**, which restores only the container's own text, such as its title or lead, as its Then and Now rows show it, and keeps what is inside it as it is now; and **With its contents**, which restores the container together with everything inside it. Its own text is chosen first. When only one of them is possible, the confirmation names that one.
-- **Whole version**, below the changed items, returns every text source to that version. Files created since are kept, and media is not changed.
+- **Restore whole version**, in the version's heading, returns every text source to that version. Files created since are kept, and media is not changed.
 
-Each restore asks for confirmation and then offers **Undo**. To see one item's earlier wording, select it on the page and choose **History** in the selection bar. Each distinct earlier wording is listed once; restoring it replaces that item, or that container with its contents, only.
+A section label offers **Restore** only when something inside it cannot be restored on its own; it then restores the section with its contents.
+
+Each restore asks for confirmation, which opens in view with focus on its first choice, and then offers **Undo**. To see one item's earlier wording, select it on the page and choose **History** in the selection bar. Each distinct earlier wording is listed once; restoring it replaces that item, or that container with its contents, only.
 
 Restoring changes the saved source, so OpenDoc asks you to save or discard unsaved text edits first, as Export does.
 

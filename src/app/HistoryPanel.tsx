@@ -2,10 +2,10 @@ import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState, typ
 import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
 import { api } from './api';
-import { Button, IconButton, useNotifications } from './ui';
+import { Button, HintButton, IconButton, useNotifications } from './ui';
 import { Icon } from './ui/Icon';
 import { formatFull, formatTime, formatTimeRange, formatWhen } from '../shared/dates';
-import { historyHighlightCss, outlinedChanges } from './historyView';
+import { historyHighlightCss, outlinedChanges, versionGroups, type VersionRow } from './historyView';
 import { compactDiff, compacts, diffWords, hasChanges, type DiffChunk } from '../shared/word-diff';
 import { textLang } from '../shared/language';
 import { describeVersions, groupVersions, historyChangeLabels, type VersionRun, type BlockHistory, type HistoryBlockChange, type HistoryComparison, type HistoryList, type HistorySummaryPart, type HistoryVersionSummary, type RestoreResult, type RestoreScope } from '../shared/history';
@@ -94,8 +94,9 @@ interface RestoreOption { scope: RestoreScope; /** The scope in a few words, for
  */
 interface Confirming { key: string; versionId: string; blockId?: string; base?: string; options: RestoreOption[] }
 
-const wholeVersion = (comparison: HistoryComparison, whole: string): Confirming => ({ key: 'version', versionId: comparison.version.id, base: comparison.base, options: [{
-  scope: 'version', label: 'Whole version', noun: 'Version', message: `Restore the whole ${whole} to this version? Media files are not changed, and you can undo it.` }] });
+const wholeVersion = (comparison: HistoryComparison, whole: string, otherFiles: boolean): Confirming => ({ key: 'version', versionId: comparison.version.id, base: comparison.base, options: [{
+  scope: 'version', label: 'Whole version', noun: 'Version',
+  message: `Restore the whole ${whole} to this version, with every change listed below${otherFiles ? ' and its other files' : ''}? Media files are not changed, and you can undo it.` }] });
 
 /** Restore choices for one changed item in a version comparison, narrowest first. */
 function changeOptions(change: HistoryBlockChange): RestoreOption[] {
@@ -136,6 +137,9 @@ export function HistoryPanel({ documentId, target, generation, connected, pageLa
   const [focused, setFocused] = useState<HistoryBlockChange | null>(null);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
   const heading = useRef<HTMLHeadingElement>(null);
+  const root = useRef<HTMLElement>(null);
+  /** The version whose row takes focus when its comparison closes and the list returns. */
+  const returnTo = useRef<string | null>(null);
   const request = useRef(0);
   const notify = useNotifications();
   const blocked = unsaved > 0 || saving;
@@ -160,17 +164,48 @@ export function HistoryPanel({ documentId, target, generation, connected, pageLa
 
   // The document changed (an edit, an agent write, or a restore): the comparison is against the new current source.
   useEffect(() => { void refresh(); }, [refresh, generation]);
-  useEffect(() => { heading.current?.focus({ preventScroll: true }); }, [blockId, selected]);
+  useEffect(() => {
+    // Back in the list, the version just viewed keeps its place: its row, or the burst that holds it.
+    const version = returnTo.current;
+    returnTo.current = null;
+    const row = version && !selected ? root.current?.querySelector<HTMLElement>(`[data-version="${CSS.escape(version)}"]`)
+      ?? root.current?.querySelector<HTMLElement>(`[data-versions~="${CSS.escape(version)}"]`) : null;
+    (row ?? heading.current)?.focus({ preventScroll: !row });
+  }, [blockId, selected]);
   useEffect(() => { setConfirming(null); setFocused(null); }, [selected, blockId]);
+  // An opened confirmation comes into view with focus on its first choice, wherever its Restore was.
+  useEffect(() => {
+    const box = root.current?.querySelector<HTMLElement>('.history-confirm');
+    if (!confirming || !box) return;
+    const area = box.closest<HTMLElement>('.history-content');
+    if (area) {
+      const view = area.getBoundingClientRect(), own = box.getBoundingClientRect();
+      const offset = own.bottom > view.bottom - 12 ? Math.min(own.bottom - view.bottom + 12, own.top - view.top - 12) : own.top < view.top ? own.top - view.top - 12 : 0;
+      if (offset) area.scrollBy({ top: offset, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    }
+    box.querySelector<HTMLElement>('button:not(:disabled)')?.focus({ preventScroll: true });
+  }, [confirming?.key]);
+  /** Close a confirmation without restoring; focus returns to the Restore that opened it. */
+  function cancelConfirm() {
+    const key = confirming?.key;
+    setConfirming(null);
+    if (key) root.current?.querySelector<HTMLElement>(`[data-restore-key="${CSS.escape(key)}"]`)?.focus();
+  }
+  function showList() {
+    if (blockId) { onShowDocument(); return; }
+    returnTo.current = selected;
+    setSelected(null);
+  }
+  // Escape steps back one level: a confirmation, then a version or item, then the panel itself.
   useEffect(() => {
     const dismiss = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.key !== 'Escape') return;
       event.preventDefault();
-      if (confirming) setConfirming(null); else onClose();
+      if (confirming) cancelConfirm(); else if (selected || blockId) showList(); else onClose();
     };
     document.addEventListener('keydown', dismiss);
     return () => document.removeEventListener('keydown', dismiss);
-  }, [confirming, onClose]);
+  });
 
   const days = useMemo(() => groupVersions(list?.versions ?? []), [list]);
 
@@ -193,6 +228,8 @@ export function HistoryPanel({ documentId, target, generation, connected, pageLa
       } });
       if (option.scope === 'version') setSelected(null);
       await refresh();
+      // The confirmation is gone; focus stays with the item's Restore while it is still listed.
+      if (option.scope !== 'version') requestAnimationFrame(() => (root.current?.querySelector<HTMLElement>(`[data-restore-key="${CSS.escape(item.key)}"]`) ?? heading.current)?.focus({ preventScroll: true }));
     } catch (failure) { setError((failure as Error).message); }
     finally { setRestoring(false); }
   }
@@ -207,22 +244,26 @@ export function HistoryPanel({ documentId, target, generation, connected, pageLa
       </ToggleGroup>}
       <p aria-live="polite">{option.message}</p>
       <div className="history-confirm-actions">
-        <Button disabled={restoring} onClick={() => setConfirming(null)}>Cancel</Button>
+        <Button disabled={restoring} onClick={cancelConfirm}>Cancel</Button>
         <Button className="primary" disabled={restoring || blocked || !connected} onClick={() => void restore(item, option)}>{restoring ? 'Restoring…' : 'Restore'}</Button>
       </div>
     </div>;
   }
 
-  /** The one restore action of an item; its accessible name adds the scope, and the item's heading describes it. */
-  function action(item: Confirming, name: string, describedBy?: string) {
+  /**
+   * The one restore action of an item; its accessible name adds the scope, and the item's heading describes it.
+   * A visible `label` names the scope itself, as the version heading's Restore whole version does.
+   */
+  function action(item: Confirming, name: string, describedBy?: string, label?: string) {
     const open = confirming?.key === item.key;
-    return <Button className="history-action" disabled={restoring || blocked || !connected} aria-expanded={open} aria-label={`Restore ${name}`} aria-describedby={describedBy}
-      onClick={() => { setScope(item.options[0]?.scope ?? null); setConfirming(open ? null : item); }}>Restore</Button>;
+    return <Button className="history-action" data-restore-key={item.key} disabled={restoring || blocked || !connected} aria-expanded={open}
+      aria-label={label ? undefined : `Restore ${name}`} aria-describedby={describedBy}
+      onClick={() => { if (open) { cancelConfirm(); return; } setScope(item.options[0]?.scope ?? null); setConfirming(item); }}>{label ?? 'Restore'}</Button>;
   }
 
   function versionRow(version: HistoryVersionSummary, nested = false) {
     return <li key={version.id}>
-      <Button static className="history-version" onClick={() => setSelected(version.id)}>
+      <Button static className="history-version" data-version={version.id} onClick={() => setSelected(version.id)}>
         <span className="history-version-title"><Summary parts={describeVersions([version])} /></span>
         <span className="history-version-meta">
           <time dateTime={version.at} title={formatFull(version.at)}>{formatTime(version.at)}</time>
@@ -239,7 +280,7 @@ export function HistoryPanel({ documentId, target, generation, connected, pageLa
     const [newest] = run.versions, oldest = run.versions.at(-1)!;
     const toggle = () => setExpanded(current => { const next = new Set(current); if (open) next.delete(run.key); else next.add(run.key); return next; });
     return <li key={run.key} className="history-run">
-      <Button static className="history-version history-run-toggle" aria-expanded={open} aria-controls={`history-run-${run.key}`} onClick={toggle}>
+      <Button static className="history-version history-run-toggle" data-versions={run.versions.map(version => version.id).join(' ')} aria-expanded={open} aria-controls={`history-run-${run.key}`} onClick={toggle}>
         <span className="history-version-title"><Summary parts={describeVersions(run.versions)} /></span>
         <span className="history-version-meta">
           <time dateTime={oldest.at} title={`${formatFull(oldest.at)} to ${formatFull(newest.at)}`}>{formatTimeRange(oldest.at, newest.at)}</time>
@@ -255,17 +296,29 @@ export function HistoryPanel({ documentId, target, generation, connected, pageLa
   const title = blockId ? block ? `${block.kindLabel} history` : 'History' : selectedVersion ? formatWhen(selectedVersion.at) : 'History';
   const differing = comparison?.blocks.filter(item => item.status !== 'contents').length ?? 0;
   const otherFiles = comparison?.files.filter(file => !codeFile.test(file.path)) ?? [];
+  // Restoring everything is the version's own action, so it sits in its heading, apart from the per-item restores.
+  const everything = !blockId && selected && comparison && !comparison.identical ? wholeVersion(comparison, whole, otherFiles.length > 0) : null;
+  const restorable = (change: HistoryBlockChange) => changeOptions(change).length > 0;
+  const changeItem = (change: HistoryBlockChange) => <ChangeItem key={`${change.file}:${change.id}`} change={change} pageLabel={pageLabel} onJump={onJump} onFocusChange={setFocused}
+    item={{ key: `change:${change.file}:${change.id}`, versionId: comparison!.version.id, blockId: change.id, base: comparison!.base, options: changeOptions(change) }}
+    action={action} confirmRow={confirmRow} />;
+  const groupRow = (row: VersionRow) => row.type === 'item' ? changeItem(row.change)
+    : <GroupLabel key={`${row.change.file}:${row.change.id}`} change={row.change} restore={row.restorable ? {
+      key: `change:${row.change.file}:${row.change.id}`, versionId: comparison!.version.id, blockId: row.change.id, base: comparison!.base,
+      options: changeOptions(row.change).filter(option => option.scope === 'section') } : undefined} action={action} confirmRow={confirmRow} />;
 
-  return <section className="history-panel" id="reader-history" aria-labelledby="history-heading" aria-busy={loading || restoring}>
+  return <section ref={root} className="history-panel" id="reader-history" aria-labelledby="history-heading" aria-busy={loading || restoring}>
     {highlight && <style>{highlight}</style>}
     {/* The side panel's tab already names the list, so its heading is only read aloud there. */}
     <div className={`history-heading${selected || blockId ? '' : ' sr-only'}`}>
-      {(selected || blockId) && <IconButton label={blockId ? 'Show document history' : 'All versions'} className="history-back" onClick={() => { if (blockId) onShowDocument(); else setSelected(null); }}><Icon name="left" size={15} /></IconButton>}
+      {(selected || blockId) && <IconButton label={blockId ? 'Show document history' : 'All versions'} className="history-back" onClick={showList}><Icon name="left" size={15} /></IconButton>}
       <div className="history-title">
         <h2 id="history-heading" ref={heading} tabIndex={-1} title={selectedVersion && !blockId ? formatFull(selectedVersion.at) : undefined}>{title}</h2>
         {selectedVersion && !blockId && <p><Origin version={selectedVersion} /><span className="history-title-summary"><Summary parts={describeVersions([selectedVersion])} /></span></p>}
         {blockId && block && <p><span>{block.kindLabel}</span>{block.name && <span className="history-title-summary">“<bdi lang={textLang(block.name)}>{block.name}</bdi>”</span>}</p>}
+        {everything && <div className="history-heading-actions">{action(everything, 'whole version', undefined, 'Restore whole version')}</div>}
       </div>
+      {everything && confirmRow(everything)}
     </div>
     <div className="history-content">
       {blocked && <div className="history-notice" role="status">
@@ -309,21 +362,14 @@ export function HistoryPanel({ documentId, target, generation, connected, pageLa
       {!blockId && selected && comparison && <>
         {comparison.identical ? <p className="history-summary-line">This version matches the current {whole}.</p> : <>
           <p className="history-summary-line">{comparison.blocks.length ? `${differing} ${differing === 1 ? 'change' : 'changes'} from now` : 'Only layout, code, or data files differ from now'}</p>
-          {!!comparison.blocks.length && <ol className="history-changes">{comparison.blocks.map(change => <ChangeItem key={`${change.file}:${change.id}`} change={change}
-            inside={comparison.blocks.filter(item => item.parent === change.id).length} pageLabel={pageLabel} onJump={onJump} onFocusChange={setFocused}
-            item={{ key: `change:${change.file}:${change.id}`, versionId: comparison.version.id, blockId: change.id, base: comparison.base, options: changeOptions(change) }}
-            action={action} confirmRow={confirmRow} />)}</ol>}
+          {/* Changes are grouped by the section or other item they belong to; a container whose only change is inside it labels its group. */}
+          {!!comparison.blocks.length && <ol className="history-changes">{versionGroups(comparison.blocks, restorable).map(group => group.rows.length === 1 && group.rows[0].type === 'item'
+            ? changeItem(group.rows[0].change)
+            : <li key={group.key} className="history-group"><ol>{group.rows.map(groupRow)}</ol></li>)}</ol>}
           {!!otherFiles.length && <div className="history-files">
             <h3>Other files</h3>
             <ul>{otherFiles.map(file => <li key={file.path}><code>{file.path}</code> <span>{file.status === 'added' ? 'added since' : file.status === 'removed' ? 'removed since' : 'changed'}</span></li>)}</ul>
           </div>}
-          <div className="history-whole">
-            <div className="history-whole-row">
-              <div><h3 id="history-whole-heading">Whole version</h3><p>{otherFiles.length ? 'Brings back these files too.' : 'Every change above at once.'} Media files are not changed.</p></div>
-              {action(wholeVersion(comparison, whole), 'whole version', 'history-whole-heading')}
-            </div>
-            {confirmRow(wholeVersion(comparison, whole))}
-          </div>
         </>}
       </>}
     </div>
@@ -336,9 +382,24 @@ function BlockIdDetails({ id }: { id: string }) {
   return <div className="history-block-details">{details.toggle}{details.panel}</div>;
 }
 
-/** One changed item of a version: its name, earlier and current wording, and one Restore. */
-function ChangeItem({ change, inside, pageLabel, item, onJump, onFocusChange, action, confirmRow }: {
-  change: HistoryBlockChange; inside: number; pageLabel: string; item: Confirming;
+/** A container whose only change is inside it: the label of its group, with a restore only when an item inside needs it. */
+function GroupLabel({ change, restore, action, confirmRow }: {
+  change: HistoryBlockChange; restore?: Confirming;
+  action: (item: Confirming, name: string, describedBy?: string) => ReactNode; confirmRow: (item: Confirming) => ReactNode;
+}) {
+  const heading = `history-group-${useId()}`;
+  return <li className="history-group-label">
+    <div className="history-group-row">
+      <h3 id={heading}>{change.name ? <><bdi>“<bdi lang={textLang(change.name)}>{change.name}</bdi>”</bdi><span>{change.kindLabel}</span></> : change.kindLabel}</h3>
+      {restore && action(restore, `this ${change.kindLabel.toLowerCase()} with its contents`, heading)}
+    </div>
+    {restore && confirmRow(restore)}
+  </li>;
+}
+
+/** One changed item of a version: its name, which shows it on the page, earlier and current wording, and one Restore. */
+function ChangeItem({ change, pageLabel, item, onJump, onFocusChange, action, confirmRow }: {
+  change: HistoryBlockChange; pageLabel: string; item: Confirming;
   onJump: (ids: string[]) => void; onFocusChange: (update: (current: HistoryBlockChange | null) => HistoryBlockChange | null) => void;
   action: (item: Confirming, name: string, describedBy?: string) => ReactNode; confirmRow: (item: Confirming) => ReactNode;
 }) {
@@ -347,19 +408,21 @@ function ChangeItem({ change, inside, pageLabel, item, onJump, onFocusChange, ac
   const kind = change.kindLabel.toLowerCase();
   const reason = !item.options.length ? change.block.reason ?? change.section.reason : undefined;
   const leave = () => onFocusChange(current => current === change ? null : current);
+  const name = change.name ? <>“<bdi lang={textLang(change.name)}>{change.name}</bdi>”</> : change.kindLabel;
   return <li className={`history-change status-${change.status}`}
     onPointerEnter={() => onFocusChange(() => change)} onPointerLeave={leave}
     onFocus={() => onFocusChange(() => change)} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) leave(); }}>
     <div className="history-change-heading" id={heading}>
-      <span className="history-change-name">{change.name ? <>“<bdi lang={textLang(change.name)}>{change.name}</bdi>”</> : change.kindLabel}</span>
+      {/* The name is the way to the item on the page; a removed item has no place there. */}
+      {change.status === 'removed' ? <span className="history-change-name">{name}</span>
+        : <HintButton className="text-button history-change-name" hint={`Show on ${pageLabel.toLowerCase()}`} onClick={() => onJump([change.id, ...change.descendants])}>{name}</HintButton>}
       <span className="history-change-meta">{change.name ? `${change.kindLabel} · ` : ''}{historyChangeLabels[change.status]}</span>
     </div>
-    {/* A container's own text is what its Then and Now rows show; the changes inside it are listed separately. */}
-    {change.status === 'contents' ? <p className="history-note">{inside ? `${inside} ${inside === 1 ? 'change' : 'changes'} inside it, listed separately.` : 'Its contents changed.'}</p>
+    {/* A container's own text is what its Then and Now rows show; the changes inside it are listed below it. */}
+    {change.status === 'contents' ? <p className="history-note">Its contents changed.</p>
       : change.status !== 'moved' && change.status !== 'ambiguous' && <WordingDiff before={change.before} after={change.after} />}
     {reason && <p className="history-note">{reason}</p>}
     <div className="history-entry-actions">
-      {change.status !== 'removed' && <Button className="text-button" onClick={() => onJump([change.id, ...change.descendants])}>Show on {pageLabel.toLowerCase()}</Button>}
       {details.toggle}
       {item.options.length > 0 && action(item, `this ${kind}`, heading)}
     </div>

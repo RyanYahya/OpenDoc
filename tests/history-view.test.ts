@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { blockName, describeVersions, groupVersions, readableKind, summaryText, type HistoryBlockChange, type HistoryOrigin, type HistoryVersionSummary } from '../src/shared/history';
-import { blockSelectors, historyHighlightCss, outlinedChanges } from '../src/app/historyView';
+import { blockSelectors, historyHighlightCss, outlinedChanges, versionGroups } from '../src/app/historyView';
 import { formatDay, formatTimeRange, formatWhen } from '../src/shared/dates';
 
 // Intl output uses narrow no-break spaces in some locales; compare words, not space characters.
@@ -92,6 +92,32 @@ test('page outlines use the outermost changed block and never stack', () => {
   assert.match(css.split('\n')[0], /"plan"/);
   assert.doesNotMatch(css.split('\n')[0], /"note"/, 'The block in focus gets only the stronger outline.');
   assert.equal(historyHighlightCss([], []), '');
+});
+
+test('a version lists each change once, grouped by the item it belongs to', () => {
+  const inside = (item: HistoryBlockChange, parent: string) => ({ ...item, parent });
+  const changes = [
+    // A callout and a section whose only change is inside them, a section whose own heading changed too, and a lone title.
+    change('feature', 'contents', ['feature-try']), inside(change('feature-try', 'changed'), 'feature'),
+    change('opening', 'changed'),
+    change('summary', 'contents', ['summary-move', 'summary-reason']), inside(change('summary-move', 'changed'), 'summary'), inside(change('summary-reason', 'changed'), 'summary'),
+    change('timeline', 'changed', ['timeline-prep']), inside(change('timeline-prep', 'changed'), 'timeline'),
+    // Contents changed, but nothing inside it has a literal ID of its own to list.
+    change('budget', 'contents', ['budget-row']),
+  ];
+  const groups = versionGroups(changes, () => true);
+  assert.deepEqual(groups.map(group => group.rows.map(row => `${row.type}:${row.change.id}`)), [
+    ['label:feature', 'item:feature-try'], ['item:opening'], ['label:summary', 'item:summary-move', 'item:summary-reason'],
+    ['item:timeline', 'item:timeline-prep'], ['item:budget'],
+  ], 'Containers that only changed inside label their group; a container with its own change leads it as an item.');
+  const actions = groups.flatMap(group => group.rows).filter(row => row.type === 'item').length;
+  assert.equal(actions, 7, 'Labels add no rows of actions; only changes do.');
+  assert.ok(groups.flatMap(group => group.rows).every(row => row.type === 'item' || !row.restorable), 'Labels need no restore while each change inside restores on its own.');
+  const stuck = versionGroups(changes, item => item.id !== 'summary-reason');
+  const summary = stuck.flatMap(group => group.rows).find(row => row.change.id === 'summary');
+  assert.ok(summary?.type === 'label' && summary.restorable, 'A change that cannot be restored alone keeps its section restorable from the label.');
+  const unsafe = versionGroups([{ ...changes[3], section: { ok: false, reason: 'Generated' } }, changes[4], changes[5]], () => false);
+  assert.ok(unsafe[0].rows[0].type === 'label' && !unsafe[0].rows[0].restorable, 'A section that cannot be restored offers nothing.');
 });
 
 test('one date vocabulary: time today, yesterday, then a short date', () => {
