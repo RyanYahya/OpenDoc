@@ -55,7 +55,7 @@ function route() {
   const query = params.toString() ? `?${params}` : "";
   if (hash === "presentations") return { view: "presentations", id: "", query };
   if (hash === "themes" || hash.startsWith("themes/")) return { view: "themes", id: hash.slice(7), query };
-  if (hash === "templates" || hash.startsWith("templates/")) return { view: "templates", id: hash.slice(10), templateFormat: params.get('format') === 'presentation' ? 'presentation' as const : 'document' as const, query };
+  if (hash === "templates" || hash.startsWith("templates/")) return { view: "templates", id: hash.slice(10), templateFormat: params.get('format') === 'presentation' || params.get('format') === 'document' ? params.get('format') as DocumentFormat : 'all' as const, query };
   if (hash === "assets" || hash.startsWith("assets/")) return { view: "assets", id: hash.slice(7) || "media", query };
   if (hash === "media" || hash.startsWith("media/")) return { view: "assets", id: `media${hash.length > 5 ? `/${hash.slice(6)}` : ""}`, query };
   if (hash.startsWith("project/")) return { view: "project", id: hash.slice(8), query };

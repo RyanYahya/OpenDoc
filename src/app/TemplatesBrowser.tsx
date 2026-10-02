@@ -55,14 +55,14 @@ function TemplatePreview({ item, allPages = false, onReady }: { item: TemplateIt
 }
 
 const customPrompt = '$opendoc-create-template';
-/** The gallery filters last shown, so a template page returns to the same view. */
-let galleryHash = '#templates';
+/** The gallery filters last shown, so a template page returns to the same view; unset until the gallery is seen. */
+let galleryHash: string | undefined;
 const sortOptions: SortOption[] = [{ value: 'title', label: 'Name A–Z' }, { value: 'updated', label: 'Last edited' }, { value: 'type', label: 'By type' }];
 /** Types in vocabulary order; templates without one follow. */
 const typeRank = (type?: string) => { const index = standardTypes.findIndex(item => item.id === type); return index < 0 ? standardTypes.length : index; };
 
-export function TemplatesBrowser({ selection, generation, format = 'document', connected = true, tags, onEditTags, onCreate }: {
-  selection: string; generation: number; format?: DocumentFormat; connected?: boolean;
+export function TemplatesBrowser({ selection, generation, format = 'all', connected = true, tags, onEditTags, onCreate }: {
+  selection: string; generation: number; format?: 'all' | DocumentFormat; connected?: boolean;
   /** Opens the shared creation handoff with this template chosen. */
   onCreate?: (preset: CreatePreset) => void;
   /** Optional workspace tags, filtered here and edited through the shared Details editor. */
@@ -95,9 +95,9 @@ export function TemplatesBrowser({ selection, generation, format = 'document', c
   const item = items.find(item => item.id === selection);
   const presentation = item?.descriptor.documentFormat === 'presentation';
   const artifact = item && proof?.revision === item.revision ? proof.preview.artifact : undefined;
-  // The gallery shows one format at a time; search, filters, and sort apply within it.
+  // The gallery shows every template or one format; search, filters, and sort apply within it.
   const ofFormat = (category: DocumentFormat) => items.filter(item => (item.descriptor.documentFormat ?? 'document') === category);
-  const inFormat = ofFormat(format);
+  const inFormat = format === 'all' ? items : ofFormat(format);
   const narrowed = Boolean(query) || filtering(filters);
   const name = (item: TemplateItem) => item.descriptor.name;
   const byType = (a: TemplateItem, b: TemplateItem) => typeRank(itemType(tagManifest, 'templates', a.id)) - typeRank(itemType(tagManifest, 'templates', b.id));
@@ -105,12 +105,24 @@ export function TemplatesBrowser({ selection, generation, format = 'document', c
   const visible = sortItems(inFormat.filter(item => matchesFilters(tagManifest, 'templates', item, filters)
     && matchesSearch(`${name(item)} ${item.descriptor.description} ${item.descriptor.format} ${detailsText(tagManifest, 'templates', item.id)}`, query)),
   ...(sort === 'updated' ? [newest] : sort === 'type' ? [byType] : []), (a, b) => compareText(name(a), name(b)));
-  const noun = format === 'presentation' ? 'presentation' : 'document';
+  const noun = format === 'all' ? '' : `${format} `;
   // The hash can change a render before the selection does, so read the gallery's own address.
   const hashQuery = params.toString();
   useEffect(() => { if (!selection && splitHash(location.hash).path === 'templates') galleryHash = location.hash; }, [selection, hashQuery]);
   // Opened directly, a template page returns to the gallery of its own format.
-  const backHash = galleryHash !== '#templates' ? galleryHash : presentation ? '#templates?format=presentation' : '#templates';
+  const backHash = galleryHash ?? `#templates?format=${presentation ? 'presentation' : 'document'}`;
+  // Every template at once keeps each format's cards together, since their pages have different shapes.
+  const groups = format === 'all'
+    ? (['document', 'presentation'] as const).map(category => ({ format: category, items: visible.filter(item => (item.descriptor.documentFormat ?? 'document') === category) })).filter(group => group.items.length)
+    : [{ format, items: visible }];
+  const card = (item: TemplateItem, Title: 'h2' | 'h3') => <article className="template-card" key={item.id}>
+    <a href={`#templates/${item.id}`} className="template-card-link" aria-labelledby={`template-title-${item.id}`}>
+      <div className="template-card-mat" aria-hidden="true"><TemplatePreview item={item} /></div>
+      <Title id={`template-title-${item.id}`}><bdi lang={textLang(item.descriptor.name, item.language)}>{item.descriptor.name}</bdi><Icon name="arrow" size={17} /></Title>
+    </a>
+    <p className="template-format">{tagging && itemType(tagManifest, 'templates', item.id) && <span className="card-type">{typeLabel(itemType(tagManifest, 'templates', item.id)!)} · </span>}{item.descriptor.format}</p>
+    {item.error && <p className="comment-error" role="alert">Preview needs attention. Open the template for details.</p>}
+  </article>;
   async function copy() {
     try { await navigator.clipboard.writeText(customPrompt); setCopied(true); setCopyError(''); }
     catch { setCopyError('Copying isn’t available here. Select the skill name and copy it manually.'); promptField.current?.focus(); promptField.current?.select(); }
@@ -166,24 +178,23 @@ export function TemplatesBrowser({ selection, generation, format = 'document', c
         </Dialog.Root>
       </div>
       <FilterBar search={{ label: 'Search templates', value: query, onChange: value => update({ q: value }, { replace: true }) }}
-        primary={<FilterChoices label="Template format" value={format} onChange={value => update({ format: value === 'presentation' ? value : null })} choices={[
+        primary={<FilterChoices label="Template format" value={format} onChange={value => update({ format: value === 'all' ? null : value })} choices={[
+          { value: 'all', label: 'All', count: items.length },
           { value: 'document', label: 'Documents', count: ofFormat('document').length }, { value: 'presentation', label: 'Presentations', count: ofFormat('presentation').length },
         ]} />}
         facets={itemFacets(tagManifest, 'templates', inFormat, filters).filter(facet => tagging || facet.key === 'language')}
         onFacetChange={(key, value) => update({ [key]: value })} onClearFacets={() => update(Object.fromEntries(itemFilterKeys.map(key => [key, null])))}
         sort={{ value: sort, options: sortOptions, onChange: setSort }} />
       <div className="library-count"><span role="status">{loaded ? `${visible.length} ${visible.length === 1 ? 'template' : 'templates'}${narrowed ? ' matching the filters' : ''}` : 'Preparing templates…'}</span><span>Previews use the Neutral theme</span></div>
-      <div className={`template-grid${format === 'presentation' ? ' template-grid-presentations' : ''}`}>{visible.map(item => <article className="template-card" key={item.id}>
-        <a href={`#templates/${item.id}`} className="template-card-link" aria-labelledby={`template-title-${item.id}`}>
-          <div className="template-card-mat" aria-hidden="true"><TemplatePreview item={item} /></div>
-          <h2 id={`template-title-${item.id}`}><bdi lang={textLang(item.descriptor.name, item.language)}>{item.descriptor.name}</bdi><Icon name="arrow" size={17} /></h2>
-        </a>
-        <p className="template-format">{tagging && itemType(tagManifest, 'templates', item.id) && <span className="card-type">{typeLabel(itemType(tagManifest, 'templates', item.id)!)} · </span>}{item.descriptor.format}</p>
-        {item.error && <p className="comment-error" role="alert">Preview needs attention. Open the template for details.</p>}
-      </article>)}</div>
+      {groups.map(group => format === 'all'
+        ? <section key={group.format} className="template-group" aria-labelledby={`template-group-${group.format}`}>
+          <h2 id={`template-group-${group.format}`} className="template-group-heading">{group.format === 'presentation' ? 'Presentation templates' : 'Document templates'}</h2>
+          <div className={`template-grid${group.format === 'presentation' ? ' template-grid-presentations' : ''}`}>{group.items.map(item => card(item, 'h3'))}</div>
+        </section>
+        : <div key={group.format} className={`template-grid${group.format === 'presentation' ? ' template-grid-presentations' : ''}`}>{group.items.map(item => card(item, 'h2'))}</div>)}
       {loaded && !visible.length && !loadError && (narrowed
-        ? <div className="empty-state"><h2>No matching {noun} templates</h2><p>Try another search or filter, or show every template.</p><Button onClick={() => update(Object.fromEntries(['q', ...itemFilterKeys].map(key => [key, null])))}>Clear filters</Button></div>
-        : <div className="empty-state"><h2>No {noun} templates yet</h2><p>Choose Create template to find the skill to use in your coding agent.</p></div>)}
+        ? <div className="empty-state"><h2>No matching {noun}templates</h2><p>Try another search or filter, or show every template.</p><Button onClick={() => update(Object.fromEntries(['q', ...itemFilterKeys].map(key => [key, null])))}>Clear filters</Button></div>
+        : <div className="empty-state"><h2>No {noun}templates yet</h2><p>Choose Create template to find the skill to use in your coding agent.</p></div>)}
     </>}
     {loadError && <div className="error-banner" role="alert"><span>{loadError}</span><Button onClick={() => setAttempt(value => value + 1)}>Try again</Button></div>}
   </section>;
