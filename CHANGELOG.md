@@ -36,7 +36,7 @@
 
 ### Creating with your agent
 
-- **Create with your agent** replaces the copy-prompt dialog. It shows three steps, keeps the prompt visible beside the brief, and lets you change the format, project, theme (defaulting to the project's default for that format, listed with folders), and template (filtered by format, with its type) before copying. Ctrl+Enter copies. Project pages, **Use this template**, and **Create with this theme** fill in their choice. After copying, a **Waiting for your agent** card on the project and library pages turns to **Ready** when the new work appears; it is kept in browser storage only.
+- **Create with your agent** replaces the copy-prompt dialog. It shows three steps, keeps the prompt visible beside the brief, and lets you change the format, project, theme (defaulting to the project's default for that format, listed with folders), and template (filtered by format, with its type) before copying. Ctrl+Enter copies, and Alt+N (Option+N on a Mac) opens it from the Documents, Presentations, and project pages. Project pages, **Use this template**, and **Create with this theme** fill in their choice. After copying, a **Waiting for your agent** card on the project and library pages turns to **Ready** when the new work appears; it is kept in browser storage only.
 
 ### PowerPoint export
 

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import type { HandoffFilters } from './pendingHandoffs';
 import { Menu } from '@base-ui/react/menu';
 import type { Project } from '../shared/projects';
@@ -6,7 +6,8 @@ import { documentName, documentFormat, type DocumentFormat, type DocumentSummary
 import { DocumentCard } from './DocumentCard';
 import type { DocumentActionHandler } from './DocumentActions';
 import type { DocumentView } from './DocumentViewControl';
-import { Button, IconButton } from './ui';
+import { Button, HintButton, IconButton } from './ui';
+import { createShortcutKeys, createShortcutLabel, isCreateShortcut } from './createShortcut';
 import { Icon } from './ui/Icon';
 import type { TagState } from './Tags';
 import { FilterBar, FilterChoices, useHashQuery, useSortPreference } from './FilterBar';
@@ -23,6 +24,24 @@ function searchText(document: DocumentSummary, tags: TagsManifest, extra = '') {
 }
 
 type ViewProps = { view: DocumentView; onViewChange: (view: DocumentView) => void };
+
+const shortcutHint = `Shortcut: ${createShortcutLabel(typeof navigator !== 'undefined' && navigator.platform.includes('Mac'))}`;
+
+/** Alt+N (Option+N on a Mac) does what the page's Create button does, unless something else has the keyboard. */
+function useCreateShortcut(onCreate: () => void, enabled: boolean) {
+  const create = useRef(onCreate);
+  create.current = onCreate;
+  useEffect(() => {
+    if (!enabled) return;
+    const listener = (event: KeyboardEvent) => {
+      if (!isCreateShortcut(event, event.target as Element | null)) return;
+      event.preventDefault();
+      create.current();
+    };
+    document.addEventListener('keydown', listener);
+    return () => document.removeEventListener('keydown', listener);
+  }, [enabled]);
+}
 
 const lastEdited: SortOption = { value: 'updated', label: 'Last edited' };
 const byTitle: SortOption = { value: 'title', label: 'Title A–Z' };
@@ -69,8 +88,9 @@ export function DocumentsBrowser({ format = 'document', projects, documents, tag
   const hasFilters = Boolean(query) || filtering(filters);
   const visible = sortDocuments(documents.filter(document => matchesFilters(manifest, 'documents', document, filters)
     && matchesSearch(searchText(document, manifest, projectName(document)), query)), sort, manifest, projectName);
+  useCreateShortcut(onCreate, loaded && !disabled);
   return <section className="library-content documents-content">
-    <div className="library-heading"><h1>{plural}</h1><Button className="primary" aria-label={`Create ${format}`} onClick={onCreate} disabled={!loaded || disabled}><Icon name="plus" size={17} /><span>Create {format}</span></Button></div>
+    <div className="library-heading"><h1>{plural}</h1><HintButton className="primary" aria-label={`Create ${format}`} aria-keyshortcuts={createShortcutKeys} hint={shortcutHint} onClick={onCreate} disabled={!loaded || disabled}><Icon name="plus" size={17} /><span>Create {format}</span></HintButton></div>
     <FilterBar search={{ label: `Search ${format}s`, value: query, onChange: setQuery }}
       facets={itemFacets(manifest, 'documents', documents, filters)} onFacetChange={setFacet} onClearFacets={clearFacets}
       sort={{ value: sort, options: sortOptions, onChange: setSort }} view={{ value: view, onChange: onViewChange }} />
@@ -106,9 +126,11 @@ export function ProjectDocuments({ project, documents, tags, loaded, view, onVie
   // Formats are worth a choice only when the project holds both, or one is already chosen.
   const formats = format !== 'all' || (formatCount('document') > 0 && formatCount('presentation') > 0);
   return <section className="library-content project-documents">
+  // The shortcut opens Create with the format the page shows, as its menu's first choice does.
+  useCreateShortcut(format === 'presentation' ? onCreatePresentation : onCreate, loaded && !disabled);
     <div className="library-heading"><h1 dir="auto" lang={textLang(project.name)}>{project.name}</h1><div className="project-actions">
       <IconButton label="Project settings" onClick={onSettings}><Icon name="gear" size={18} /></IconButton>
-      <Menu.Root><Menu.Trigger render={<Button className="primary project-create-trigger" disabled={!loaded || disabled} />}>
+      <Menu.Root><Menu.Trigger render={<HintButton className="primary project-create-trigger" hint={shortcutHint} disabled={!loaded || disabled} />}>
         <Icon name="plus" size={16} /><span>Create</span><Icon name="down" size={14} />
       </Menu.Trigger><Menu.Portal><Menu.Positioner className="ui-positioner" sideOffset={6} align="end"><Menu.Popup className="ui-menu-popup">
         <Menu.Item className="ui-menu-item" onClick={onCreate}><Icon name="document" size={16} />Document</Menu.Item>
