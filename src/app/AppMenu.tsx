@@ -21,7 +21,7 @@ export function AppMenu({ appearance, onAppearanceChange }: { appearance: Appear
       // Open the reference once the menu has closed and returned focus to its button.
       if (!open && showSkills.current) { showSkills.current = false; setSkills(true); }
     }}>
-      <Menu.Trigger ref={trigger} render={<IconButton label="Skills and appearance" className="reader-app-menu" />}><Icon name="gear" size={18} /></Menu.Trigger>
+      <Menu.Trigger ref={trigger} render={<IconButton label="Skills and appearance" className="reader-app-menu" />}><Icon name="book" size={18} /></Menu.Trigger>
       <Menu.Portal><Menu.Positioner className="ui-positioner" align="end" sideOffset={8}>
         <Menu.Popup className="ui-menu-popup">
           <Menu.Item className="ui-menu-item" onClick={() => { showSkills.current = true; }}><Icon name="book" size={16} /><span>Agent skills</span></Menu.Item>

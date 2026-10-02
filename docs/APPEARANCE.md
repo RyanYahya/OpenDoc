@@ -1,6 +1,6 @@
 # App appearance
 
-OpenDoc supports **Light**, **Dark**, and **System** through the sidebar footer and the **Appearance** submenu of the reader's **Skills and appearance** menu (the gear in its toolbar). Appearance is an app setting, so it stays out of the document's options menu. System is the default. The browser saves an explicit choice under `opendoc-appearance`, synchronizes it between workspace tabs, and applies it before the first paint. If storage is unavailable, the current session still works. System follows live device appearance changes.
+OpenDoc supports **Light**, **Dark**, and **System** through the sidebar footer and the **Appearance** submenu of the reader's **Skills and appearance** menu (the book in its toolbar, as for the sidebar's Skills). Appearance is an app setting, so it stays out of the document's options menu. System is the default. The browser saves an explicit choice under `opendoc-appearance`, synchronizes it between workspace tabs, and applies it before the first paint. If storage is unavailable, the current session still works. System follows live device appearance changes.
 
 ## Source of truth
 
