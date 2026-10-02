@@ -9,7 +9,7 @@ import { Icon } from './ui/Icon';
 
 const noDefaultTheme = '__no_default__';
 const formats: { format: DocumentFormat; label: string; key: 'defaultDocumentTheme' | 'defaultPresentationTheme' }[] = [
-  { format: 'document', label: 'Default theme for documents (PDF)', key: 'defaultDocumentTheme' },
+  { format: 'document', label: 'Default theme for documents', key: 'defaultDocumentTheme' },
   { format: 'presentation', label: 'Default theme for presentations', key: 'defaultPresentationTheme' },
 ];
 const noDefaults: ProjectThemeDefaults = { document: null, presentation: null };

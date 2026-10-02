@@ -69,7 +69,7 @@ Updates preserve the chosen edition: normal OpenDoc updates from `@ryanyahya/ope
 
 Both editions use the same [agent guide](../AGENTS.md) and skills. In Headless, the agent works from explicit task context and catalog IDs and delivers files remotely; it does not require an active browser selection. The following browser interactions apply to normal OpenDoc.
 
-The book icon in the sidebar and PDF reader opens a quick index of the ten `opendoc-` skills. Hover, focus, or tap it to see each skill's name and purpose. The root [AGENTS.md](../AGENTS.md) routes ordinary requests to the matching workflow; naming a skill is optional. The app does not run the agent itself.
+**Skills** in the sidebar footer, and **Agent skills** in the reader's **Help and appearance** menu, open a quick index of the ten `opendoc-` skills with each skill's name and purpose. The root [AGENTS.md](../AGENTS.md) routes ordinary requests to the matching workflow; naming a skill is optional. The app does not run the agent itself.
 
 Open your workspace folder in your coding agent and ask:
 
@@ -124,7 +124,7 @@ Each successful result supplies a PDF, page PNGs, extracted text, render issues,
 
 In normal OpenDoc, the reader shows the real PDF, including navigation, links, and current render warnings. An invalid revision keeps the last successful preview visible and blocks export until corrected. Review the current ready PDF, including every page, source notes, and representative copied text. The [opendoc-review-document skill](../.agents/skills/opendoc-review-document/SKILL.md) supplies the final pass.
 
-In the browser, **Export → Save PDF** saves the reviewed bytes in `output/`, preserving existing files with numbered names. Save pending text corrections and review the updated PDF first. The result can reveal the file, download a copy, or open the PDF to print. For presentations, choose **PowerPoint (.pptx)** to save editable text and shapes with embedded fonts. Images and existing chart artwork remain images. On macOS it can also copy the exported file to the system clipboard. **Previous exports**, in the Export dropdown and in a card's **…** menu, lists saved files with open, reveal, and delete-with-Undo actions. If a save response is interrupted, **Check export** recovers the same request.
+In the browser, **Export → Save PDF** saves the reviewed bytes in `output/`, preserving existing files with numbered names. Save pending text corrections and review the updated PDF first. The result can reveal the file, download a copy, or open the PDF to print. For presentations, choose **PowerPoint (.pptx)** to save editable text and shapes with embedded fonts. Images and existing chart artwork remain images. On macOS it can also copy the exported file to the system clipboard. **Previous exports**, in the Export dropdown and in a card's **…** menu, lists saved files by their actual filenames, with open, reveal, and delete-with-Undo actions; files from `npx opendoc export`, which are named by the document's ID, are marked **Saved from the command line**. If a save response is interrupted, **Check export** recovers the same request.
 
 Command-line export supports single documents and batches:
 

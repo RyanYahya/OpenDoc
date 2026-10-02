@@ -48,11 +48,12 @@ export function DocumentCard({
         <CoverPreview format={documentFormat(document)} id={id} artifact={artifact} compact={view === 'list'} />
         {view === 'gallery' && <span id={statusId} className="card-preview-status">{statusLabel}</span>}
       </div>
-      <h2 id={titleId} title={name} dir="auto" lang={textLang(name, document.language)}>
+      {/* The heading stays start-aligned with the grid; only the title's own words take their direction. */}
+      <h2 id={titleId} title={name}>
         <a className="document-card-link" href={`#document/${id}`}
           aria-labelledby={`${titleId} ${formatId}`}
           aria-describedby={[statusId, type && typeId, workStatus && badgeId].filter(Boolean).join(' ')}
-        >{name}</a>
+        ><bdi dir="auto" lang={textLang(name, document.language)}>{name}</bdi></a>
       </h2>
       {/* Same-titled documents and presentations stay distinguishable by sight and by name. */}
       <span className="card-meta"><span id={formatId} className="card-format"><Icon name={presentation ? 'monitor' : 'document'} size={14} />{formatLabel(format)}</span>{type && <span id={typeId} className="card-type">{typeLabel(type)}</span>}{view === 'list' && <span id={statusId}>{statusLabel}</span>}<StatusBadge status={workStatus} id={badgeId} /></span>

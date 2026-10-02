@@ -34,6 +34,8 @@
 .documents-list .card-paper { grid-area: preview; width: 28px; height: 36px; padding: 2px; align-items: center; border-radius: 4px; background: transparent; }
 .documents-list .cover-preview { max-width: 24px; }
 .documents-list .document-card h2 { grid-area: title; margin: 0; font-size: var(--title-size); line-height: var(--title-leading); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-wrap: nowrap; }
+/* The title's own box truncates at its end, so a right-to-left title keeps its opening words and stays start-aligned. */
+.documents-list .document-card h2 bdi { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: top; }
 .documents-list .card-meta { grid-area: meta; margin: 0; font-size: var(--caption-size); }
 .documents-list .document-project-link, .documents-list .document-move { margin: 0; justify-self: end; font-size: var(--caption-size); }
 @media (max-width: 1050px) {
@@ -57,14 +59,15 @@
 }
 
 .document-card-wrap { position: relative; min-width: 0; }
-.ui-button.document-menu-trigger { position: absolute; top: 8px; right: 8px; min-width: 28px; min-height: 28px; padding: 6px; border: 0; border-radius: 6px; background: var(--surface); color: var(--muted); box-shadow: none; }
+.ui-button.document-menu-trigger { position: absolute; top: 8px; right: 8px; min-width: var(--control-hit-size); min-height: var(--control-hit-size); padding: 6px; border: 0; border-radius: 6px; background: var(--surface); color: var(--muted); box-shadow: none; }
 .ui-button.document-menu-trigger:hover, .ui-button.document-menu-trigger[data-popup-open] { color: var(--ink); background: var(--control-hover); }
 .document-menu-positioner { z-index: 60; }
 .documents-list .document-card-wrap { padding-right: 44px; }
 .documents-list .document-menu-trigger { top: 50%; right: 0; transform: translateY(-50%); border-color: transparent; background: transparent; box-shadow: none; }
+/* Mouse users see the menu quietly at rest, fully on hover or focus; touch screens always show it at full strength. */
 @media (hover: hover) and (pointer: fine) {
-  .document-card-wrap .document-menu-trigger { opacity: 0; pointer-events: none; transition: opacity 120ms ease; }
-  .document-card-wrap:is(:hover, :focus-within, :has([data-popup-open])) .document-menu-trigger { opacity: 1; pointer-events: auto; }
+  .document-card-wrap .document-menu-trigger { opacity: 0.6; transition: opacity 120ms ease; }
+  .document-card-wrap:is(:hover, :focus-within, :has([data-popup-open])) .document-menu-trigger { opacity: 1; }
 }
 .project-documents .documents-list .project-document { grid-template-columns: minmax(0, 1fr); }
 .notification-action { margin-top: 6px; }

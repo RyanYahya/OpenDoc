@@ -70,7 +70,8 @@ export function ExportHistoryDialog({ document, connected, onClose }: { document
           <span className="export-history-paper" aria-hidden="true"><Icon name="document" size={24} /><span>{(entry.format ?? 'pdf').toUpperCase()}</span></span>
           <div className="export-history-details">
             {entry.available ? <a href={`/api/exports/${entry.id}/open`} target="_blank" rel="noreferrer" title={`Open ${entry.filename}`}>{entry.filename}</a> : <strong>{entry.filename}</strong>}
-            <span><time dateTime={entry.createdAt}>{date.format(new Date(entry.createdAt))}</time><span aria-hidden="true"> · </span>{fileSize(entry.bytes)}</span>
+            {/* Each row names the file as saved. Exports from `npx opendoc export` are named by the document's ID; say so, since Export suggests its title. */}
+            <span><time dateTime={entry.createdAt}>{date.format(new Date(entry.createdAt))}</time><span aria-hidden="true"> · </span>{fileSize(entry.bytes)}{!entry.hash && <><span aria-hidden="true"> · </span>Saved from the command line</>}</span>
             {!entry.available && <span className="export-history-unavailable">File moved, removed, or changed</span>}
           </div>
           <div className="export-history-actions" aria-label={`Actions for ${entry.filename}`}>

@@ -618,10 +618,12 @@ nav a.active {
   background: var(--error-surface);
   color: var(--error-ink);
 }
+/* Missing characters print as question marks in the exported file: a warning, styled like the app's other errors. */
 .render-banner.glyph-notice {
   align-items: baseline;
-  border-bottom: 1px solid var(--line);
-  color: var(--notice-ink);
+  border-bottom: 1px solid var(--error-line);
+  background: var(--error-surface);
+  color: var(--error-ink);
 }
 .glyph-notice > span {
   min-width: 0;
@@ -834,13 +836,23 @@ a {
   font-weight: 500;
 }
 .create-field > input,
-.purpose-select {
+.create-field .ui-button.ui-select {
   width: 100%;
   min-height: var(--control-hit-size);
   background: var(--surface-raised);
   border: 1px solid var(--control-line);
   border-radius: var(--control-radius);
 }
+.purpose-select { width: 100%; }
+/* A select in a form field reads as a field: boxed like the text input beside it, at the same height and type. */
+.create-field .ui-button.ui-select {
+  padding: 5px 10px;
+  font-size: var(--body-size);
+  line-height: var(--body-leading);
+  font-weight: 400;
+}
+.create-field .ui-button.ui-select:hover { background: var(--surface-raised); }
+.create-field .ui-button.ui-select[data-popup-open] { background: var(--surface-raised); border-color: var(--accent); }
 .create-field > input {
   padding: 5px 10px;
   font-size: var(--body-size);
@@ -868,12 +880,6 @@ a {
 }
 .agent-prompt-dialog .agent-prompt-context { margin-top: 12px; }
 .agent-prompt-dialog .copy-prompt { margin-top: 20px; }
-.purpose-select .ui-select {
-  width: 100%;
-  min-height: 44px;
-  padding: 9px 12px;
-  font-size: 14px;
-}
 .help-dialog .field-hint,
 .help-dialog .field-error {
   margin: 0;
