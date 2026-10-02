@@ -1,5 +1,5 @@
 import { ExportHistoryDialog } from "./ExportHistoryDialog";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 // The reader and catalog views load when first opened. Their styles stay in the
 // main stylesheet, imported here in their original order, so the cascade is unchanged.
@@ -19,7 +19,9 @@ import "./skills.css";
 import "./selection.css";
 import "./reader-toolbar.css";
 import "./edit-workbench.css";
-import { CreateDocumentDialog } from "./CreateDocumentDialog";
+import { CreateDocumentDialog, type CreatePreset } from "./CreateDocumentDialog";
+import { PendingHandoffs } from "./PendingHandoffs";
+import { dismissHandoff, ignoreDocument, pendingHandoffs, reconcileHandoffs, recordHandoff, savePendingHandoffs, subscribePendingHandoffs, visibleHandoffs } from "./pendingHandoffs";
 import { ProjectDialog, MoveDocumentDialog } from "./ProjectDialogs";
 import { ProjectDocuments, DocumentsBrowser } from "./DocumentsBrowser";
 import { Sidebar } from "./Sidebar";
@@ -77,8 +79,8 @@ function App() {
   const [tagTarget, setTagTarget] = useState<TagTarget | null>(null);
   const [error, setError] = useState("");
   const [connected, setConnected] = useState(true);
-  const [help, setHelp] = useState(false);
-  const [creationFormat, setCreationFormat] = useState<DocumentFormat>('document');
+  const [creating, setCreating] = useState(false);
+  const [createPreset, setCreatePreset] = useState<CreatePreset>({});
   const [projectDialog, setProjectDialog] = useState<{ project: Project | null } | null>(null);
   const notifications = useNotifications();
   const [exportDocument, setExportDocument] = useState<DocumentSummary | null>(null);
@@ -215,6 +217,7 @@ function App() {
     if (copying.current || !connected) return;
     copying.current = true; setDuplicating(true);
     void api<{ id: string; name: string }>(`/api/documents/${document.id}/duplicate`, { method: 'POST' }).then(async copy => {
+      ignoreDocument(copy.id);
       await refresh();
       notifications.success(`${copy.name} created`, { label: 'Open', onClick: () => go(`document/${copy.id}`) });
     }).catch(error => notifications.error(error.message)).finally(() => { copying.current = false; setDuplicating(false); });
@@ -230,7 +233,30 @@ function App() {
   // Cards, menus, and the reader read type and status from here; status changes need a connection.
   const tagContext = useMemo(() => ({ manifest: tagState.manifest, setStatus: connected && !tagState.error ? setDocumentStatus : undefined }), [tagState, connected, setDocumentStatus]);
   const createProject = () => setProjectDialog({ project: null });
-  const createDocument = (format: DocumentFormat = 'document') => { setCreationFormat(format); setHelp(true); };
+  const openCreate = (preset: CreatePreset) => { setCreatePreset(preset); setCreating(true); };
+  const createDocument = (format: DocumentFormat = 'document') => openCreate({ format, projectId: current.view === "project" ? project?.id : undefined });
+  // Copied creation prompts wait in this browser until their document appears in the workspace.
+  const handoffs = useSyncExternalStore(subscribePendingHandoffs, pendingHandoffs, () => []);
+  const handoffDocuments = useMemo(() => documents.map(document => ({ id: document.id, projectId: document.projectId, format: documentFormat(document) })), [documents]);
+  const [handoffClock, setHandoffClock] = useState(Date.now);
+  // Cards show their age and expire; the clock only runs while there is something to show.
+  useEffect(() => {
+    if (!handoffs.length) return;
+    setHandoffClock(Date.now());
+    const timer = window.setInterval(() => setHandoffClock(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, [handoffs]);
+  useEffect(() => {
+    if (!loaded) return;
+    const { handoffs: next, resolved } = reconcileHandoffs(handoffs, handoffDocuments, Date.now());
+    if (next === handoffs) return;
+    savePendingHandoffs(next);
+    for (const handoff of resolved) {
+      const arrived = documents.find(document => document.id === handoff.documentId);
+      if (arrived) notify.current.success(`Your ${documentFormat(arrived)} is ready in ${handoff.projectName ?? (documentFormat(arrived) === 'presentation' ? 'Presentations' : 'Documents')}`, { label: 'Open', onClick: () => { dismissHandoff(handoff.id); go(`document/${arrived.id}`); } });
+    }
+  }, [handoffs, handoffDocuments, documents, loaded, handoffClock]);
+  const pendingFor = (scope: { projectId: string } | { format: DocumentFormat }) => <PendingHandoffs handoffs={visibleHandoffs(handoffs, handoffDocuments, scope)} documents={documents} now={handoffClock} showProject={!('projectId' in scope)} />;
   return <TagsProvider value={tagContext}><div className={`app ${current.view === "document" ? "reading" : ""}`}>
     {current.view !== "document" && <Sidebar view={current.view} projectId={project?.id} projects={manifest.projects} documents={documents} loaded={loaded} connected={connected} appearance={appearance} onAppearanceChange={changeAppearance} onCreateProject={createProject} onProjectSettings={project => setProjectDialog({ project })} />}
     <main className="main">
@@ -251,14 +277,15 @@ function App() {
         options={<DocumentMenuItems document={active} onAction={onDocumentAction} disabled={!connected || duplicating} exports={false} />}
         appMenu={<AppMenu appearance={appearance} onAppearanceChange={changeAppearance} />}
       /> : <div className="empty-state"><h1>{loaded ? "Document not found" : error ? "Workspace unavailable" : "Loading document…"}</h1><p>{loaded ? "Its source may have been moved or removed from this workspace." : "Opening your local workspace."}</p><Button onClick={() => go("library")}>Back to documents</Button></div>
-        : current.view === "project" ? project ? <ProjectDocuments key={project.id} project={project} documents={projectDocuments} tags={tagState} loaded={loaded} view={documentView} onViewChange={changeDocumentView} onCreate={() => createDocument()} onCreatePresentation={() => createDocument('presentation')} onSettings={() => setProjectDialog({ project })} onAction={onDocumentAction} disabled={!connected || duplicating} /> : <div className="empty-state"><h1>{loaded ? "Project not found" : "Loading project…"}</h1><p>{loaded ? "It may have been removed. Your other projects are still available." : "Opening your local workspace."}</p><Button onClick={() => go("library")}>Back to documents</Button></div>
+        : current.view === "project" ? project ? <ProjectDocuments key={project.id} project={project} documents={projectDocuments} tags={tagState} loaded={loaded} view={documentView} onViewChange={changeDocumentView} onCreate={() => createDocument()} onCreatePresentation={() => createDocument('presentation')} pending={pendingFor({ projectId: project.id })} onSettings={() => setProjectDialog({ project })} onAction={onDocumentAction} disabled={!connected || duplicating} /> : <div className="empty-state"><h1>{loaded ? "Project not found" : "Loading project…"}</h1><p>{loaded ? "It may have been removed. Your other projects are still available." : "Opening your local workspace."}</p><Button onClick={() => go("library")}>Back to documents</Button></div>
         : current.view === "assets" ? <AssetsBrowser selection={current.id} generation={generation} documents={documents} themes={themes} connected={connected} />
-        : current.view === "templates" ? <TemplatesBrowser selection={current.id} generation={generation} format={current.templateFormat} connected={connected} tags={tagState} onEditTags={setTagTarget} />
-        : current.view === "themes" ? <ThemesBrowser connected={connected} themes={themes} selection={current.id} generation={generation} loaded={loaded} documents={documents} projects={manifest.projects} onRefresh={() => void refresh()}
-          organization={themeOrganization} folder={current.themeFolder} tag={current.themeTag} onOrganizationChange={next => { setThemeOrganization({ manifest: next }); void refresh(); }} tags={tagState} onEditTags={setTagTarget} /> : <DocumentsBrowser key={current.view} format={current.view === 'presentations' ? 'presentation' : 'document'} projects={manifest.projects} documents={documents.filter(document => documentFormat(document) === (current.view === 'presentations' ? 'presentation' : 'document'))} tags={tagState} loaded={loaded} view={documentView} onViewChange={changeDocumentView} onCreate={() => createDocument(current.view === 'presentations' ? 'presentation' : 'document')} onMove={setMoving} onAction={onDocumentAction} disabled={!connected || duplicating} />}
+        : current.view === "templates" ? <TemplatesBrowser selection={current.id} generation={generation} format={current.templateFormat} connected={connected} tags={tagState} onEditTags={setTagTarget} onCreate={openCreate} />
+        : current.view === "themes" ? <ThemesBrowser connected={connected} themes={themes} selection={current.id} generation={generation} loaded={loaded} documents={documents} projects={manifest.projects} onRefresh={() => void refresh()} onCreate={openCreate}
+          organization={themeOrganization} folder={current.themeFolder} tag={current.themeTag} onOrganizationChange={next => { setThemeOrganization({ manifest: next }); void refresh(); }} tags={tagState} onEditTags={setTagTarget} /> : <DocumentsBrowser key={current.view} format={current.view === 'presentations' ? 'presentation' : 'document'} projects={manifest.projects} documents={documents.filter(document => documentFormat(document) === (current.view === 'presentations' ? 'presentation' : 'document'))} tags={tagState} loaded={loaded} view={documentView} onViewChange={changeDocumentView} onCreate={() => createDocument(current.view === 'presentations' ? 'presentation' : 'document')} pending={pendingFor({ format: current.view === 'presentations' ? 'presentation' : 'document' })} onMove={setMoving} onAction={onDocumentAction} disabled={!connected || duplicating} />}
       </Suspense>
     </main>
-    <CreateDocumentDialog format={creationFormat} open={help} onOpenChange={setHelp} project={project} themes={themes} />
+    <CreateDocumentDialog open={creating} onOpenChange={setCreating} preset={createPreset} projects={manifest.projects} themes={themes} themeFolders={themeOrganization.manifest} tags={tagState.manifest} generation={generation}
+      onCopied={handoff => { if (loaded) recordHandoff({ ...handoff, knownIds: documents.map(document => document.id) }); }} />
     <ProjectDialog themes={themes} themeFolders={themeOrganization.manifest} open={Boolean(projectDialog)} project={projectDialog?.project ?? null} documentCount={documents.filter(document => document.projectId === projectDialog?.project?.id).length} connected={connected} onOpenChange={open => { if (!open) setProjectDialog(null); }} onSaved={saved => {
       setManifest(previous => ({ ...previous, projects: previous.projects.some(project => project.id === saved.id) ? previous.projects.map(project => project.id === saved.id ? saved : project) : [...previous.projects, saved] }));
       go(`project/${saved.id}`); void refresh();
@@ -273,6 +300,7 @@ function App() {
       void refresh();
       notifications.success(`${documentName(document)} deleted`, { label: 'Undo', onClick: async () => {
         await api(`/api/document-trash/${restoreId}/restore`, { method: 'POST' });
+        ignoreDocument(document.id);
         await refresh(); notifications.success(`${documentName(document)} restored`);
       } });
     }} />

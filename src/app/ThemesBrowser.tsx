@@ -10,7 +10,7 @@ import { catalogPreview } from './catalogPreview';
 import { PdfPage, usePdf } from './Pdf';
 import { GuideDialog } from './GuideDialog';
 import { AssetThemeDefaults } from './AssetThemeDefaults';
-import { CreateDocumentDialog } from './CreateDocumentDialog';
+import type { CreatePreset } from './CreateDocumentDialog';
 import { Button, Dialog, Input } from './ui';
 import { Icon } from './ui/Icon';
 import {
@@ -85,16 +85,16 @@ function ThemePromptDialog({ open, onOpenChange, theme }: { open: boolean; onOpe
   useEffect(() => { if (open) { setCopied(false); setError(''); } }, [open, prompt]);
   async function copy() {
     try { await navigator.clipboard.writeText(prompt); setCopied(true); setError(''); }
-    catch { setError('Select the skill name and copy it manually.'); field.current?.focus(); field.current?.select(); }
+    catch { setError('Copying isn’t available here. Select the skill name and copy it manually.'); field.current?.focus(); field.current?.select(); }
   }
   return <Dialog.Root open={open} onOpenChange={onOpenChange}><Dialog.Portal><Dialog.Backdrop className="ui-dialog-backdrop" />
     <Dialog.Popup className="help-dialog">
       <Dialog.Close render={<Button className="icon-button modal-close" aria-label="Close" />}><Icon name="close" /></Dialog.Close>
       <Dialog.Title>{theme ? `Adapt ${theme.name}` : 'Create a theme'}</Dialog.Title>
-      <Dialog.Description>Use this skill in your coding agent in the OpenDoc workspace. {theme ? `Say whether to revise ${theme.name} or build a new theme from it; a revision also changes documents already using it. Describe the changes and share any visual references.` : 'Describe the theme you want and share any visual references.'}</Dialog.Description>
+      <Dialog.Description>Copy the skill and paste it into your coding agent in this workspace. {theme ? `Then say whether to revise ${theme.name} or build a new theme from it; a revision also changes documents already using it. Describe the changes and share any visual references.` : 'Then describe the theme you want and share any visual references. It appears here when it’s ready.'}</Dialog.Description>
       <Input ref={field} className="prompt-example skill-invocation" aria-label="Theme creation skill" readOnly value={prompt} />
       <Button className="primary" onClick={() => void copy()}><Icon name={copied ? 'check' : 'copy'} size={16} />{copied ? 'Copied' : 'Copy skill'}</Button>
-      <span className="sr-only" role="status">{copied ? 'Skill copied to clipboard.' : ''}</span>
+      <span className="sr-only" role="status">{copied ? 'Skill copied. Paste it into your agent.' : ''}</span>
       {error && <p className="comment-error" role="alert">{error}</p>}
     </Dialog.Popup>
   </Dialog.Portal></Dialog.Root>;
@@ -126,8 +126,10 @@ function ThemeGallery({ themes, generation, onRefresh, organize }: { themes: The
 /** The gallery filters last shown, so a theme page returns to the same view. */
 let galleryHash = themesHash();
 
-export function ThemesBrowser({ themes, selection, generation, loaded, documents, projects, onRefresh, connected = true, organization, folder = '', tag = '', onOrganizationChange, tags, onEditTags }: {
+export function ThemesBrowser({ themes, selection, generation, loaded, documents, projects, onRefresh, onCreate, connected = true, organization, folder = '', tag = '', onOrganizationChange, tags, onEditTags }: {
   themes: ThemeSummary[]; selection: string; generation: number; loaded: boolean; documents: DocumentSummary[]; projects: Project[]; onRefresh: () => void; connected?: boolean;
+  /** Opens the shared creation handoff with this theme chosen. */
+  onCreate?: (preset: CreatePreset) => void;
   /** Optional folders; without them the catalog is one flat gallery. */
   organization?: ThemeOrganization; folder?: string; tag?: string; onOrganizationChange?: (manifest: ThemeFoldersManifest) => void;
   /** Optional workspace tags, filtered here and edited through the shared tag editor. */
@@ -135,8 +137,7 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
 }) {
   const theme = themes.find(theme => theme.id === selection);
   const [promptOpen, setPromptOpen] = useState(false);
-  const [createOpen, setCreateOpen] = useState(false);
-  useEffect(() => { setPromptOpen(false); setCreateOpen(false); window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); }, [selection]);
+  useEffect(() => { setPromptOpen(false); window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); }, [selection]);
   useEffect(() => {
     void api('/api/context', { method: 'POST', body: JSON.stringify({ projectId: null, documentId: null, blockId: null, page: 1, themeId: theme?.id ?? null, selectedAsset: null }) }).catch(() => {});
   }, [theme?.id]);
@@ -187,7 +188,7 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
         <ThemeSpecimen key={theme.id} theme={theme} generation={generation} allPages onRefresh={onRefresh} />
         <aside className="theme-options">
           <header><h1 dir="auto" lang={textLang(theme.name, theme.language)}>{theme.name}</h1><p className="lead" dir="auto" lang={textLang(theme.description, theme.language)}>{theme.description}</p></header>
-          <div className="theme-actions"><Button className="primary" disabled={Boolean(theme.error)} onClick={() => setCreateOpen(true)}>Create with this theme</Button><Button onClick={() => setPromptOpen(true)} aria-describedby="theme-adapt-hint">Adapt this theme</Button><p id="theme-adapt-hint" className="theme-action-hint">Have your coding agent revise this theme or build a new one from it.</p><GuideDialog key={theme.id} kind="theme" id={theme.id} name={theme.name} generation={theme.revision ?? generation} /></div>
+          <div className="theme-actions"><Button className="primary" disabled={Boolean(theme.error)} onClick={() => onCreate?.({ themeId: theme.id })}>Create with this theme</Button><Button onClick={() => setPromptOpen(true)} aria-describedby="theme-adapt-hint">Adapt this theme</Button><p id="theme-adapt-hint" className="theme-action-hint">Have your coding agent revise this theme or build a new one from it.</p><GuideDialog key={theme.id} kind="theme" id={theme.id} name={theme.name} generation={theme.revision ?? generation} /></div>
           {theme.assetError && <p className="field-error" role="alert">{theme.assetError}</p>}
           <AssetThemeDefaults key={theme.id} themeId={theme.id} generation={generation} connected={connected} />
           <div className="theme-system-details">
@@ -221,7 +222,6 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
       {loaded && themes.length > 0 && !missingFolder && !folderEmpty && activeTag && !visible.length && <div className="empty-state"><h2>No themes tagged “{tagLabel}”{currentFolder && <> in <bdi lang={textLang(currentFolder.name)}>{currentFolder.name}</bdi></>}</h2><p>{currentFolder ? 'Choose another tag or folder, or clear the tag filter.' : 'Choose another tag, or show every theme.'}</p><Button onClick={() => { location.hash = filterHash({ tag: '' }); }}>Clear tag filter</Button></div>}
     </>}
     <ThemePromptDialog open={promptOpen} onOpenChange={setPromptOpen} theme={selection ? theme : undefined} />
-    <CreateDocumentDialog open={createOpen} onOpenChange={setCreateOpen} theme={theme} />
     {organizing && <ThemeFolderDialog action={folderAction?.kind === 'tags' ? null : folderAction} manifest={manifest} themes={themes} connected={connected} onClose={() => setFolderAction(null)} onChange={next => onOrganizationChange?.(next)} />}
   </section>;
 }

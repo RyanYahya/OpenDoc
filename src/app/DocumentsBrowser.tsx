@@ -28,8 +28,10 @@ function DocumentTools({ searchLabel, query, onQueryChange, view, onViewChange, 
   </div>;
 }
 
-export function DocumentsBrowser({ format = 'document', projects, documents, tags, loaded, view, onViewChange, onCreate, onMove, onAction, disabled }: ViewProps & {
+export function DocumentsBrowser({ format = 'document', projects, documents, tags, loaded, view, onViewChange, onCreate, pending, onMove, onAction, disabled }: ViewProps & {
   format?: DocumentFormat; projects: Project[]; documents: DocumentSummary[]; tags?: TagState; loaded: boolean; onCreate: () => void; onMove: (document: DocumentSummary) => void; onAction: DocumentActionHandler; disabled: boolean;
+  /** Creation prompts still waiting for the user's agent. */
+  pending?: ReactNode;
 }) {
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState(noFilters);
@@ -43,6 +45,7 @@ export function DocumentsBrowser({ format = 'document', projects, documents, tag
     <div className="library-heading"><h1>{plural}</h1><Button className="primary" aria-label={`Create ${format}`} onClick={onCreate} disabled={!loaded || disabled}><Icon name="plus" size={17} /><span>Create {format}</span></Button></div>
     <DocumentTools searchLabel={`Search ${format}s`} query={query} onQueryChange={setQuery} view={view} onViewChange={onViewChange}
       filter={<ItemFilters manifest={manifest} kind="documents" items={documents} value={filters} onChange={setFilters} />} />
+    {pending}
     <div className={view === 'list' ? 'documents-list' : 'document-grid'} role="list">{visible.map(document => {
       const project = projectById.get(document.projectId ?? '');
       return <article className="project-document" key={document.id} role="listitem">
@@ -55,8 +58,10 @@ export function DocumentsBrowser({ format = 'document', projects, documents, tag
   </section>;
 }
 
-export function ProjectDocuments({ project, documents, tags, loaded, view, onViewChange, onCreate, onCreatePresentation, onSettings, onAction, disabled }: ViewProps & {
+export function ProjectDocuments({ project, documents, tags, loaded, view, onViewChange, onCreate, onCreatePresentation, pending, onSettings, onAction, disabled }: ViewProps & {
   project: Project; documents: DocumentSummary[]; tags?: TagState; loaded: boolean; onCreate: () => void; onCreatePresentation: () => void; onSettings: () => void; onAction: DocumentActionHandler; disabled: boolean;
+  /** Creation prompts still waiting for the user's agent. */
+  pending?: ReactNode;
 }) {
   const [query, setQuery] = useState('');
   const [format, setFormat] = useState<'all' | DocumentFormat>('all');
@@ -79,6 +84,7 @@ export function ProjectDocuments({ project, documents, tags, loaded, view, onVie
       filter={<><SelectControl label="Filter by format" value={format} onValueChange={value => { if (value === 'all' || value === 'document' || value === 'presentation') setFormat(value); }} items={[
         { label: 'All formats', value: 'all' }, { label: 'Documents', value: 'document' }, { label: 'Presentations', value: 'presentation' },
       ]} /><ItemFilters manifest={manifest} kind="documents" items={documents} value={filters} onChange={setFilters} /></>} />
+    {pending}
     <div className={view === 'list' ? 'documents-list' : 'document-grid'} role="list">{visible.map(document => <article className="project-document" key={document.id} role="listitem"><DocumentCard document={document} view={view} onAction={onAction} disabled={disabled} /></article>)}</div>
     {!visible.length && <div className="empty-state"><h2>{!loaded ? 'Loading project…' : hasFilters ? 'No matching items' : 'Your project is ready'}</h2><p>{!loaded ? 'Opening your local workspace.' : hasFilters ? 'Try another search, format, or filter.' : 'Create a document or presentation with your agent.'}</p>{loaded && (hasFilters ? <Button onClick={() => { setQuery(''); setFormat('all'); setFilters(noFilters); }}>Clear filters</Button> : <a href="#templates" className="project-templates-link">Browse templates<Icon name="arrow" size={16} /></a>)}</div>}
   </section>;

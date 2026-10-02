@@ -6,7 +6,7 @@ import { catalogPreview } from './catalogPreview';
 import { PdfPage, usePdf } from './Pdf';
 import { Button, Dialog, Input, Tabs } from './ui';
 import { Icon } from './ui/Icon';
-import { CreateDocumentDialog } from './CreateDocumentDialog';
+import type { CreatePreset } from './CreateDocumentDialog';
 import { GuideDialog } from './GuideDialog';
 import { filtering, ItemFilters, matchesFilters, noFilters, tagText, type TagState, type TagTarget } from './Tags';
 import { emptyTags, itemCustomTags, itemType, typeLabel } from '../shared/tags';
@@ -54,8 +54,10 @@ function TemplatePreview({ item, allPages = false, onReady }: { item: TemplateIt
 
 const customPrompt = '$opendoc-create-template';
 
-export function TemplatesBrowser({ selection, generation, format = 'document', connected = true, tags, onEditTags }: {
+export function TemplatesBrowser({ selection, generation, format = 'document', connected = true, tags, onEditTags, onCreate }: {
   selection: string; generation: number; format?: DocumentFormat; connected?: boolean;
+  /** Opens the shared creation handoff with this template chosen. */
+  onCreate?: (preset: CreatePreset) => void;
   /** Optional workspace tags, filtered here and edited through the shared Details editor. */
   tags?: TagState; onEditTags?: (target: TagTarget) => void;
 }) {
@@ -71,7 +73,6 @@ export function TemplatesBrowser({ selection, generation, format = 'document', c
   const [custom, setCustom] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState('');
-  const [createOpen, setCreateOpen] = useState(false);
   const promptField = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const controller = new AbortController();
@@ -80,13 +81,12 @@ export function TemplatesBrowser({ selection, generation, format = 'document', c
     }).catch(error => { if (!controller.signal.aborted) { setLoadError(error.message); setLoaded(true); } });
     return () => controller.abort();
   }, [generation, attempt]);
-  useEffect(() => setCreateOpen(false), [selection]);
   const item = items.find(item => item.id === selection);
   const presentation = item?.descriptor.documentFormat === 'presentation';
   const artifact = item && proof?.revision === item.revision ? proof.preview.artifact : undefined;
   async function copy() {
     try { await navigator.clipboard.writeText(customPrompt); setCopied(true); setCopyError(''); }
-    catch { setCopyError('Select the skill name and copy it manually.'); promptField.current?.focus(); promptField.current?.select(); }
+    catch { setCopyError('Copying isn’t available here. Select the skill name and copy it manually.'); promptField.current?.focus(); promptField.current?.select(); }
   }
   return <section className="library-content templates-content">
     {selection ? <>
@@ -105,10 +105,9 @@ export function TemplatesBrowser({ selection, generation, format = 'document', c
             <h2>{presentation ? 'The deck structure' : 'The page structure'}</h2>
             <p className="template-format">{item.descriptor.format}</p>
             <ul>{item.descriptor.structure.map(note => <li key={note}>{note}</li>)}</ul>
-            <Button className="primary" onClick={() => setCreateOpen(true)}>
+            <Button className="primary" onClick={() => onCreate?.({ template: { id: item.id, name: item.descriptor.name, format: item.descriptor.documentFormat ?? 'document' } })}>
               Use this template
             </Button>
-            <CreateDocumentDialog open={createOpen} onOpenChange={setCreateOpen} template={item} />
             <GuideDialog key={item.id} kind="template" id={item.id} name={item.descriptor.name} generation={generation} />
             {tagging && <section className="tag-details template-tags"><h2>Details</h2>
               <dl>
@@ -130,10 +129,10 @@ export function TemplatesBrowser({ selection, generation, format = 'document', c
             <Dialog.Popup className="help-dialog">
               <Dialog.Close render={<Button className="icon-button modal-close" aria-label="Close" />}><Icon name="close" /></Dialog.Close>
               <Dialog.Title>Create a template</Dialog.Title>
-              <Dialog.Description>Use this skill in your coding agent in the OpenDoc workspace. Describe the reusable layout you want and share any sample content.</Dialog.Description>
+              <Dialog.Description>Copy the skill and paste it into your coding agent in this workspace, then describe the reusable layout you want and share any sample content. The template appears here when it’s ready.</Dialog.Description>
               <Input ref={promptField} className="prompt-example skill-invocation" aria-label="Template creation skill" readOnly value={customPrompt} />
               <Button className="primary copy-prompt" onClick={() => void copy()}><Icon name={copied ? 'check' : 'copy'} size={16} />{copied ? 'Copied' : 'Copy skill'}</Button>
-              <span className="sr-only" role="status">{copied ? 'Skill copied to clipboard.' : ''}</span>
+              <span className="sr-only" role="status">{copied ? 'Skill copied. Paste it into your agent.' : ''}</span>
               {copyError && <p role="alert" className="comment-error">{copyError}</p>}
             </Dialog.Popup>
           </Dialog.Portal>

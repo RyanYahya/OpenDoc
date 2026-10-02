@@ -35,3 +35,33 @@ test('the comments prompt names the document and skill without local session det
   assert.doesNotMatch(prompt, /token|server\.json|https?:/i);
   assert.match(applyCommentsPrompt({ id: 'deck', format: 'presentation' }), /presentation deck .*PowerPoint/s);
 });
+
+test('creation prompts carry every combination of chosen format, project, theme, and template', () => {
+  const project = { id: 'client-work', name: 'Client work' };
+  const theme = { id: 'harbour', name: 'Harbour' };
+  const template = { id: 'pitch-deck', name: 'Pitch deck' };
+  const projectThemes = [{ format: 'presentation' as const, id: 'narra-slides', name: 'Narra slides' }];
+  for (const format of ['document', 'presentation'] as const) {
+    for (const withProject of [false, true]) for (const withTheme of [false, true]) for (const withTemplate of [false, true]) {
+      const prompt = createDocumentPrompt({
+        format, brief: 'Board update',
+        project: withProject ? project : undefined,
+        theme: withTheme ? theme : undefined,
+        template: withTemplate ? template : undefined,
+        projectThemes: format === 'presentation' ? projectThemes : [],
+      });
+      const label = `${format} project=${withProject} theme=${withTheme} template=${withTemplate}`;
+      const lines = prompt.split('\n');
+      assert.equal(lines[0], `Create a ${format} in this OpenDoc workspace.`, label);
+      assert.equal(lines[1], 'Read this workspace’s AGENTS.md and follow its opendoc-create workflow.', label);
+      assert.equal(lines.includes('Project: Client work (client-work).'), withProject, label);
+      assert.equal(lines.includes('Use the Pitch deck template (pitch-deck).'), withTemplate, label);
+      assert.equal(lines.includes('Use the Harbour theme (harbour).'), withTheme, label);
+      // A project's default applies only within that project, and an explicit theme replaces it.
+      assert.equal(/narra-slides/.test(prompt), format === 'presentation' && withProject && !withTheme, label);
+      assert.match(prompt, format === 'presentation' ? /reviewed PDF and editable PowerPoint\.$/m : /^Deliver a reviewed PDF\.$/m, label);
+      assert.ok(prompt.endsWith('<brief>\nBoard update\n</brief>'), label);
+      assert.doesNotMatch(prompt, /token|server\.json|https?:/i, label);
+    }
+  }
+});
