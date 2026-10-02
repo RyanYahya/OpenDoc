@@ -33,6 +33,7 @@ import { useDocumentView } from "./DocumentViewControl";
 import { Icon } from "./ui/Icon";
 import { Button, IconButton, UiProvider, useNotifications } from "./ui";
 import { api } from "./api";
+import { retryDelay } from "./loadFailure";
 import type { ThemeSummary } from "../shared/themes";
 import { documentName, documentFormat, formatLabel, type DocumentFormat, type DocumentState, type DocumentSummary } from "../shared/types";
 import { emptyProjects, type Project, type ProjectsManifest } from "../shared/projects";
@@ -93,7 +94,12 @@ function App() {
   const refreshing = useRef<Promise<void> | null>(null);
   const refreshAgain = useRef(false);
   const requestAbort = useRef<AbortController | null>(null);
+  // A load that fails while the live connection stays up has no change event to retry it, so it retries itself.
+  const failures = useRef(0);
+  const live = useRef(false);
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const refresh = useCallback(() => {
+    clearTimeout(retryTimer.current);
     refreshAgain.current = true;
     if (refreshing.current) return refreshing.current;
     refreshing.current = (async () => {
@@ -124,8 +130,14 @@ function App() {
             });
             return merged.length === previous.length && merged.every((item, index) => item === previous[index]) ? previous : merged;
           });
+          failures.current = 0;
           setError(""); setLoaded(true); setGeneration((value) => value + 1);
-        } catch (error) { if (!requestAbort.current?.signal.aborted) setError((error as Error).message); }
+        } catch (error) {
+          if (requestAbort.current?.signal.aborted) return;
+          setError((error as Error).message);
+          // Reconnecting loads again by itself; while connected, back off and try again until the data loads.
+          if (live.current && !refreshAgain.current) retryTimer.current = setTimeout(() => void refresh(), retryDelay(++failures.current));
+        }
       } while (refreshAgain.current && !requestAbort.current?.signal.aborted);
     })().finally(() => { refreshing.current = null; });
     return refreshing.current;
@@ -146,14 +158,15 @@ function App() {
     let refreshTimer: ReturnType<typeof setTimeout> | undefined;
     const connect = () => {
       events = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/api/events`);
-      events.onopen = () => { reconnectDelay = 500; setConnected(true); };
+      events.onopen = () => { reconnectDelay = 500; live.current = true; setConnected(true); };
       events.onmessage = (event) => {
         if (stopped || !['connected', 'changed'].includes(event.data)) return;
         // Catch up after every connection, including changes during initial loading.
         clearTimeout(refreshTimer); refreshTimer = setTimeout(() => void refresh(), 80);
       };
-      events.onerror = () => { setConnected(false); events.close(); };
+      events.onerror = () => { live.current = false; setConnected(false); events.close(); };
       events.onclose = () => {
+        live.current = false;
         if (stopped) return;
         setConnected(false);
         reconnectTimer = setTimeout(connect, reconnectDelay);
@@ -163,7 +176,7 @@ function App() {
     connect();
     const change = () => setCurrent(route());
     window.addEventListener("hashchange", change);
-    return () => { stopped = true; clearTimeout(reconnectTimer); events.close(); clearTimeout(refreshTimer); requestAbort.current?.abort(); window.removeEventListener("hashchange", change); };
+    return () => { stopped = true; clearTimeout(reconnectTimer); events.close(); clearTimeout(refreshTimer); clearTimeout(retryTimer.current); requestAbort.current?.abort(); window.removeEventListener("hashchange", change); };
   }, [refresh]);
   const activeSummary = current.view === "document" ? documents.find(document => document.id === current.id) : undefined;
   const [detail, setDetail] = useState<{ key: string; state: DocumentState }>();
