@@ -14,8 +14,6 @@
 .media-card-caption > .media-problem { color: var(--error-ink); font-size: var(--caption-size); line-height: var(--caption-leading); }
 .media-unavailable { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; padding: 24px; color: var(--muted); font-size: var(--body-size); line-height: var(--body-leading); }
 .materials-issue { padding-bottom: 18px; }
-.media-back { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; margin-bottom: 18px; color: var(--muted); }
-.media-back:hover { color: var(--ink); }
 .media-detail { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); gap: 36px; align-items: start; }
 .media-detail-visual { position: sticky; top: 28px; min-width: 0; }
 .media-large-image { display: grid; place-items: center; background: var(--media-surface); min-height: 180px; border-radius: 6px; overflow: hidden; outline: 1px solid var(--media-edge); outline-offset: -1px; }

@@ -257,7 +257,7 @@ export function AssetsBrowser({ selection, generation, documents, themes, connec
       {error && <div className="error-banner" role="alert"><span>{error}</span><Button className="text-button" onClick={() => setRetry(value => value + 1)}>Try again</Button></div>}
       {catalog?.kind === kind && catalog.value.issues.map(issue => <p className="media-problem materials-issue" role="status" key={issue}>{issue}</p>)}
       {!id ? <AssetCollection error={error} kind={kind} catalog={catalog?.kind === kind ? catalog.value : undefined} kinds={kinds} onAdd={() => setEdit({ action: 'create', kind })} /> : <>
-        <a className="media-back" href={`#assets/${collection(kind)}`}><Icon name="left" size={16} />All {collection(kind)}</a>
+        <a className="back-link" href={`#assets/${collection(kind)}`}><Icon name="left" size={16} />All {collection(kind)}</a>
         {!asset || !inspection ? <div className="empty-state"><h2>{error ? 'Asset unavailable' : 'Loading asset…'}</h2><p>{error ? 'Check the local files or return to the library.' : 'Opening its saved artwork and guidance.'}</p></div> : <>
           {historical && <div className="asset-state-banner" role="status"><span>Viewing a previous version · {dateLabel(asset.createdAt)}</span><Button className="text-button" onClick={() => setSelectedRevision('')}>View current version</Button></div>}
           {inspection.head.archived && <div className="asset-state-banner" role="status"><span>Archived. Existing documents can still use this asset.</span><Button onClick={() => void quickAction('restore')} disabled={!connected || busy || inspection.head.builtIn}>{busy ? 'Restoring…' : 'Restore'}</Button></div>}

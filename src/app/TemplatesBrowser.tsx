@@ -117,7 +117,7 @@ export function TemplatesBrowser({ selection, generation, format = 'document', c
   }
   return <section className="library-content templates-content">
     {selection ? <>
-      <a className="template-back" href={backHash}><Icon name="left" size={15} /> {presentation ? 'Presentation templates' : 'Document templates'}</a>
+      <a className="back-link" href={backHash}><Icon name="left" size={16} />Templates</a>
       {item ? <>
         <div className={`template-detail-layout${presentation ? ' template-detail-presentation' : ''}`}>
           <div className="template-proof">

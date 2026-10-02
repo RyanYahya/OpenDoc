@@ -207,7 +207,7 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
   const summary = `${visible.length} ${visible.length === 1 ? 'print system' : 'print systems'}${currentFolder ? ` in “${isolate(currentFolder.name)}”` : ''}${narrowed ? ' matching the filters' : ''}`;
   return <section className="library-content themes-content">
     {selection ? <>
-      <a href={galleryHash} className="theme-back"><Icon name="left" size={16} />Themes</a>
+      <a href={galleryHash} className="back-link"><Icon name="left" size={16} />Themes</a>
       {theme ? <div className="theme-detail-layout">
         <ThemeSpecimen key={theme.id} theme={theme} generation={generation} allPages onRefresh={onRefresh} />
         <aside className="theme-options">
