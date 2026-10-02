@@ -9,6 +9,7 @@ import { api } from './api';
 import { catalogPreview } from './catalogPreview';
 import { PdfPage, usePdf } from './Pdf';
 import { GuideDialog } from './GuideDialog';
+import { PreviewPlaceholder } from './PreviewPlaceholder';
 import { AssetThemeDefaults } from './AssetThemeDefaults';
 import type { CreatePreset } from './CreateDocumentDialog';
 import { Button, Dialog, Input } from './ui';
@@ -22,10 +23,6 @@ import { FilterBar, useHashQuery, useSortPreference } from './FilterBar';
 import { compareNewest, compareText, filtering, hashWith, itemFacets, splitHash, matchesFilters, matchesSearch, noFilters, sortItems, type ItemFilterValue, type SortOption } from './libraryFilters';
 import './themes.css';
 
-/** The one loading state of a theme preview, from before its PDF arrives until a card's first page is drawn. */
-function PreviewPlaceholder() {
-  return <div className="theme-preview-placeholder" role="status"><Icon name="document" size={24} /><p>Preparing preview…</p></div>;
-}
 
 function ThemePdf({ id, preview, allPages, onRetry }: { id: string; preview: ThemePreview; allPages: boolean; onRetry: () => void }) {
   const frame = useRef<HTMLDivElement>(null);
@@ -48,8 +45,8 @@ function ThemePdf({ id, preview, allPages, onRetry }: { id: string; preview: The
       : pdf ? <>
         {Array.from({ length: allPages ? pdf.numPages : 1 }, (_, index) => <PdfPage key={index} pdf={pdf} number={index + 1} width={pageWidth} thumbnail={!allPages} onNavigate={page => frame.current?.querySelector(`[data-page="${page}"]`)?.scrollIntoView({ behavior: 'auto', block: 'start' })} />)}
         {/* A gallery card keeps the placeholder over its page until the page is drawn; see themes.css. */}
-        {!allPages && <PreviewPlaceholder />}
-      </> : <PreviewPlaceholder />}
+        {!allPages && <PreviewPlaceholder className="theme-preview-placeholder" />}
+      </> : <PreviewPlaceholder className="theme-preview-placeholder" />}
   </div>;
 }
 
@@ -83,7 +80,7 @@ function ThemeSpecimen({ theme, generation, allPages = false, onRefresh }: { the
     {allPages && <div className="theme-proof-label"><span>Print system</span><span>{preview?.artifact ? `${preview.artifact.pages.length} ${preview.artifact.pages.length === 1 ? 'page' : 'pages'}` : 'PDF preview'}</span></div>}
     {error ? <div className="theme-preview-message" role="alert"><p>Preview needs attention.</p><p>{error}</p><Button onClick={retry}>Try again</Button></div>
       : preview?.artifact ? <ThemePdf key={requestKey} id={theme.id} preview={preview} allPages={allPages} onRetry={retry} />
-        : <PreviewPlaceholder />}
+        : <PreviewPlaceholder className="theme-preview-placeholder" />}
   </div>;
 }
 

@@ -224,13 +224,23 @@ nav a.active {
   outline-offset: -1px;
   background: var(--paper);
 }
-.cover-placeholder {
-  height: 100%;
-  display: grid;
-  place-items: center;
-  color: var(--paper-muted);
+/* The one loading state of a page preview, for templates, themes, and covers alike; see PreviewPlaceholder.tsx. */
+.preview-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px;
+  color: var(--muted);
   font-size: var(--caption-size);
+  line-height: var(--caption-leading);
+  text-align: center;
 }
+.preview-placeholder p { margin: 0; }
+/* A cover sits on paper, which keeps its light color in either appearance. */
+.cover-preview .preview-placeholder { height: 100%; color: var(--paper-muted); }
+.cover-preview .preview-placeholder.compact { padding: 0; }
 .card-meta {
   display: flex;
   align-items: center;

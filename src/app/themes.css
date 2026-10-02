@@ -6,7 +6,7 @@
 .theme-specimen { min-width: 0; background: var(--surface-alt); border-radius: 6px; padding: 26px 32px; transition: background-color 160ms ease; }
 .theme-gallery-preview .theme-specimen { padding-bottom: 46px; }
 .theme-gallery-preview:hover .theme-specimen { background: var(--surface-hover); }
-.theme-preview-placeholder { aspect-ratio: 595 / 842; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--muted); font-size: 13px; text-align: center; }
+.theme-preview-placeholder { aspect-ratio: 595 / 842; }
 .theme-pdf { display: flex; flex-direction: column; align-items: center; gap: 24px; width: 100%; min-width: 0; }
 .theme-gallery-card .theme-pdf { position: relative; justify-content: center; }
 /* Until its page is drawn, a card shows the placeholder it showed before the PDF arrived, not a blank page. */

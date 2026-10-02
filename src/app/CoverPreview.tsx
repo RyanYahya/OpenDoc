@@ -1,6 +1,6 @@
 import { useRef, useState, type CSSProperties } from 'react';
 import type { ArtifactSummary } from '../shared/types';
-import { Icon } from './ui/Icon';
+import { PreviewPlaceholder } from './PreviewPlaceholder';
 import { useNearViewport } from './nearViewport';
 
 // Positioned like the PDF page it replaces, so the page covers the frame's inset edge line.
@@ -35,11 +35,7 @@ export function CoverPreview({
     >
       {nearby && source && !failed && <img src={source} alt="" decoding="async" style={loaded ? coverImage : loadingImage}
         onLoad={() => setResult({ source, failed: false })} onError={() => setResult({ source, failed: true })} />}
-      {!loaded && (
-        <div className="cover-placeholder">
-          {compact ? <Icon name="document" size={18} /> : failed ? "Preview unavailable" : "Preparing preview…"}
-        </div>
-      )}
+      {!loaded && <PreviewPlaceholder compact={compact} announce={false} label={failed ? "Preview unavailable" : "Preparing preview…"} />}
     </div>
   );
 }

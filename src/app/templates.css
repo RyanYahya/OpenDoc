@@ -39,7 +39,11 @@
 }
 @media (prefers-reduced-motion: reduce) { .template-card-mat { transition: none; } }
 
-.template-card .template-preview { aspect-ratio: 595.28 / 841.89; justify-content: center; }
+.template-card .template-preview { position: relative; aspect-ratio: 595.28 / 841.89; justify-content: center; }
+/* Until its page is drawn, a card keeps the placeholder it showed before the PDF arrived, as theme cards do. */
+.template-card .template-preview > .pdf-page ~ .preview-placeholder { display: none; position: absolute; inset: 0; }
+.template-card .template-preview:has(> .pdf-page[data-rendered="false"]) > .pdf-page ~ .preview-placeholder { display: flex; }
+.template-card .template-preview > .pdf-page[data-rendered="false"] { visibility: hidden; }
 .template-grid-presentations { grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
 .template-grid-presentations .template-card { max-width: 520px; }
 .template-grid-presentations .template-card-mat { padding: 20px; }

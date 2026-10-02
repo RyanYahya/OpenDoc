@@ -15,6 +15,8 @@
 .document-grid .card-paper { flex-shrink: 0; height: auto; aspect-ratio: 4 / 3; align-items: center; padding: 0; container-type: size; }
 .document-grid .cover-preview { width: min(calc(100cqw - 40px), calc((100cqh - 40px) * var(--cover-ratio))); }
 .document-grid .card-paper-portrait .cover-preview { width: calc(100cqw - 40px); position: absolute; top: 20px; left: 20px; }
+/* The frame shows only the top of a portrait page, so its loading state centers in what is visible. */
+.document-grid .card-paper-portrait .cover-preview .preview-placeholder { height: min(100%, calc(100cqh - 20px)); }
 .document-grid .document-card h2 { margin: 12px 0 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .document-grid .card-meta { margin-top: 4px; }
 .card-format { display: inline-flex; align-items: center; gap: 5px; }

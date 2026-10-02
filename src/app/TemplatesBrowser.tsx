@@ -8,6 +8,7 @@ import { Button, Dialog, Input } from './ui';
 import { Icon } from './ui/Icon';
 import type { CreatePreset } from './CreateDocumentDialog';
 import { GuideDialog } from './GuideDialog';
+import { PreviewPlaceholder } from './PreviewPlaceholder';
 import { tagText, type TagState, type TagTarget } from './Tags';
 import { FilterBar, FilterChoices, useHashQuery, useSortPreference } from './FilterBar';
 import { compareNewest, compareText, detailsText, filtering, itemFacets, itemFilterKeys, matchesFilters, matchesSearch, noFilters, readItemFilters, sortItems, splitHash, type SortOption } from './libraryFilters';
@@ -49,8 +50,11 @@ function TemplatePreview({ item, allPages = false, onReady }: { item: TemplateIt
   useEffect(() => { if (preview) onReady?.(item.revision, preview); }, [preview, item.revision, onReady]);
   return <div className={`template-preview ${allPages ? 'template-preview-full' : ''}`} ref={frame}>
     {error ? <div className="template-preview-message" role="alert"><p>{error}</p>{allPages && <Button onClick={() => setAttempt(value => value + 1)}>Try again</Button>}</div>
-      : pdf ? Array.from({ length: allPages ? pdf.numPages : 1 }, (_, index) => <PdfPage key={index} pdf={pdf} number={index + 1} width={width} thumbnail={!allPages} />)
-        : <p className="template-preview-message" role="status">{visible ? "Preparing preview…" : "PDF preview"}</p>}
+      : pdf ? <>
+        {Array.from({ length: allPages ? pdf.numPages : 1 }, (_, index) => <PdfPage key={index} pdf={pdf} number={index + 1} width={width} thumbnail={!allPages} />)}
+        {/* A gallery card keeps the placeholder over its page until the page is drawn; see templates.css. */}
+        {!allPages && <PreviewPlaceholder />}
+      </> : <PreviewPlaceholder />}
   </div>;
 }
 
