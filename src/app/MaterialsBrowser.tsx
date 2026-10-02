@@ -123,7 +123,7 @@ function Ownership({ item, format, connected, onEdit }: { item: MediaItem; forma
     <a className="material-file" href={fileUrl(item.documentId, `media/${item.id}/meta.json`)} download><Icon name="document" size={16}/><span>Media metadata</span><Icon name="download" size={16}/></a>
   </section>;
 }
-const mediaSorts: SortOption[] = [{ value: 'document', label: 'Document' }, { value: 'title', label: 'Title A–Z' }];
+const mediaSorts: SortOption[] = [{ value: 'document', label: 'By document' }, { value: 'title', label: 'Title A–Z' }];
 
 export function MaterialsBrowser({ selection, generation, documents, connected, collections }: { selection: string; generation: number; documents: DocumentSummary[]; connected: boolean;
   /** The Media, Logos, and Fonts buttons that lead the filter bar. */

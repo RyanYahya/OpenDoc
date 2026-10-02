@@ -57,7 +57,7 @@ function TemplatePreview({ item, allPages = false, onReady }: { item: TemplateIt
 const customPrompt = '$opendoc-create-template';
 /** The gallery filters last shown, so a template page returns to the same view. */
 let galleryHash = '#templates';
-const sortOptions: SortOption[] = [{ value: 'title', label: 'Name A–Z' }, { value: 'updated', label: 'Last edited' }, { value: 'type', label: 'Type' }];
+const sortOptions: SortOption[] = [{ value: 'title', label: 'Name A–Z' }, { value: 'updated', label: 'Last edited' }, { value: 'type', label: 'By type' }];
 /** Types in vocabulary order; templates without one follow. */
 const typeRank = (type?: string) => { const index = standardTypes.findIndex(item => item.id === type); return index < 0 ? standardTypes.length : index; };
 

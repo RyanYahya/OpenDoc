@@ -45,8 +45,8 @@ function useCreateShortcut(onCreate: () => void, enabled: boolean) {
 
 const lastEdited: SortOption = { value: 'updated', label: 'Last edited' };
 const byTitle: SortOption = { value: 'title', label: 'Title A–Z' };
-const byStatus: SortOption = { value: 'status', label: 'Status' };
-const byProject: SortOption = { value: 'project', label: 'Project' };
+const byStatus: SortOption = { value: 'status', label: 'By status' };
+const byProject: SortOption = { value: 'project', label: 'By project' };
 
 /** Documents in the chosen order; ties fall back to the most recently edited, then the title. */
 function sortDocuments(documents: DocumentSummary[], sort: string, manifest: TagsManifest, projectName: (document: DocumentSummary) => string = () => '') {
