@@ -1,5 +1,6 @@
 import React, { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Menu } from '@base-ui/react/menu';
+import { LoadBoundary } from "./LoadBoundary";
 import { Popover } from '@base-ui/react/popover';
 import { PdfPage } from "./Pdf";
 import { useReaderPreview } from "./useReaderPreview";
@@ -924,9 +925,9 @@ export function Reader({
             onShowAll={() => setPanel(current => showPanel(current, 'comments'))} onClose={closeReaderPanel}
             footer={<DeletedComments documentId={id} blockId={commentFilter} connected={connected} refreshKey={comments}
               onRestored={value => { ++commentRequest.current; commentAbort.current?.abort(); setComments(value); notify.success('Comment restored'); }} onError={notify.error} />} />}
-          history={<Suspense fallback={historyLoading}><HistoryPanel key={panel.targets.history.kind === 'block' ? `block:${panel.targets.history.blockId}` : 'document'} documentId={id} target={panel.targets.history} generation={generation} connected={connected} pageLabel={pageLabel}
+          history={<LoadBoundary compact><Suspense fallback={historyLoading}><HistoryPanel key={panel.targets.history.kind === 'block' ? `block:${panel.targets.history.blockId}` : 'document'} documentId={id} target={panel.targets.history} generation={generation} connected={connected} pageLabel={pageLabel}
             unsaved={editing.count} saving={editPending || undoPending} onSave={saveAll} onDiscard={discardChanges} onJump={showHistoryBlock}
-            onShowDocument={() => setPanel(current => showPanel(current, 'history'))} onClose={closeReaderPanel} /></Suspense>} />}
+            onShowDocument={() => setPanel(current => showPanel(current, 'history'))} onClose={closeReaderPanel} /></Suspense></LoadBoundary>} />}
       </div>
       {(editor || composing) && <section ref={selectionPanel} className="text-edit-panel" id="selection-panel" role="dialog" aria-modal="false" aria-labelledby="correction-title">
         {composing ? <form key="comment" onSubmit={submitComment} onKeyDown={event => {

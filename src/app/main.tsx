@@ -1,4 +1,5 @@
 import { ExportHistoryDialog } from "./ExportHistoryDialog";
+import { LoadBoundary } from "./LoadBoundary";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 // The reader and catalog views load when first opened. Their styles stay in the
@@ -268,6 +269,7 @@ function App() {
       {detailError && activeSummary && <div className="error-banner" role="alert"><span>{detailError}</span><Button onClick={() => setDetailAttempt(value => value + 1)}>Try again</Button></div>}
       {error && <div className="error-banner" role="alert"><span>{error}</span><Button className="text-button" onClick={() => void refresh()}>Try again</Button></div>}
       {tagState.error && current.view !== "document" && current.view !== "assets" && <div className="error-banner" role="alert"><span>{tagState.error}</span><Button className="text-button" onClick={() => void refresh()}>Try again</Button></div>}
+      <LoadBoundary key={current.view}>
       <Suspense fallback={<div className="empty-state" role="status"><div className="loading-mark" /><p>Loading…</p></div>}>
       {current.view === "document" ? active ? <Reader key={active.id} state={active} generation={generation} connected={connected} language={activeSummary?.language} onShowExports={() => setExportDocument(active)}
         identity={<>
@@ -283,6 +285,7 @@ function App() {
         : current.view === "themes" ? <ThemesBrowser connected={connected} themes={themes} selection={current.id} generation={generation} loaded={loaded} documents={documents} projects={manifest.projects} onRefresh={() => void refresh()} onCreate={openCreate}
           organization={themeOrganization} folder={current.themeFolder} tag={current.themeTag} onOrganizationChange={next => { setThemeOrganization({ manifest: next }); void refresh(); }} tags={tagState} onEditTags={setTagTarget} /> : <DocumentsBrowser key={current.view} format={current.view === 'presentations' ? 'presentation' : 'document'} projects={manifest.projects} documents={documents.filter(document => documentFormat(document) === (current.view === 'presentations' ? 'presentation' : 'document'))} tags={tagState} loaded={loaded} view={documentView} onViewChange={changeDocumentView} onCreate={() => createDocument(current.view === 'presentations' ? 'presentation' : 'document')} pending={pendingFor({ format: current.view === 'presentations' ? 'presentation' : 'document' })} onMove={setMoving} onAction={onDocumentAction} disabled={!connected || duplicating} />}
       </Suspense>
+      </LoadBoundary>
     </main>
     <CreateDocumentDialog open={creating} onOpenChange={setCreating} preset={createPreset} projects={manifest.projects} themes={themes} themeFolders={themeOrganization.manifest} tags={tagState.manifest} generation={generation}
       onCopied={handoff => { if (loaded) recordHandoff({ ...handoff, knownIds: documents.map(document => document.id) }); }} />
