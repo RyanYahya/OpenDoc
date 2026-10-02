@@ -1,7 +1,7 @@
 @import "./colors.css";
 @import "./ui/fonts.css";
 :root {
-  font-family: "OpenDoc UI", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: "OpenDoc UI", "OpenDoc UI Arabic", -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: var(--body-size);
   line-height: var(--body-leading);
   color: var(--ink);

@@ -1,0 +1,35 @@
+{
+  "family": "Noto Naskh Arabic",
+  "purpose": "Arabic letters in the bundled browser interface, alongside Geist; independent of document font assets",
+  "version": "2.021",
+  "source": "Subsets of the bundled noto-naskh-arabic font asset; see assets/fonts/noto-naskh-arabic/source.json for the release and its hashes",
+  "license": "OFL.txt",
+  "unicodeRange": "U+0600-06FF,U+0750-077F,U+0870-089F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF,U+200C-200F,U+25CC",
+  "command": "pyftsubset <from> --unicodes=<unicodeRange> --layout-features=* --flavor=woff2 --output-file=<file> (fontTools 4.64.0, Brotli 1.2.0)",
+  "files": [
+    {
+      "file": "noto-naskh-arabic-400.woff2",
+      "weight": 400,
+      "sha256": "fc1e31090906ffa5418f58f8aaee03a352df13dbbec33e0181099dd4860b31a9",
+      "from": "assets/fonts/noto-naskh-arabic/files/c9a039ce48a477243c1eb7d561b13de115cfd651d8a83fa42e2f4d63c2e11b00.ttf"
+    },
+    {
+      "file": "noto-naskh-arabic-500.woff2",
+      "weight": 500,
+      "sha256": "94b7a27055279aac1061666398d9c57e8a8542225c82a17b18e134e89d9acd83",
+      "from": "assets/fonts/noto-naskh-arabic/files/3e876c8262142470384d00644c02689a8a6620a666ef071555414e889267c687.ttf"
+    },
+    {
+      "file": "noto-naskh-arabic-600.woff2",
+      "weight": 600,
+      "sha256": "a0c56109d21a919077a881d704da315d1fdf295d2a34e76749fac8cd192516b6",
+      "from": "assets/fonts/noto-naskh-arabic/files/8ce9659622d3479744b2b5404f8caee17e956d25d672b57d160d7b0e8207c52a.ttf"
+    },
+    {
+      "file": "noto-naskh-arabic-700.woff2",
+      "weight": 700,
+      "sha256": "e4b5ee9013703306e2ae1b33803330ebca0a66189b3e9030f4445f791c1e8a1b",
+      "from": "assets/fonts/noto-naskh-arabic/files/d328b92b6bb762fd61d6438dddb7b00dd0663115afb292a358101808efe117b2.ttf"
+    }
+  ]
+}

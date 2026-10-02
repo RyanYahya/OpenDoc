@@ -40,6 +40,8 @@ The bundled revisions include PDF compatibility results and specimens. The app u
 
 Noto Naskh Arabic 2.021 is bundled as the shared `noto-naskh-arabic` font asset under the SIL Open Font License 1.1, with regular (400), medium (500), semibold (600), and bold (700) faces. The family has no italics. The files are the static TTFs from the `full/ttf` folder of the Noto project's official `NotoNaskhArabic-v2.021` release archive, preserved byte for byte. That build includes Latin letters, digits, and punctuation alongside Arabic, so mixed Arabic and English text can use one family; the release's `hinted/ttf` build omits Latin. `assets/fonts/noto-naskh-arabic/` retains `OFL.txt` and `source.json` with the release and archive URLs, the archive's SHA-256 hash, each file's path inside the archive and SHA-256 hash, and its managed asset path. Its bundled revision includes a PDF compatibility result and specimen; `tests/bundled-fonts.test.ts` checks the files, provenance, Arabic and Latin coverage, and shaping features.
 
+The browser interface draws Arabic letters with WOFF2 subsets of the same four faces in `assets/ui-fonts/noto-naskh-arabic/`, cut to the Arabic blocks with every layout feature kept. `source.json` there records the source file, unicode ranges, subsetting command, and SHA-256 hash of each subset, and `OFL.txt` retains the license.
+
 - Noto Naskh Arabic: https://github.com/notofonts/arabic
 
 ## Geist and interface fonts

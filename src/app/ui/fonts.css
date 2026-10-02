@@ -34,3 +34,47 @@
   src: url('/assets/ui-fonts/geist/geist-latin-wght-italic.woff2') format('woff2-variations');
   unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
 }
+
+/*
+ * Arabic letters, which Geist does not draw, fall back to Noto Naskh Arabic in real regular, medium,
+ * semibold, and bold faces, so a medium or bold Arabic label matches its Latin neighbours instead of
+ * whatever font the system picks. It is a family of its own, listed right after OpenDoc UI: in one
+ * family, these static faces and Geist's variable weight range compete in weight matching, and
+ * Chromium then skips Geist for Latin text at those weights.
+ * The ranges leave Latin text untouched, and the files load only when a page shows Arabic.
+ */
+@font-face {
+  font-family: 'OpenDoc UI Arabic';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('/assets/ui-fonts/noto-naskh-arabic/noto-naskh-arabic-400.woff2') format('woff2');
+  unicode-range: U+0600-06FF,U+0750-077F,U+0870-089F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF,U+25CC;
+}
+
+@font-face {
+  font-family: 'OpenDoc UI Arabic';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url('/assets/ui-fonts/noto-naskh-arabic/noto-naskh-arabic-500.woff2') format('woff2');
+  unicode-range: U+0600-06FF,U+0750-077F,U+0870-089F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF,U+25CC;
+}
+
+@font-face {
+  font-family: 'OpenDoc UI Arabic';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url('/assets/ui-fonts/noto-naskh-arabic/noto-naskh-arabic-600.woff2') format('woff2');
+  unicode-range: U+0600-06FF,U+0750-077F,U+0870-089F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF,U+25CC;
+}
+
+@font-face {
+  font-family: 'OpenDoc UI Arabic';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('/assets/ui-fonts/noto-naskh-arabic/noto-naskh-arabic-700.woff2') format('woff2');
+  unicode-range: U+0600-06FF,U+0750-077F,U+0870-089F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF,U+25CC;
+}
