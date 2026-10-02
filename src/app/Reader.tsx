@@ -107,6 +107,8 @@ export function Reader({
   const commentField = useRef<HTMLTextAreaElement>(null);
   const editAction = useRef<HTMLButtonElement>(null);
   const commentAction = useRef<HTMLButtonElement>(null);
+  /** The selection bar action that takes focus once the editor or composer closes and the bar returns. */
+  const returnFocus = useRef<'edit' | 'comment' | null>(null);
   const selectionPanel = useRef<HTMLElement>(null);
   const bars = useRef<HTMLDivElement>(null);
   const composingText = useRef(false);
@@ -416,7 +418,7 @@ export function Reader({
   function closeComposer() {
     if (mutationPending.current) return;
     setComposing(false);
-    commentAction.current?.focus();
+    returnFocus.current = 'comment';
   }
   /** Open or switch the side panel from a button or marker, which receives focus again when it closes. */
   function changePanel(next: PanelState) {
@@ -527,7 +529,7 @@ export function Reader({
   function closeEditor() {
     if (editPending || editError) return;
     setEditor(null); forgetOpenEditor();
-    editAction.current?.focus({ preventScroll: true });
+    returnFocus.current = 'edit';
   }
   function rememberReadingPosition(blockId: string) {
     const container = scroll.current;
@@ -541,7 +543,7 @@ export function Reader({
     if (selected) rememberReadingPosition(selected);
     const fromEditor = !!selectionPanel.current?.contains(document.activeElement);
     const accepted = await editing.save();
-    if (accepted) { setEditor(null); forgetOpenEditor(); if (fromEditor) editAction.current?.focus({ preventScroll: true }); }
+    if (accepted) { setEditor(null); forgetOpenEditor(); if (fromEditor) returnFocus.current = 'edit'; }
     return accepted;
   }
   function undoChange() {
@@ -714,15 +716,25 @@ export function Reader({
     if (found) findBlock(found);
   }
   const undoDisabled = editPending || undoPending || (editing.savedId ? !state.manualEdit?.canUndo || !connected : !editError && !editing.canUndo && (editing.count > 0 || !state.manualEdit?.canUndo || !connected));
-  const showSelectionBar = !!selection || !!editor || composing;
+  const selectionActive = !!selection || !!editor || composing;
+  // The editor and composer carry their own actions, so the selection bar steps aside while either is open
+  // instead of covering the text being edited or commented on.
+  const showSelectionBar = selectionActive && !editor && !composing;
   const saveState = { count: editing.count, saving: editPending, undoing: undoPending, saved: editing.saved, savedId: editing.savedId, canRedo: editing.canRedo, error: editing.error || editError };
   const showSaveBar = saveBarVisible(saveState);
-  const showNotice = (showSelectionBar || showSaveBar) && (!!editing.error || editStale || !connected || editing.persistenceFailed);
+  const showNotice = (selectionActive || showSaveBar) && (!!editing.error || editStale || !connected || editing.persistenceFailed);
   const savedNow = editing.saved && !editing.count && !editPending;
   const selectedHistory: PanelTarget | undefined = selection ? { kind: 'block', blockId: selection.blockId } : undefined;
   const commentTarget = panel.targets.comments;
   const commentFilter = commentTarget.kind === 'block' ? commentTarget.blockId : null;
   useNotificationClearance([showSelectionBar, showSaveBar, showNotice, panel.open, sheetLayout, !!editor || composing]);
+  // Closing the editor or composer brings the bar back; its Edit or Comment button then takes focus again.
+  useLayoutEffect(() => {
+    if (editor || composing || !returnFocus.current) return;
+    const action = returnFocus.current === 'edit' ? editAction : commentAction;
+    returnFocus.current = null;
+    if (showSelectionBar) action.current?.focus({ preventScroll: true });
+  }, [showSelectionBar, !!editor, composing]);
   // The save bar leaves once changes are saved or discarded; focus moves to the selection or the page, not the window.
   const saveBarFocus = useRef(false);
   useEffect(() => {
@@ -950,11 +962,12 @@ export function Reader({
           {editor.linked > 1 && <p className="correction-note">This text appears {editor.linked} times. All occurrences change together.</p>}
           {!editorWritable && <p className="correction-note">{selectionReason(artifact, editor.selection)}</p>}
           {editError && <p className="correction-error" role="alert">{editError} <Button className="text-button" disabled={state.status !== 'ready' || !getTextTarget(state.artifact, editor.selection.targetId)} onClick={resetText}>{editor.selection.targetId && pendingEditorBaseline(editor.selection.targetId) ? 'Reset text' : 'Use latest text'}</Button></p>}
-          <div className="text-edit-footer"><span>Changes stay in your draft</span><Button type="submit" disabled={editPending || !!editError}>Done</Button></div>
+          {/* Words selected here become the phrase the comment is about; with none, it covers the component. */}
+          <div className="text-edit-footer"><Button className="edit-comment" disabled={!selectedBlock || editPending || submitting || !!editError} onClick={openComments}><Icon name="comment" size={14} />Comment</Button><span>Changes stay in your draft</span><Button type="submit" disabled={editPending || !!editError}>Done</Button></div>
         </form>}
       </section>}
       <p className="sr-only" role="status">{showSaveBar ? saveBarStatus(saveState) : ''}</p>
-      {(showSelectionBar || showSaveBar) && <div className="reader-bars" ref={bars}>
+      {(showSelectionBar || showSaveBar || showNotice) && <div className="reader-bars" ref={bars}>
         {showNotice && <div className="edit-session-notice" role="status">
           <p>{editing.error || (editStale ? 'The document changed. Refresh your draft to keep edits that still match.' : !connected ? 'Offline. Your draft is kept here until you reconnect.' : 'Browser storage is full. Save your draft before reloading or closing this tab.')}</p>
           {editing.error && !editStale && <IconButton label="Dismiss editing message" onClick={editing.dismissError}><Icon name="close" size={14} /></IconButton>}
@@ -962,8 +975,8 @@ export function Reader({
         </div>}
         <div className="reader-bars-row">
           {showSelectionBar && <div className="selection-bar" role="group" aria-label="Selection actions">
-            <HintButton ref={editAction} aria-label="Edit selected text" hint={editUnavailable} focusableWhenDisabled aria-pressed={!!editor} aria-controls="selection-panel" disabled={!canEditText(editTargetId)} onClick={() => { if (editor) closeEditor(); else if (selection) openTextComponent({ ...selection, targetId: editTargetId }); }}><Icon name="edit" size={16} />Edit</HintButton>
-            <HintButton ref={commentAction} focusableWhenDisabled aria-label={selectedPhrase && !editor ? 'Comment on selected phrase' : 'Comment on selection'} aria-pressed={composing} aria-controls="selection-panel" disabled={!selectedBlock || editPending || submitting || !!editError} onClick={composing ? closeComposer : openComments}><Icon name="comment" size={16} />Comment</HintButton>
+            <HintButton ref={editAction} aria-label="Edit selected text" hint={editUnavailable} focusableWhenDisabled disabled={!canEditText(editTargetId)} onClick={() => { if (selection) openTextComponent({ ...selection, targetId: editTargetId }); }}><Icon name="edit" size={16} />Edit</HintButton>
+            <HintButton ref={commentAction} focusableWhenDisabled aria-label={selectedPhrase ? 'Comment on selected phrase' : 'Comment on selection'} disabled={!selectedBlock || editPending || submitting || !!editError} onClick={openComments}><Icon name="comment" size={16} />Comment</HintButton>
             <HintButton focusableWhenDisabled aria-label="History for selection" aria-pressed={!!selectedHistory && isShowing(panel, 'history', selectedHistory)} aria-controls="reader-panel" disabled={!selectedBlock || editPending || submitting} onClick={() => selectedHistory && changePanel(togglePanel(panel, 'history', selectedHistory))}><Icon name="history" size={16} />History</HintButton>
           </div>}
           {showSaveBar && <div className="save-bar" role="group" aria-label="Unsaved changes" onFocus={() => { saveBarFocus.current = true; }} onBlur={event => { if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget as Node)) saveBarFocus.current = false; }}>

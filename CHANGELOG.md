@@ -26,7 +26,7 @@
 
 ### Reader and feedback
 
-- Comments and History share one side panel, docked beside the pages on wide screens and a bottom sheet on narrow ones. The reader toolbar's **Comments** and **History** buttons open its tabs; **Comments** shows the number of open comments. The selection bar holds Edit, Comment, and History; a separate save bar appears only while there are changes to save.
+- Comments and History share one side panel, docked beside the pages on wide screens and a bottom sheet on narrow ones. The reader toolbar's **Comments** and **History** buttons open its tabs; **Comments** shows the number of open comments. The selection bar holds Edit, Comment, and History and steps aside while the editor or comment composer is open; a separate save bar appears only while there are changes to save.
 - Comments can target a phrase within a paragraph or table cell. `comments add --phrase "words"` does the same from the command line, with `--target <field-id>` when the words appear in more than one field, and `comments list --anchors` reports whether each comment still finds its text. `comments add` works without a running service.
 - Double-clicking text opens the editor. List items, plain `DataTable` cells and column headings, text passed through local helper components, and literal text a document passes to theme components are editable. Labels a theme or template generates explain why they cannot be edited.
 - The document menu groups Rename, Duplicate, Move to project, Details, and Status, then Previous exports with its own archive icon, then Delete. In the reader, Appearance and the agent skills list live in a labelled **Skills and appearance** menu.
