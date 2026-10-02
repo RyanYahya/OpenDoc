@@ -19,23 +19,24 @@
 .comment-dock-panel .comment-time { margin-inline-start: auto; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .comment-dock-panel .comment-status + .comment-time { margin-inline-start: 0; }
 
-.correction-editor.comment-dock-panel {
-  top: auto;
-  right: 20px;
-  bottom: max(76px, calc(env(safe-area-inset-bottom) + 56px));
-  left: auto;
-  width: 344px;
-  max-width: calc(100vw - 40px);
-  max-height: min(60dvh, 560px);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border-radius: 12px;
-  background: var(--popup-surface);
-  box-shadow: var(--shadow-popup);
+/* The Comments tab of the reader's side panel: a scrolling list with the agent hand-off pinned below it. */
+.comment-dock-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.comment-dock-panel textarea {
+  display: block;
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 10px 11px;
+  background: var(--background);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--body-size);
+  line-height: 1.65;
 }
-.comment-dock-panel .correction-heading { flex-shrink: 0; }
-.comment-dock-content { min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.comment-dock-panel textarea:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -1px; }
+.comment-dock-content { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 8px 10px 14px; }
 .comment-dock-content .comment-error { margin: 2px 2px 12px; }
 .comment-dock-content .no-comments { margin: 0; padding: 6px 8px 10px; }
 .no-comments p { margin: 0; line-height: 1.6; }
@@ -65,7 +66,7 @@
 .comment-card.resolved .comment-text { color: var(--muted); }
 [dir="rtl"] .comment-location .comment-status svg { transform: none; }
 
-.comment-handoff { flex-shrink: 0; margin: 8px -12px -12px; padding: 8px 8px 8px 14px; border-top: 1px solid var(--line); }
+.comment-handoff { flex-shrink: 0; padding: 8px 8px 8px 14px; border-top: 1px solid var(--line); }
 .comment-handoff-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; }
 .comment-handoff-status { color: var(--muted); font-size: 12px; line-height: 1.5; font-variant-numeric: tabular-nums; }
 .ui-button.comment-handoff-copy { min-height: 30px; padding: 5px 8px; gap: 6px; font-size: 12px; color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 12%, transparent); border: 0; border-radius: 6px; }
@@ -75,17 +76,9 @@
 
 @media (max-width: 620px) {
   .ui-button.comment-dock-trigger { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); }
-  .correction-editor.comment-dock-panel {
-    top: auto !important;
-    right: 12px;
-    bottom: max(68px, calc(env(safe-area-inset-bottom) + 56px)) !important;
-    left: auto !important;
-    width: calc(100% - 24px);
-    max-width: none;
-    max-height: 60dvh !important;
-    border-radius: 14px;
-  }
   .comment-dock-panel textarea { font-size: 16px; }
-  .comment-handoff { margin-inline: -14px; margin-bottom: -14px; }
   .ui-button.comment-handoff-copy { min-height: 40px; }
 }
+/* The button stays at the bottom corner of the pages while the side panel is docked beside them. */
+.reader:has(.reader-panel[data-layout="docked"]) .ui-button.comment-dock-trigger { right: calc(var(--reader-panel-width) + 20px); }
+.reader:has(.reader-panel[data-layout="sheet"]) .ui-button.comment-dock-trigger { display: none; }

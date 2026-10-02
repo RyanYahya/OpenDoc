@@ -22,7 +22,7 @@ Text sources are the files the document owns in `documents/<id>/`: `index.tsx`, 
 
 ## Restore from the reader
 
-Choose the **History** button in the reader toolbar. Versions are listed newest first and grouped by day. Each row says what changed, naming blocks by their opening words (for example: Edited “Quarterly results”, “Budget”), with its time and where it came from. Consecutive versions from the same source within ten minutes, such as a burst of agent writes, share one row that opens to list each of them. Times read “8:42 PM” today, “Yesterday 3:10 PM”, then “Oct 1, 3:10 PM”.
+Choose the **History** button in the reader toolbar to open the **History** tab of the side panel, which it shares with **Comments**: docked beside the pages on wide screens and a bottom sheet on narrow ones. Versions are listed newest first and grouped by day. Each row says what changed, naming blocks by their opening words (for example: Edited “Quarterly results”, “Budget”), with its time and where it came from. Consecutive versions from the same source within ten minutes, such as a burst of agent writes, share one row that opens to list each of them. Times read “8:42 PM” today, “Yesterday 3:10 PM”, then “Oct 1, 3:10 PM”.
 
 Select a version to see how it differs from the current source. Every changed block shows its kind, such as Paragraph, Title, or Table, and its earlier and current wording, with removed words struck through and added words underlined. Long paragraphs show only the changed passages until you choose **Show full text**. Each block's stable ID is under **Details**, ready to copy for your agent. Changed blocks are outlined on the page, one outline per block; hovering or focusing an entry outlines it more strongly, and **Show on page** scrolls to it.
 
@@ -31,7 +31,7 @@ Select a version to see how it differs from the current source. Every changed bl
 - **Restore section** restores a section, slide, or other container together with everything inside it.
 - **Restore whole version**, below the changed blocks, returns every text source to that version. Files created since are kept, and media is not changed.
 
-Each restore asks for confirmation and then offers **Undo**. To see one block's earlier wording, select it on the page and choose the History icon in the selection bar. Each distinct earlier wording is listed once; restoring it replaces that block or section only.
+Each restore asks for confirmation and then offers **Undo**. To see one block's earlier wording, select it on the page and choose **History** in the selection bar. Each distinct earlier wording is listed once; restoring it replaces that block or section only.
 
 Restoring changes the saved source, so OpenDoc asks you to save or discard unsaved text edits first, as Export does.
 

@@ -35,9 +35,9 @@ export function Button({
   );
 }
 
-function Hint({ label, children }: { label: string; children: ReactElement }) {
+function Hint({ label, disabled, children }: { label: string; disabled?: boolean; children: ReactElement }) {
   return (
-    <Tooltip.Root>
+    <Tooltip.Root disabled={disabled}>
       <Tooltip.Trigger render={children} />
       <Tooltip.Portal>
         <Tooltip.Positioner sideOffset={8}>
@@ -67,6 +67,15 @@ export function IconButton({
         aria-description={hint}
         className={`icon-button ${className ?? ""}`}
       />
+    </Hint>
+  );
+}
+
+/** A labelled button. `hint` adds a tooltip and description, such as why the action is unavailable. */
+export function HintButton({ hint, ...props }: ButtonProps & { hint?: string }) {
+  return (
+    <Hint label={hint ?? ""} disabled={!hint}>
+      <Button {...props} aria-description={hint} />
     </Hint>
   );
 }

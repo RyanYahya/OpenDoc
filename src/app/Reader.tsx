@@ -1,12 +1,16 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Menu } from '@base-ui/react/menu';
 import { Popover } from '@base-ui/react/popover';
 import { PdfPage } from "./Pdf";
 import { useReaderPreview } from "./useReaderPreview";
 import { useTextEditing } from "./useTextEditing";
-import { CommentDock } from "./CommentDock";
+import { CommentDock, CommentsButton } from "./CommentDock";
 import { DeletedComments } from "./DeletedComments";
-import { HistoryPanel, type HistoryTarget } from "./HistoryPanel";
+import { HistoryPanel } from "./HistoryPanel";
+import { ReaderPanel } from "./ReaderPanel";
+import { closePanel, isShowing, loadPanelPreference, panelFromPreference, savePanelPreference, selectTab, showPanel, togglePanel, type PanelState, type PanelTarget } from "./readerPanel";
+import { saveBarStatus, saveBarVisible } from "./saveBar";
+import { unionBox, useAnchoredPanel } from "./anchoredPanel";
 import { applyCommentsPrompt } from "./agentPrompts";
 import { api } from "./api";
 import { ExportMenu } from "./ExportMenu";
@@ -29,6 +33,7 @@ import "./edit-workbench.css";
 import { Icon } from "./ui/Icon";
 import {
   Button,
+  HintButton,
   IconButton,
   SelectControl,
   useNotifications,
@@ -36,6 +41,16 @@ import {
 
 type CorrectionDraft = { selection: DocumentSelection; text: string; linked: number; baseline?: EditorBaseline };
 const openEditors = new Map<string, OpenEditorRecord>();
+/** Narrow screens show the side panel, editor, and comment composer as bottom sheets, one at a time. */
+const sheetQuery = '(max-width: 620px)';
+function sheetLayoutNow() {
+  try { return window.matchMedia(sheetQuery).matches; } catch { return false; }
+}
+function subscribeSheetLayout(change: () => void) {
+  const query = window.matchMedia(sheetQuery);
+  query.addEventListener('change', change);
+  return () => query.removeEventListener('change', change);
+}
 
 export function Reader({
   state: incomingState,
@@ -75,12 +90,18 @@ export function Reader({
   const commentField = useRef<HTMLTextAreaElement>(null);
   const editAction = useRef<HTMLButtonElement>(null);
   const commentAction = useRef<HTMLButtonElement>(null);
+  const selectionPanel = useRef<HTMLElement>(null);
+  const bars = useRef<HTMLDivElement>(null);
   const composingText = useRef(false);
   const componentTrigger = useRef<HTMLElement | null>(null);
   const readingPosition = useRef<{ blockId: string; offset: number } | null>(null);
   const previousPreview = useRef({ hash: artifact?.hash, revision: state.revision });
-  const [commentsOpen, setCommentsOpen] = useState(false);
-  const [commentMode, setCommentMode] = useState<'compose' | 'view'>('compose');
+  const sheetLayout = useSyncExternalStore(subscribeSheetLayout, sheetLayoutNow, () => false);
+  // The side panel reopens on its last tab, except as a bottom sheet over a newly opened document.
+  const [panel, setPanel] = useState<PanelState>(() => panelFromPreference(loadPanelPreference(), !sheetLayoutNow()));
+  const restoredPanel = useRef(panel.open);
+  const panelReturn = useRef<HTMLElement | null>(null);
+  const [composing, setComposing] = useState(false);
   const [commentEditor, setCommentEditor] = useState<{ id: string; text: string; version: number } | null>(null);
   const [navigation, setNavigation] = useState(false);
   const [navigationMode, setNavigationMode] = useState("pages");
@@ -107,9 +128,7 @@ export function Reader({
   const [changing, setChanging] = useState<string | null>(null);
   const mutationPending = useRef(false);
   const [commentError, setCommentError] = useState("");
-  const [history, setHistory] = useState<HistoryTarget | null>(null);
   const historyTrigger = useRef<HTMLButtonElement>(null);
-  const historyReturn = useRef<HTMLElement | null>(null);
   const scroll = useRef<HTMLDivElement>(null);
   const commentsTrigger = useRef<HTMLButtonElement>(null);
   const navigationTrigger = useRef<HTMLButtonElement>(null);
@@ -153,17 +172,16 @@ export function Reader({
     return () => { clearTimeout(timer); controller.abort(); };
   }, [id, generation]);
   useEffect(() => {
-    if (!editor && !commentsOpen) return;
+    if (!editor && !composing) return;
     const dismiss = (event: PointerEvent) => {
       const target = event.target instanceof Element ? event.target : null;
-      if (target?.closest('.edit-workbench, .comment-dock-panel, .comment-dock-trigger, .component-target, .comment-marker, [aria-controls="reader-comments"]') || mutationPending.current || editPending || editError) return;
+      if (target?.closest('.text-edit-panel, .reader-bars, .reader-panel, .comment-dock-trigger, .component-target, .comment-marker, [aria-controls="reader-panel"]') || mutationPending.current || editPending || editError) return;
       setEditor(null); forgetOpenEditor();
-      setCommentEditor(null);
       clearSelection();
     };
     document.addEventListener('pointerdown', dismiss, true);
     return () => document.removeEventListener('pointerdown', dismiss, true);
-  }, [!!editor, commentsOpen, editPending, editError]);
+  }, [!!editor, composing, editPending, editError]);
   useEffect(() => () => { if (scrollFrame.current !== null) cancelAnimationFrame(scrollFrame.current); }, []);
   useEffect(() => {
     const field = editField.current, caret = editorCaret.current;
@@ -171,24 +189,34 @@ export function Reader({
     field?.focus({ preventScroll: true });
     if (field && caret && caret.end <= field.value.length) field.setSelectionRange(caret.start, caret.end);
   }, [editor?.selection.targetId]);
-  useEffect(() => { if (commentsOpen && commentMode === 'compose') commentField.current?.focus({ preventScroll: true }); }, [commentsOpen, commentMode, selection?.blockId]);
-  useEffect(() => {
-    // Scroll the selected component above any floating panel opened for it.
-    if ((!editor && !commentsOpen) || !selection) return;
-    const frame = requestAnimationFrame(() => {
+  useEffect(() => { if (composing) commentField.current?.focus({ preventScroll: true }); }, [composing, selection?.blockId]);
+  // The editor and composer open beside the selection, keeping it in view; narrow screens use a bottom sheet.
+  useAnchoredPanel({
+    panel: selectionPanel, container: scroll, avoid: bars, active: (!!editor || composing) && !!selection, sheet: sheetLayout,
+    anchorKey: `${composing ? 'comment' : 'edit'}:${selection?.page}:${selection?.blockId}:${selection?.targetId ?? ''}:${selection?.start ?? ''}:${selection?.end ?? ''}`,
+    findAnchor: () => {
       const container = scroll.current;
+      if (!container || !selection) return undefined;
+      const sheet = container.querySelector(`[data-sheet="${selection.page}"]`);
+      // A selected phrase anchors to its own lines, which may sit deep in a long paragraph.
+      const phrase = selectedPhrase && sheet ? unionBox([...sheet.querySelectorAll('.text-selection-highlight')].map(line => line.getBoundingClientRect())) : undefined;
+      if (phrase) return phrase;
       const selector = selection.targetId ? `[data-text-target="${CSS.escape(selection.targetId)}"]` : `[data-block-id="${CSS.escape(selection.blockId)}"]`;
-      const target = container?.querySelector<HTMLElement>(`[data-sheet="${selection.page}"] ${selector}`) ?? container?.querySelector<HTMLElement>(selector);
-      if (!container || !target) return;
-      const box = target.getBoundingClientRect();
-      const panels = [...document.querySelectorAll('.edit-workbench, .comment-dock-panel')].map(panel => panel.getBoundingClientRect())
-        .filter(panel => panel.left < box.right && panel.right > box.left);
-      if (!panels.length) return;
-      const top = Math.min(...panels.map(panel => panel.top));
-      if (box.bottom > top - 20) container.scrollTop += Math.min(box.bottom - top + 20, box.top - container.getBoundingClientRect().top - 32);
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [editor?.selection.targetId, commentsOpen, commentMode, selection?.targetId, selection?.blockId]);
+      return (sheet?.querySelector(selector) ?? container.querySelector(selector))?.getBoundingClientRect();
+    },
+  });
+  useEffect(() => { savePanelPreference(panel); }, [panel.open, panel.tab]);
+  useEffect(() => {
+    // A panel reopened with the document must not take focus from the page.
+    if (!restoredPanel.current) return;
+    restoredPanel.current = false;
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && active.closest('#reader-panel')) active.blur();
+  }, []);
+  useEffect(() => {
+    // Bottom sheets take turns: when the window narrows, the editor or composer keeps the screen.
+    if (sheetLayout && panel.open && (editor || composing)) setPanel(closePanel);
+  }, [sheetLayout]);
   useEffect(() => {
     if (!pdf) return;
     if (previousPreview.current.hash === artifact?.hash && previousPreview.current.revision === state.revision) return;
@@ -307,13 +335,13 @@ export function Reader({
       }
       if (event.key === "Escape") {
         if (editor) closeEditor();
-        else if (commentsOpen) closeComments();
+        else if (composing) closeComposer();
         else clearSelection();
       }
     };
     window.addEventListener("keydown", listener);
     return () => window.removeEventListener("keydown", listener);
-  }, [goPage, safePage, selection, !!editor, commentsOpen, editPending, ready, editError]);
+  }, [goPage, safePage, selection, !!editor, composing, editPending, ready, editError]);
   function onScroll() {
     if (scrollFrame.current !== null) return;
     scrollFrame.current = requestAnimationFrame(() => {
@@ -340,8 +368,7 @@ export function Reader({
     });
   }
   function clearSelection() {
-    setCommentsOpen(false);
-    setCommentEditor(null);
+    setComposing(false);
     holdSelection(null);
     window.getSelection()?.removeAllRanges();
   }
@@ -352,7 +379,7 @@ export function Reader({
   }
   const chooseSelection = useCallback((next: DocumentSelection) => {
     if (editPending || editError) return;
-    setCommentsOpen(false);
+    setComposing(false);
     holdSelection({ ...next, revision: state.revision, renderHash: artifact?.hash });
     setPage(next.page);
   }, [editPending, editError, state.revision, artifact]);
@@ -366,22 +393,37 @@ export function Reader({
     if (editor && field && target) chooseSelection(phraseFromText(target, editor.text, field.selectionStart, field.selectionEnd, selection.page, artifact?.hash)
       ?? { blockId: target.blockId, targetId: target.id, start: 0, end: target.text.length, quote: target.text, page: target.lines[0]?.page ?? selection.page });
     setEditor(null); forgetOpenEditor();
-    setCommentMode('compose');
-    setCommentEditor(null);
-    setCommentsOpen(true);
+    if (sheetLayout) setPanel(closePanel);
+    setComposing(true);
   }
-  function closeComments() {
+  function closeComposer() {
     if (mutationPending.current) return;
-    if (commentMode === 'compose') { setCommentsOpen(false); commentAction.current?.focus(); return; }
-    clearSelection();
-    requestAnimationFrame(() => (componentTrigger.current ?? (commentsTrigger.current?.getClientRects().length ? commentsTrigger.current : optionsTrigger.current))?.focus());
+    setComposing(false);
+    commentAction.current?.focus();
   }
-  function showCommentList() {
-    if (editPending || editError) return;
-    setEditor(null); forgetOpenEditor();
-    clearSelection();
-    setCommentMode('view');
-    setCommentsOpen(true);
+  /** Open or switch the side panel from a button or marker, which receives focus again when it closes. */
+  function changePanel(next: PanelState) {
+    if (!next.open) { closeReaderPanel(); return; }
+    if (sheetLayout && (editor || composing)) {
+      // Bottom sheets take turns; text changes stay in the draft and a comment stays in its draft.
+      if (editPending || editError || mutationPending.current) return;
+      setEditor(null); forgetOpenEditor(); setComposing(false);
+    }
+    panelReturn.current = document.activeElement instanceof HTMLElement && !document.activeElement.closest('#reader-panel') ? document.activeElement : panelReturn.current;
+    if (next.tab !== 'comments' || !isShowing(panel, 'comments')) setCommentEditor(null);
+    setPanel(next);
+  }
+  function closeReaderPanel() {
+    if (mutationPending.current) return;
+    const tab = panel.tab;
+    setPanel(closePanel);
+    setCommentEditor(null);
+    requestAnimationFrame(() => {
+      const back = panelReturn.current;
+      panelReturn.current = null;
+      const fallback = tab === 'history' ? historyTrigger.current : commentsTrigger.current;
+      (back?.isConnected && back.getClientRects().length ? back : fallback?.getClientRects().length ? fallback : optionsTrigger.current)?.focus({ preventScroll: true });
+    });
   }
   function viewComments(block: string, pageNumber: number) {
     if (editPending || editError) return;
@@ -391,9 +433,7 @@ export function Reader({
     const comment = comments.find(item => item.blockId === block && item.status === 'open');
     const anchor = comment && resolveCommentAnchor(artifact, comment);
     if (anchor?.selection) holdSelection({ ...anchor.selection, revision: state.revision });
-    setCommentMode('view');
-    setCommentEditor(null);
-    setCommentsOpen(true);
+    changePanel(showPanel(panel, 'comments', { kind: 'block', blockId: block }));
   }
   function pendingEditorBaseline(targetId: string): EditorBaseline | undefined {
     const session = editing.session;
@@ -482,8 +522,9 @@ export function Reader({
   async function saveAll() {
     if (editError || mutationPending.current || composingText.current) return;
     if (selected) rememberReadingPosition(selected);
+    const fromEditor = !!selectionPanel.current?.contains(document.activeElement);
     const accepted = await editing.save();
-    if (accepted) { setEditor(null); forgetOpenEditor(); }
+    if (accepted) { setEditor(null); forgetOpenEditor(); if (fromEditor) editAction.current?.focus({ preventScroll: true }); }
     return accepted;
   }
   function undoChange() {
@@ -508,13 +549,13 @@ export function Reader({
     const shortcut = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
       if (event.key.toLowerCase() === 's') { event.preventDefault(); void saveAll(); return; }
-      if ((event.target as HTMLElement)?.closest('input,textarea,[contenteditable=true]') || commentsOpen) return;
+      if ((event.target as HTMLElement)?.closest('input,textarea,[contenteditable=true],#reader-panel') || composing) return;
       if (event.key.toLowerCase() === 'z') { event.preventDefault(); if (event.shiftKey) redoChange(); else undoChange(); }
       if (event.key.toLowerCase() === 'y') { event.preventDefault(); redoChange(); }
     };
     document.addEventListener('keydown', shortcut);
     return () => document.removeEventListener('keydown', shortcut);
-  }, [editing.session, editing.saving, editing.count, editing.stale, connected, editError, editor, commentsOpen, state.manualEdit]);
+  }, [editing.session, editing.saving, editing.count, editing.stale, connected, editError, editor, composing, state.manualEdit]);
   function scrollToBlock(block: string, preferredPage?: number, y?: number) {
     const found = preferredPage && pages[preferredPage - 1]?.fragments.some(fragment => fragment.id === block)
       ? preferredPage - 1 : pages.findIndex((item) => item.fragments.some((fragment) => fragment.id === block));
@@ -529,12 +570,16 @@ export function Reader({
     }
   }
   function findBlock(block: string) {
+    // Moving to another component leaves the open editor, as selecting one on the page does; its changes stay in the draft.
+    if (editPending || editError) return;
+    setEditor(null); forgetOpenEditor();
     chooseSelection({ blockId: block, page: Math.max(1, pages.findIndex(item => item.fragments.some(fragment => fragment.id === block)) + 1) });
     scrollToBlock(block);
   }
   function goToComment(comment: Comment) {
     const { selection: next } = resolveCommentAnchor(artifact, comment);
-    if (!next) return;
+    if (!next || editPending || editError) return;
+    setEditor(null); forgetOpenEditor();
     const target = getTextTarget(artifact, next.targetId);
     chooseSelection(next);
     setCommentEditor(null);
@@ -555,8 +600,8 @@ export function Reader({
     else scroll.current?.focus();
   }
   function skipToComments() {
-    const panel = document.getElementById('reader-comments');
-    (panel?.querySelector<HTMLElement>('button:not(:disabled), textarea, [tabindex="0"]') ?? commentsTrigger.current)?.focus();
+    const list = isShowing(panel, 'comments') ? document.querySelector('#reader-panel .comment-dock-panel') : null;
+    (list?.querySelector<HTMLElement>('.comment-dock-content :is(button:not(:disabled), textarea)') ?? list?.querySelector<HTMLElement>('h2') ?? commentsTrigger.current)?.focus();
   }
   function navigateFromRail(number: number, block?: string) {
     if (block) scrollToBlock(block);
@@ -605,8 +650,10 @@ export function Reader({
         method: action === 'delete' ? 'DELETE' : 'PATCH',
         body: JSON.stringify(action === 'delete' ? { version: comment.version } : { text: commentEditor!.text, version: commentEditor!.version }),
       }));
-      clearSelection();
-      componentTrigger.current?.focus();
+      setCommentEditor(null);
+      // Focus stays in the list: on the edited comment, or on the list's heading after a deletion.
+      requestAnimationFrame(() => (document.querySelector<HTMLElement>(`[data-comment-id="${CSS.escape(comment.id)}"] .comment-jump:not(:disabled)`)
+        ?? document.getElementById('comment-dock-heading'))?.focus({ preventScroll: true }));
       // Deletion keeps the record, so Undo restores the same comment, anchor, and history.
       if (action === 'delete') notify.success('Comment deleted', { label: 'Undo', onClick: async () => {
         ++commentRequest.current;
@@ -634,14 +681,6 @@ export function Reader({
     const resolved = resolveCommentAnchor(artifact, comment);
     return resolved.status === 'attached' && resolved.selection?.targetId ? [resolved.selection] : [];
   }), [unresolvedComments, artifact]);
-  function openHistory(target: HistoryTarget) {
-    historyReturn.current = document.activeElement instanceof HTMLElement ? document.activeElement : historyTrigger.current;
-    setHistory(target);
-  }
-  const closeHistory = useCallback(() => {
-    setHistory(null);
-    requestAnimationFrame(() => (historyReturn.current?.isConnected ? historyReturn.current : historyTrigger.current)?.focus({ preventScroll: true }));
-  }, []);
   function showHistoryBlock(ids: string[]) {
     // A section's own ID may not render; derived and nested blocks still locate it.
     const found = ids.flatMap(item => ['', '-heading', '-title', '-lead'].map(suffix => item + suffix)).find(item => getBlock(artifact, item) && pages.some(page => page.fragments.some(fragment => fragment.id === item)))
@@ -649,9 +688,23 @@ export function Reader({
     if (found) findBlock(found);
   }
   const undoDisabled = editPending || undoPending || (editing.savedId ? !state.manualEdit?.canUndo || !connected : !editError && !editing.canUndo && (editing.count > 0 || !state.manualEdit?.canUndo || !connected));
-  const composingComment = commentsOpen && commentMode === 'compose';
-  const showWorkbench = !!selection || !!editor || composingComment || editing.count > 0 || editing.canRedo || editing.saved || !!editing.savedId || !!editing.error;
-  useNotificationClearance([showWorkbench, commentsOpen, commentMode]);
+  const showSelectionBar = !!selection || !!editor || composing;
+  const saveState = { count: editing.count, saving: editPending, undoing: undoPending, saved: editing.saved, savedId: editing.savedId, canRedo: editing.canRedo, error: editing.error || editError };
+  const showSaveBar = saveBarVisible(saveState);
+  const showNotice = (showSelectionBar || showSaveBar) && (!!editing.error || editStale || !connected || editing.persistenceFailed);
+  const savedNow = editing.saved && !editing.count && !editPending;
+  const selectedHistory: PanelTarget | undefined = selection ? { kind: 'block', blockId: selection.blockId } : undefined;
+  const commentTarget = panel.targets.comments;
+  const commentFilter = commentTarget.kind === 'block' ? commentTarget.blockId : null;
+  useNotificationClearance([showSelectionBar, showSaveBar, showNotice, panel.open, sheetLayout, !!editor || composing]);
+  // The save bar leaves once changes are saved or discarded; focus moves to the selection or the page, not the window.
+  const saveBarFocus = useRef(false);
+  useEffect(() => {
+    if (showSaveBar || !saveBarFocus.current) return;
+    saveBarFocus.current = false;
+    if (document.activeElement && document.activeElement !== document.body) return;
+    (editAction.current ?? (componentTrigger.current?.isConnected ? componentTrigger.current : scroll.current))?.focus({ preventScroll: true });
+  }, [showSaveBar]);
   const pageControls = <>
     <div className="reader-pagination">
       <IconButton label={`Previous ${pageLabel.toLowerCase()}`} disabled={safePage <= 1} onClick={() => goPage(safePage - 1)}><Icon name="left" size={14} /></IconButton>
@@ -689,7 +742,7 @@ export function Reader({
           </Popover.Root>
         </div>
         <div className="reader-actions">
-          <IconButton ref={historyTrigger} label="Version history" aria-expanded={history?.kind === 'document'} aria-controls="reader-history" onClick={() => history?.kind === 'document' ? closeHistory() : openHistory({ kind: 'document' })}><Icon name="history" size={18} /></IconButton>
+          <IconButton ref={historyTrigger} label="Version history" aria-expanded={isShowing(panel, 'history')} aria-controls="reader-panel" onClick={() => changePanel(togglePanel(panel, 'history'))}><Icon name="history" size={18} /></IconButton>
           <SkillIndex />
           <ExportMenu state={state} connected={connected} ready={ready && !!pdf && !readerPreview.loading && artifact?.hash === state.artifact?.hash} unsaved={editing.count} saving={editPending || undoPending} correctionError={editError || editing.error || (editStale ? 'Refresh your draft before saving and exporting.' : '')} canSave={!!editing.count && ready && !editPending && !undoPending && !editStale && !editError && !editing.savedId} onSave={saveAll} onShowExports={onShowExports} />
           <Menu.Root>
@@ -825,67 +878,74 @@ export function Reader({
             </div>
           )}
         </div>
+        {panel.open && <ReaderPanel tab={panel.tab} commentCount={unresolvedComments.length} sheet={sheetLayout}
+          onTabChange={tab => changePanel(selectTab(panel, tab))} onClose={closeReaderPanel}
+          comments={<CommentDock pageLabel={pageLabel} heading={commentFilter ? `${(getBlock(artifact, commentFilter)?.kind ?? 'component').replace(/^./, letter => letter.toUpperCase())} comments` : 'All comments'}
+            filtered={!!commentFilter} openCount={unresolvedComments.length} agentPrompt={applyCommentsPrompt({ id, name: documentName(state), format: documentFormat(state) })}
+            items={comments.filter(comment => comment.status !== 'deleted' && (!commentFilter || comment.blockId === commentFilter)).map(comment => {
+              const anchor = resolveCommentAnchor(artifact, comment);
+              return { comment, page: anchor.selection?.page, kind: getBlock(artifact, comment.blockId)?.kind ?? 'Component', canJump: !!pdf && !!anchor.selection,
+                quote: comment.anchor?.quote, textChanged: anchor.status === 'changed' };
+            })}
+            error={commentError} connected={connected} changing={changing} editing={commentEditor}
+            onEdit={comment => setCommentEditor({ id: comment.id, text: comment.text, version: comment.version })}
+            onEditText={text => setCommentEditor(current => current ? { ...current, text } : null)}
+            onSaveEdit={comment => updateSavedComment(comment, 'edit')} onCancelEdit={() => setCommentEditor(null)}
+            onDelete={comment => updateSavedComment(comment, 'delete')} onJump={goToComment}
+            onShowAll={() => setPanel(current => showPanel(current, 'comments'))} onClose={closeReaderPanel}
+            footer={<DeletedComments documentId={id} blockId={commentFilter} connected={connected} refreshKey={comments}
+              onRestored={value => { ++commentRequest.current; commentAbort.current?.abort(); setComments(value); notify.success('Comment restored'); }} onError={notify.error} />} />}
+          history={<HistoryPanel key={panel.targets.history.kind === 'block' ? `block:${panel.targets.history.blockId}` : 'document'} documentId={id} target={panel.targets.history} generation={generation} connected={connected} pageLabel={pageLabel}
+            unsaved={editing.count} saving={editPending || undoPending} onSave={saveAll} onDiscard={discardChanges} onJump={showHistoryBlock}
+            onShowDocument={() => setPanel(current => showPanel(current, 'history'))} onClose={closeReaderPanel} />} />}
       </div>
-      <CommentDock pageLabel={pageLabel} open={commentsOpen && commentMode === 'view'} heading={selected ? 'Component comments' : `${formatLabel} comments`} count={unresolvedComments.length}
-        filtered={!!selected} openCount={unresolvedComments.length} agentPrompt={applyCommentsPrompt({ id, name: documentName(state), format: documentFormat(state) })}
-        items={comments.filter(comment => comment.status !== 'deleted' && (!selected || comment.blockId === selected)).map(comment => {
-          const anchor = resolveCommentAnchor(artifact, comment);
-          return { comment, page: anchor.selection?.page, kind: getBlock(artifact, comment.blockId)?.kind ?? 'Component', canJump: !!pdf && !!anchor.selection,
-            quote: comment.anchor?.quote, textChanged: anchor.status === 'changed' };
-        })}
-        error={commentError} connected={connected} changing={changing} editing={commentEditor} triggerRef={commentsTrigger}
-        onEdit={comment => setCommentEditor({ id: comment.id, text: comment.text, version: comment.version })}
-        onEditText={text => setCommentEditor(current => current ? { ...current, text } : null)}
-        onSaveEdit={comment => updateSavedComment(comment, 'edit')} onCancelEdit={() => setCommentEditor(null)}
-        onDelete={comment => updateSavedComment(comment, 'delete')} onJump={goToComment} onOpen={showCommentList} onClose={closeComments}
-        footer={<DeletedComments documentId={id} blockId={selected} connected={connected} refreshKey={comments}
-          onRestored={value => { ++commentRequest.current; commentAbort.current?.abort(); setComments(value); notify.success('Comment restored'); }} onError={notify.error} />} />
-      {history && <HistoryPanel key={history.kind === 'block' ? `block:${history.blockId}` : 'document'} documentId={id} target={history} generation={generation} connected={connected} pageLabel={pageLabel}
-        unsaved={editing.count} saving={editPending || undoPending} onSave={saveAll} onDiscard={discardChanges} onJump={showHistoryBlock}
-        onShowDocument={() => setHistory({ kind: 'document' })} onClose={closeHistory} />}
-      {showWorkbench && <div className="edit-workbench">
-        {(editor || composingComment) && <section className="text-edit-panel" id="selection-panel" role="dialog" aria-modal="false" aria-labelledby="correction-title">
-          {composingComment ? <form key="comment" onSubmit={submitComment} onKeyDown={event => {
-            if (event.nativeEvent.isComposing) return;
-            if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeComments(); }
-            if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); if (!submitting) event.currentTarget.requestSubmit(); }
-          }}>
-            <div className="text-edit-heading"><div><Icon name="comment" size={15} /><h2 id="correction-title">Add comment</h2><span className="text-edit-kind">{selectedBlock?.kind ?? 'Component'}</span></div><IconButton label="Close comment composer" disabled={submitting} onClick={closeComments}><Icon name="close" size={15} /></IconButton></div>
-            {commentPhrase ? <p className="comment-phrase" id="comment-phrase">on “<bdi dir="auto">{commentPhrase.quote}</bdi>”</p>
-              : selectedPhrase && <p className="correction-note comment-phrase-note" id="comment-phrase">This phrase includes unsaved wording, so the comment applies to the whole component.</p>}
-            <textarea ref={commentField} dir="auto" aria-label="Comment" aria-describedby={selectedPhrase ? 'comment-phrase' : undefined} placeholder="Describe the change for your agent…" value={draft} maxLength={8000} readOnly={submitting} onChange={event => setDraft(event.target.value)} />
-            <div className="text-edit-footer"><span>Your agent applies comments</span><Button disabled={submitting} onClick={closeComments}>Cancel</Button><Button className="add-comment" type="submit" disabled={!draft.trim() || !ready || submitting || !selectedBlock}>{submitting ? 'Adding…' : 'Add comment'}</Button></div>
-          </form> : editor && <form key="edit" onSubmit={event => { event.preventDefault(); closeEditor(); }} onKeyDown={event => {
-            if (event.nativeEvent.isComposing || composingText.current) return;
-            if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeEditor(); }
-            if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); closeEditor(); }
-          }}>
-            <div className="text-edit-heading"><div><Icon name="edit" size={15} /><h2 id="correction-title">{editorWritable ? 'Edit text' : 'Selected text'}</h2><span className="text-edit-kind">{selectedBlock?.kind ?? 'Component'}</span></div><IconButton label="Close text editor" disabled={editPending || !!editError} onClick={closeEditor}><Icon name="close" size={15} /></IconButton></div>
-            <textarea ref={editField} dir="auto" aria-label="Text correction" value={editor.text} readOnly={!editorWritable || editPending || !!editing.savedId} maxLength={8000} onCompositionStart={() => { composingText.current = true; }} onCompositionEnd={event => { composingText.current = false; changeText(event.currentTarget.value); }} onChange={event => { if (composingText.current) { setEditor({ ...editor, text: event.target.value }); rememberOpenEditor(editor.selection.targetId!, event.target.value, editor.baseline); } else changeText(event.target.value); }} />
-            {editor.linked > 1 && <p className="correction-note">This text appears {editor.linked} times. All occurrences change together.</p>}
-            {!editorWritable && <p className="correction-note">{selectionReason(artifact, editor.selection)}</p>}
-            {editError && <p className="correction-error" role="alert">{editError} <Button className="text-button" disabled={state.status !== 'ready' || !getTextTarget(state.artifact, editor.selection.targetId)} onClick={resetText}>{editor.selection.targetId && pendingEditorBaseline(editor.selection.targetId) ? 'Reset text' : 'Use latest text'}</Button></p>}
-            <div className="text-edit-footer"><span>Changes stay in your draft</span><Button type="submit" disabled={editPending || !!editError}>Done</Button></div>
-          </form>}
-        </section>}
-        {(editing.error || editStale || !connected || editing.persistenceFailed) && <div className="edit-session-notice" role="status">
+      {(editor || composing) && <section ref={selectionPanel} className="text-edit-panel" id="selection-panel" role="dialog" aria-modal="false" aria-labelledby="correction-title">
+        {composing ? <form key="comment" onSubmit={submitComment} onKeyDown={event => {
+          if (event.nativeEvent.isComposing) return;
+          if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeComposer(); }
+          if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); if (!submitting) event.currentTarget.requestSubmit(); }
+        }}>
+          <div className="text-edit-heading"><div><Icon name="comment" size={15} /><h2 id="correction-title">Add comment</h2><span className="text-edit-kind">{selectedBlock?.kind ?? 'Component'}</span></div><IconButton label="Close comment composer" disabled={submitting} onClick={closeComposer}><Icon name="close" size={15} /></IconButton></div>
+          {commentPhrase ? <p className="comment-phrase" id="comment-phrase">on “<bdi dir="auto">{commentPhrase.quote}</bdi>”</p>
+            : selectedPhrase && <p className="correction-note comment-phrase-note" id="comment-phrase">This phrase includes unsaved wording, so the comment applies to the whole component.</p>}
+          <textarea ref={commentField} dir="auto" aria-label="Comment" aria-describedby={selectedPhrase ? 'comment-phrase' : undefined} placeholder="Describe the change for your agent…" value={draft} maxLength={8000} readOnly={submitting} onChange={event => setDraft(event.target.value)} />
+          <div className="text-edit-footer"><span>Your agent applies comments</span><Button disabled={submitting} onClick={closeComposer}>Cancel</Button><Button className="add-comment" type="submit" disabled={!draft.trim() || !ready || submitting || !selectedBlock}>{submitting ? 'Adding…' : 'Add comment'}</Button></div>
+        </form> : editor && <form key="edit" onSubmit={event => { event.preventDefault(); closeEditor(); }} onKeyDown={event => {
+          if (event.nativeEvent.isComposing || composingText.current) return;
+          if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeEditor(); }
+          if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); closeEditor(); }
+        }}>
+          <div className="text-edit-heading"><div><Icon name="edit" size={15} /><h2 id="correction-title">{editorWritable ? 'Edit text' : 'Selected text'}</h2><span className="text-edit-kind">{selectedBlock?.kind ?? 'Component'}</span></div><IconButton label="Close text editor" disabled={editPending || !!editError} onClick={closeEditor}><Icon name="close" size={15} /></IconButton></div>
+          <textarea ref={editField} dir="auto" aria-label="Text correction" value={editor.text} readOnly={!editorWritable || editPending || !!editing.savedId} maxLength={8000} onCompositionStart={() => { composingText.current = true; }} onCompositionEnd={event => { composingText.current = false; changeText(event.currentTarget.value); }} onChange={event => { if (composingText.current) { setEditor({ ...editor, text: event.target.value }); rememberOpenEditor(editor.selection.targetId!, event.target.value, editor.baseline); } else changeText(event.target.value); }} />
+          {editor.linked > 1 && <p className="correction-note">This text appears {editor.linked} times. All occurrences change together.</p>}
+          {!editorWritable && <p className="correction-note">{selectionReason(artifact, editor.selection)}</p>}
+          {editError && <p className="correction-error" role="alert">{editError} <Button className="text-button" disabled={state.status !== 'ready' || !getTextTarget(state.artifact, editor.selection.targetId)} onClick={resetText}>{editor.selection.targetId && pendingEditorBaseline(editor.selection.targetId) ? 'Reset text' : 'Use latest text'}</Button></p>}
+          <div className="text-edit-footer"><span>Changes stay in your draft</span><Button type="submit" disabled={editPending || !!editError}>Done</Button></div>
+        </form>}
+      </section>}
+      <p className="sr-only" role="status">{showSaveBar ? saveBarStatus(saveState) : ''}</p>
+      {(showSelectionBar || showSaveBar) && <div className="reader-bars" ref={bars}>
+        {showNotice && <div className="edit-session-notice" role="status">
           <p>{editing.error || (editStale ? 'The document changed. Refresh your draft to keep edits that still match.' : !connected ? 'Offline. Your draft is kept here until you reconnect.' : 'Browser storage is full. Save your draft before reloading or closing this tab.')}</p>
           {editing.error && !editStale && <IconButton label="Dismiss editing message" onClick={editing.dismissError}><Icon name="close" size={14} /></IconButton>}
           {editStale && <Button disabled={!ready || editPending} onClick={editing.refresh}>Refresh draft</Button>}
         </div>}
-        <div className="edit-session-bar" role="toolbar" aria-label="Component actions">
-          <div className="selection-actions">
-            <IconButton ref={editAction} label="Edit selected text" hint={editUnavailable} focusableWhenDisabled={!!editUnavailable} aria-pressed={!!editor} aria-controls="selection-panel" disabled={!canEditText(editTargetId)} onClick={() => { if (editor) closeEditor(); else if (selection) openTextComponent({ ...selection, targetId: editTargetId }); }}><Icon name="edit" size={16} /></IconButton>
-            <IconButton label="History for this block" aria-pressed={history?.kind === 'block' && history.blockId === selection?.blockId} aria-controls="reader-history" disabled={!selectedBlock || editPending || submitting} onClick={() => selection && (history?.kind === 'block' && history.blockId === selection.blockId ? closeHistory() : openHistory({ kind: 'block', blockId: selection.blockId }))}><Icon name="history" size={16} /></IconButton>
-            <IconButton ref={commentAction} label={selectedPhrase && !editor ? 'Comment on selected phrase' : 'Comment on selection'} aria-pressed={composingComment} aria-controls="selection-panel" disabled={!selectedBlock || editPending || submitting || !!editError} onClick={composingComment ? closeComments : openComments}><Icon name="comment" size={16} /></IconButton>
-          </div>
-          <div className="edit-session-status" role="status"><Icon name={editing.saved ? 'check' : 'edit'} size={15} /><span>{editPending ? 'Saving changes…' : editing.saved ? 'All changes saved' : editing.count ? `${editing.count} unsaved ${editing.count === 1 ? 'change' : 'changes'}` : 'No unsaved changes'}</span>{(editing.previewing || readerPreview.loading) && editing.count > 0 && !editPending && <span className="draft-preview-status">Updating preview…</span>}</div>
-          <div className="edit-history"><IconButton label={!editing.savedId && (editing.canUndo || editing.count) ? 'Undo change' : 'Undo saved changes'} disabled={undoDisabled} onClick={undoChange}><Icon name="undo" size={16} /></IconButton><IconButton label="Redo change" disabled={!editing.canRedo || editPending || undoPending || !!editError} onClick={redoChange}><Icon name="redo" size={16} /></IconButton></div>
-          <Button className="discard-edits" disabled={editPending || undoPending || !!editing.savedId || (!editing.count && !editing.canRedo && !editError)} onClick={discardChanges}>Discard</Button>
-          <Button className="primary save-edits" disabled={!editing.count || !ready || editPending || undoPending || editStale || !!editError || !!editing.savedId} onClick={() => void saveAll()}>Save all<kbd aria-hidden="true">{navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} S</kbd></Button>
+        <div className="reader-bars-row">
+          {showSelectionBar && <div className="selection-bar" role="group" aria-label="Selection actions">
+            <HintButton ref={editAction} aria-label="Edit selected text" hint={editUnavailable} focusableWhenDisabled aria-pressed={!!editor} aria-controls="selection-panel" disabled={!canEditText(editTargetId)} onClick={() => { if (editor) closeEditor(); else if (selection) openTextComponent({ ...selection, targetId: editTargetId }); }}><Icon name="edit" size={16} />Edit</HintButton>
+            <HintButton ref={commentAction} focusableWhenDisabled aria-label={selectedPhrase && !editor ? 'Comment on selected phrase' : 'Comment on selection'} aria-pressed={composing} aria-controls="selection-panel" disabled={!selectedBlock || editPending || submitting || !!editError} onClick={composing ? closeComposer : openComments}><Icon name="comment" size={16} />Comment</HintButton>
+            <HintButton focusableWhenDisabled aria-label="History for this block" aria-pressed={!!selectedHistory && isShowing(panel, 'history', selectedHistory)} aria-controls="reader-panel" disabled={!selectedBlock || editPending || submitting} onClick={() => selectedHistory && changePanel(togglePanel(panel, 'history', selectedHistory))}><Icon name="history" size={16} />History</HintButton>
+          </div>}
+          {showSaveBar && <div className="save-bar" role="group" aria-label="Unsaved changes" onFocus={() => { saveBarFocus.current = true; }} onBlur={event => { if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget as Node)) saveBarFocus.current = false; }}>
+            <div className={savedNow ? 'edit-session-status saved' : 'edit-session-status'}><Icon name={savedNow ? 'check' : 'edit'} size={15} /><span>{saveBarStatus(saveState)}</span>{(editing.previewing || readerPreview.loading) && editing.count > 0 && !editPending && <span className="draft-preview-status">Updating preview…</span>}</div>
+            <div className="edit-history"><IconButton focusableWhenDisabled label={!editing.savedId && (editing.canUndo || editing.count) ? 'Undo change' : 'Undo saved changes'} disabled={undoDisabled} onClick={undoChange}><Icon name="undo" size={16} /></IconButton><IconButton focusableWhenDisabled label="Redo change" disabled={!editing.canRedo || editPending || undoPending || !!editError} onClick={redoChange}><Icon name="redo" size={16} /></IconButton></div>
+            <Button className="discard-edits" focusableWhenDisabled disabled={editPending || undoPending || !!editing.savedId || (!editing.count && !editing.canRedo && !editError)} onClick={discardChanges}>Discard</Button>
+            <Button className="primary save-edits" focusableWhenDisabled disabled={!editing.count || !ready || editPending || undoPending || editStale || !!editError || !!editing.savedId} onClick={() => void saveAll()}>Save all<kbd aria-hidden="true">{navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} S</kbd></Button>
+          </div>}
         </div>
       </div>}
-
+      <CommentsButton count={unresolvedComments.length} expanded={isShowing(panel, 'comments')} triggerRef={commentsTrigger}
+        onClick={() => changePanel(togglePanel(panel, 'comments'))} />
     </div>
   );
 }

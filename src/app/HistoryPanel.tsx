@@ -82,7 +82,7 @@ const wholeVersion = (comparison: HistoryComparison): Confirming => ({ key: 'ver
 
 interface Confirming { key: string; versionId: string; scope: RestoreScope; blockId?: string; base?: string; message: string }
 
-/** A non-modal side panel: browse recorded versions, inspect changed blocks, and restore with Undo. */
+/** The History tab of the reader's side panel: browse recorded versions, inspect changed blocks, and restore with Undo. */
 export function HistoryPanel({ documentId, target, generation, connected, pageLabel, unsaved, saving, onSave, onDiscard, onJump, onShowDocument, onClose }: {
   documentId: string;
   target: HistoryTarget;
@@ -222,7 +222,7 @@ export function HistoryPanel({ documentId, target, generation, connected, pageLa
   const differing = comparison?.blocks.filter(item => item.status !== 'contents').length ?? 0;
   const otherFiles = comparison?.files.filter(file => !codeFile.test(file.path)) ?? [];
 
-  return <section className="history-panel" id="reader-history" role="dialog" aria-modal="false" aria-labelledby="history-heading" aria-busy={loading || restoring}>
+  return <section className="history-panel" id="reader-history" aria-labelledby="history-heading" aria-busy={loading || restoring}>
     {highlight && <style>{highlight}</style>}
     <div className="history-heading">
       {(selected || blockId) && <IconButton label={blockId ? 'Show document history' : 'All versions'} className="history-back" onClick={() => { if (blockId) onShowDocument(); else setSelected(null); }}><Icon name="left" size={15} /></IconButton>}
@@ -231,7 +231,6 @@ export function HistoryPanel({ documentId, target, generation, connected, pageLa
         {selectedVersion && !blockId && <p><Origin version={selectedVersion} /><span className="history-title-summary"><Summary parts={describeVersions([selectedVersion])} /></span></p>}
         {blockId && block && <p><span>{block.kindLabel}</span>{block.name && <span className="history-title-summary">“<bdi>{block.name}</bdi>”</span>}</p>}
       </div>
-      <IconButton label="Close history" onClick={onClose}><Icon name="close" size={15} /></IconButton>
     </div>
     <div className="history-content">
       {blocked && <div className="history-notice" role="status">
