@@ -951,7 +951,7 @@ export function Reader({
           {commentPhrase ? <p className="comment-phrase" id="comment-phrase">on “<bdi dir="auto" lang={textLang(commentPhrase.quote)}>{commentPhrase.quote}</bdi>”</p>
             : selectedPhrase && <p className="correction-note comment-phrase-note" id="comment-phrase">This phrase includes unsaved wording, so the comment applies to the whole component.</p>}
           <textarea ref={commentField} dir="auto" lang={textLang(draft)} aria-label="Comment" aria-describedby={selectedPhrase ? 'comment-phrase' : undefined} placeholder="Describe the change for your agent…" value={draft} maxLength={8000} readOnly={submitting} onChange={event => setDraft(event.target.value)} />
-          <div className="text-edit-footer"><span>Your agent applies comments</span><Button disabled={submitting} onClick={closeComposer}>Cancel</Button><Button className="add-comment" type="submit" disabled={!draft.trim() || !ready || submitting || !selectedBlock}>{submitting ? 'Adding…' : 'Add comment'}</Button></div>
+          <div className="text-edit-footer"><span>Your agent applies comments</span><Button disabled={submitting} onClick={closeComposer}>Close</Button><Button className="add-comment" type="submit" disabled={!draft.trim() || !ready || submitting || !selectedBlock}>{submitting ? 'Adding…' : 'Add comment'}</Button></div>
         </form> : editor && <form key="edit" onSubmit={event => { event.preventDefault(); closeEditor(); }} onKeyDown={event => {
           if (event.nativeEvent.isComposing || composingText.current) return;
           if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeEditor(); }
