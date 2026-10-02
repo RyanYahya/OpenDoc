@@ -22,7 +22,7 @@ import "./reader-toolbar.css";
 import "./edit-workbench.css";
 import { CreateDocumentDialog, type CreatePreset } from "./CreateDocumentDialog";
 import { PendingHandoffs } from "./PendingHandoffs";
-import { dismissHandoff, ignoreDocument, pendingHandoffs, reconcileHandoffs, recordHandoff, savePendingHandoffs, subscribePendingHandoffs, visibleHandoffs } from "./pendingHandoffs";
+import { dismissHandoff, filteredHandoffs, ignoreDocument, pendingHandoffs, reconcileHandoffs, recordHandoff, savePendingHandoffs, subscribePendingHandoffs, visibleHandoffs, type HandoffFilters } from "./pendingHandoffs";
 import { ProjectDialog, MoveDocumentDialog } from "./ProjectDialogs";
 import { ProjectDocuments, DocumentsBrowser } from "./DocumentsBrowser";
 import { Sidebar } from "./Sidebar";
@@ -263,7 +263,8 @@ function App() {
       if (arrived) notify.current.success(`Your ${documentFormat(arrived)} is ready in ${handoff.projectName ?? (documentFormat(arrived) === 'presentation' ? 'Presentations' : 'Documents')}`, { label: 'Open', onClick: () => { dismissHandoff(handoff.id); go(`document/${arrived.id}`); } });
     }
   }, [handoffs, handoffDocuments, documents, loaded, handoffClock]);
-  const pendingFor = (scope: { projectId: string } | { format: DocumentFormat }) => <PendingHandoffs handoffs={visibleHandoffs(handoffs, handoffDocuments, scope)} documents={documents} now={handoffClock} showProject={!('projectId' in scope)} />;
+  // Each page passes its own format choice and filters, so the cards narrow with the documents.
+  const pendingFor = (scope: { projectId: string } | { format: DocumentFormat }) => (filters: HandoffFilters) => <PendingHandoffs handoffs={filteredHandoffs(visibleHandoffs(handoffs, handoffDocuments, scope), handoffDocuments, filters)} documents={documents} now={handoffClock} showProject={!('projectId' in scope)} />;
   return <TagsProvider value={tagContext}><div className={`app ${current.view === "document" ? "reading" : ""}`}>
     {current.view !== "document" && <Sidebar view={current.view} projectId={project?.id} projects={manifest.projects} documents={documents} loaded={loaded} connected={connected} appearance={appearance} onAppearanceChange={changeAppearance} onCreateProject={createProject} onProjectSettings={project => setProjectDialog({ project })} />}
     <main className="main">

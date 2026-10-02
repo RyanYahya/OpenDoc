@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { HandoffFilters } from './pendingHandoffs';
 import { Menu } from '@base-ui/react/menu';
 import type { Project } from '../shared/projects';
 import { documentName, documentFormat, type DocumentFormat, type DocumentSummary } from '../shared/types';
@@ -55,8 +56,8 @@ function useDocumentFilters() {
 
 export function DocumentsBrowser({ format = 'document', projects, documents, tags, loaded, view, onViewChange, onCreate, pending, onMove, onAction, disabled }: ViewProps & {
   format?: DocumentFormat; projects: Project[]; documents: DocumentSummary[]; tags?: TagState; loaded: boolean; onCreate: () => void; onMove: (document: DocumentSummary) => void; onAction: DocumentActionHandler; disabled: boolean;
-  /** Creation prompts still waiting for the user's agent. */
-  pending?: ReactNode;
+  /** Creation prompts still waiting for the user's agent, narrowed by this page's filters. */
+  pending?: (filters: HandoffFilters) => ReactNode;
 }) {
   const { filters, query, setQuery, setFacet, clearFacets, clearAll } = useDocumentFilters();
   const sortOptions = [lastEdited, byTitle, byProject, byStatus];
@@ -73,7 +74,7 @@ export function DocumentsBrowser({ format = 'document', projects, documents, tag
     <FilterBar search={{ label: `Search ${format}s`, value: query, onChange: setQuery }}
       facets={itemFacets(manifest, 'documents', documents, filters)} onFacetChange={setFacet} onClearFacets={clearFacets}
       sort={{ value: sort, options: sortOptions, onChange: setSort }} view={{ value: view, onChange: onViewChange }} />
-    {pending}
+    {pending?.({ format, narrowed: hasFilters })}
     <div className={view === 'list' ? 'documents-list' : 'document-grid'} role="list">{visible.map(document => {
       const project = projectById.get(document.projectId ?? '');
       return <article className="project-document" key={document.id} role="listitem">
@@ -88,8 +89,8 @@ export function DocumentsBrowser({ format = 'document', projects, documents, tag
 
 export function ProjectDocuments({ project, documents, tags, loaded, view, onViewChange, onCreate, onCreatePresentation, pending, onSettings, onAction, disabled }: ViewProps & {
   project: Project; documents: DocumentSummary[]; tags?: TagState; loaded: boolean; onCreate: () => void; onCreatePresentation: () => void; onSettings: () => void; onAction: DocumentActionHandler; disabled: boolean;
-  /** Creation prompts still waiting for the user's agent. */
-  pending?: ReactNode;
+  /** Creation prompts still waiting for the user's agent, narrowed by this page's filters. */
+  pending?: (filters: HandoffFilters) => ReactNode;
 }) {
   const { params, filters, query, setQuery, setFacet, clearFacets, clearAll, update } = useDocumentFilters();
   const sortOptions = [lastEdited, byTitle, byStatus];
@@ -122,7 +123,7 @@ export function ProjectDocuments({ project, documents, tags, loaded, view, onVie
       ]} />}
       facets={itemFacets(manifest, 'documents', inFormat, filters)} onFacetChange={setFacet} onClearFacets={clearFacets}
       sort={{ value: sort, options: sortOptions, onChange: setSort }} view={{ value: view, onChange: onViewChange }} />
-    {pending}
+    {pending?.({ format, narrowed: Boolean(query) || filtering(filters) })}
     <div className={view === 'list' ? 'documents-list' : 'document-grid'} role="list">{visible.map(document => <article className="project-document" key={document.id} role="listitem"><DocumentCard document={document} view={view} onAction={onAction} disabled={disabled} /></article>)}</div>
     {!visible.length && <div className="empty-state"><h2>{!loaded ? 'Loading project…' : hasFilters ? 'No matching items' : 'Your project is ready'}</h2><p>{!loaded ? 'Opening your local workspace.' : hasFilters ? 'Try another search, format, or filter.' : 'Create a document or presentation with your agent.'}</p>{loaded && (hasFilters ? <Button onClick={() => clearAll(['format'])}>Clear filters</Button> : <a href="#templates" className="project-templates-link">Browse templates<Icon name="arrow" size={16} /></a>)}</div>}
   </section>;

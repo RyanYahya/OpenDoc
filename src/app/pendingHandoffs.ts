@@ -83,15 +83,33 @@ export function reconcileHandoffs(handoffs: readonly PendingHandoff[], documents
   return { handoffs: changed || resolved.length ? next : handoffs as PendingHandoff[], resolved };
 }
 
+/** The format a handoff will add to a page: what actually arrived, or else what was requested. */
+function handoffFormat(handoff: PendingHandoff, documents: readonly HandoffDocument[]) {
+  const answered = handoff.documentId ? documents.find(document => document.id === handoff.documentId) : undefined;
+  return answered ? formatOf(answered) : handoff.format;
+}
+
 /** Handoffs shown on a page: one project's, or a library format's across projects. */
 export function visibleHandoffs(handoffs: readonly PendingHandoff[], documents: readonly HandoffDocument[], scope: { projectId: string } | { format: DocumentFormat }) {
   const ids = new Set(documents.map(document => document.id));
   return handoffs.filter(handoff => {
     if (!belongsHere(handoff, ids)) return false;
     if ('projectId' in scope) return handoff.projectId === scope.projectId;
-    const answered = handoff.documentId ? documents.find(document => document.id === handoff.documentId) : undefined;
-    return (answered ? formatOf(answered) : handoff.format) === scope.format;
+    return handoffFormat(handoff, documents) === scope.format;
   }).sort((a, b) => b.copiedAt - a.copiedAt);
+}
+
+/** What a library page is narrowed to: its format choice, and whether a search or filter is active. */
+export interface HandoffFilters { format: 'all' | DocumentFormat; narrowed: boolean }
+
+/**
+ * A page's handoffs that its own filters keep. A card follows the format choice like the documents
+ * do. A waiting card has no title, type, status, or tags to match yet, so a search or filter hides
+ * every card rather than leave one above a “No matching items” message; clearing it brings them back.
+ */
+export function filteredHandoffs(handoffs: readonly PendingHandoff[], documents: readonly HandoffDocument[], { format, narrowed }: HandoffFilters) {
+  if (narrowed) return [];
+  return format === 'all' ? [...handoffs] : handoffs.filter(handoff => handoffFormat(handoff, documents) === format);
 }
 
 /** The opening words of the brief, for a card that must stay one or two lines. */

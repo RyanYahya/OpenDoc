@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { belongsHere, briefExcerpt, handoffLifetime, parseHandoffs, readyLifetime, reconcileHandoffs, visibleHandoffs, type PendingHandoff } from '../src/app/pendingHandoffs';
+import { belongsHere, briefExcerpt, filteredHandoffs, handoffLifetime, parseHandoffs, readyLifetime, reconcileHandoffs, visibleHandoffs, type PendingHandoff } from '../src/app/pendingHandoffs';
 
 const start = Date.UTC(2026, 9, 2, 9);
 const workspace = [
@@ -82,6 +82,19 @@ test('pages show their own handoffs, newest first', () => {
   // An answered handoff follows the format of what actually arrived.
   const answered = handoff({ id: 'answered', documentId: 'q2-report', resolvedAt: start });
   assert.deepEqual(visibleHandoffs([{ ...answered, format: 'presentation' }], workspace, { format: 'document' }).map(item => item.id), ['answered']);
+});
+
+test('a page’s format choice and filters apply to its waiting cards', () => {
+  const deck = handoff({ id: 'deck', format: 'presentation' });
+  const report = handoff({ id: 'report' });
+  const answered = handoff({ id: 'answered', format: 'presentation', documentId: 'q2-report', resolvedAt: start });
+  const all = [deck, report, answered];
+  assert.deepEqual(filteredHandoffs(all, workspace, { format: 'all', narrowed: false }).map(item => item.id), ['deck', 'report', 'answered']);
+  assert.deepEqual(filteredHandoffs(all, workspace, { format: 'presentation', narrowed: false }).map(item => item.id), ['deck']);
+  // A ready card follows the format of what arrived, as the document it opens does.
+  assert.deepEqual(filteredHandoffs(all, workspace, { format: 'document', narrowed: false }).map(item => item.id), ['report', 'answered']);
+  // A search or filter never leaves a card above its “No matching items” message.
+  assert.deepEqual(filteredHandoffs(all, workspace, { format: 'all', narrowed: true }), []);
 });
 
 test('stored handoffs are validated and brief excerpts stay short', () => {
