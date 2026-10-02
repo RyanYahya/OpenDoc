@@ -621,8 +621,9 @@ export const PdfPage = memo(function PdfPage({
                 <span className="block-label" aria-hidden="true">{block?.kind ?? 'Text'}</span>
               </Button>;
             })}
+            {/* A page is one Tab stop: markers are pointer shortcuts to comments the Comments tab also lists. */}
             {fragments.filter(fragment => commented?.has(fragment.id)).map(fragment => {
-              return <Button static key={fragment.id} className="comment-marker"
+              return <Button static key={fragment.id} className="comment-marker" tabIndex={-1}
                 aria-label={`View comments on ${(names.get(`block:${fragment.id}`) ?? 'Component').replace(/^./, letter => letter.toLowerCase())}`}
                 style={{ left: (fragment.x + fragment.width) * scale + 4, top: fragment.y * scale - 6, pointerEvents: 'auto' }}
                 onClick={() => (onComment ?? onSelect)?.(fragment.id, number)}><Icon name="comment" size={12} /></Button>;
