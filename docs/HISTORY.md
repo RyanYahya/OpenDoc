@@ -25,8 +25,8 @@ Choose the **History** button in the reader toolbar to open the **History** tab 
 Select a version to see how it differs from the current source. Every changed block shows its kind, such as Paragraph, Title, or Table, and its earlier and current wording, with removed words struck through and added words underlined. Long paragraphs show only the changed passages until you choose **Show full text**. Each block's stable ID is under **Details**, ready to copy for your agent. Changed blocks are outlined on the page, one outline per block; hovering or focusing an entry outlines it more strongly, and **Show on page** scrolls to it.
 
 - **Restore block** replaces one paragraph, heading, callout, table, or other block with its wording from that version.
-- **Restore section only** (or slide, group, and so on) restores a container's own title or lead and keeps the current blocks inside it.
-- **Restore section** restores a section, slide, or other container together with everything inside it.
+- **Restore this text only**, on a section, slide, group, or other container, restores only its own text, such as its title or lead, as its Then and Now rows show it, and keeps the current blocks inside it.
+- **Restore whole section** (or slide, group, and so on) restores the container together with everything inside it.
 - **Restore whole version**, below the changed blocks, returns every text source to that version. Files created since are kept, and media is not changed.
 
 Each restore asks for confirmation and then offers **Undo**. To see one block's earlier wording, select it on the page and choose **History** in the selection bar. Each distinct earlier wording is listed once; restoring it replaces that block or section only.
@@ -40,7 +40,7 @@ OpenDoc identifies blocks by the literal `id` written in the source, such as `<P
 - **Generated IDs.** A block whose ID is produced by code, for example inside a `map` over data, has no source position of its own. Restore its containing section or the whole version, or ask your agent to give it a literal ID. Child IDs created by composite blocks, such as `<id>-heading` from a `Section`, belong to the block that creates them.
 - **Duplicate IDs.** When an ID appears more than once in either version, OpenDoc cannot tell which copy to restore.
 - **Moved, added, or removed blocks.** A block that moved to another file, or did not exist in one of the versions, can be restored through its containing section or the whole version.
-- **Changed contents.** Restore section only needs the same blocks inside the section; otherwise restore the whole section.
+- **Changed contents.** Restore this text only needs the same blocks inside the section; otherwise restore the whole section.
 - **Rendering.** The restored source is rendered first. If it does not render, for example because a citation or media item it used no longer exists, nothing is written.
 - **Newer changes.** If the document changes after you opened a version, OpenDoc asks you to review the latest changes before restoring.
 

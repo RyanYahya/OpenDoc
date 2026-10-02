@@ -22,8 +22,8 @@
 .history-heading .ui-button.icon-button { color: var(--muted); }
 .history-back:dir(rtl) svg { transform: scaleX(-1); }
 .history-title { flex: 1; min-width: 0; }
-/* Type steps: panel title 16, day and row titles 13, metadata 12, badges 11. */
-.history-title h2 { margin: 0; font-size: var(--title-size); line-height: var(--title-leading); font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+/* Type steps: panel title 20, day and row titles 13, metadata 12, badges 11. */
+.history-title h2 { margin: 0; font-size: var(--page-title-size); line-height: var(--page-title-leading); font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
 .history-title h2:focus { outline: none; }
 .history-title p { display: flex; align-items: baseline; gap: 6px; min-width: 0; margin: 2px 0 0; color: var(--muted); font-size: var(--caption-size); line-height: var(--caption-leading); }
 .history-title-summary { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -111,6 +111,11 @@
 .history-summary-line { margin: 0 0 8px; color: var(--muted); font-size: var(--caption-size); line-height: var(--caption-leading); }
 .ui-button.history-action { min-height: 30px; padding: 5px 9px; font-size: var(--caption-size); white-space: nowrap; }
 .ui-button.history-action[aria-expanded="true"] { background: var(--control-active); }
+/* The narrow restore and its menu of wider scopes read as one control. */
+.history-split { display: inline-flex; }
+.history-split > .ui-button.history-action:first-child { border-start-end-radius: 0; border-end-end-radius: 0; }
+.history-split .ui-button.history-action.history-more { min-width: 28px; min-height: 30px; padding: 5px 7px; margin-inline-start: -1px; border: 1px solid var(--line); border-start-start-radius: 0; border-end-start-radius: 0; color: var(--muted); }
+.history-split .ui-button.history-action.history-more[data-popup-open] { background: var(--control-active); color: var(--ink); }
 
 .history-change, .history-entry { padding: 12px 0; border-top: 1px solid var(--line); }
 .history-change:first-child, .history-entry:first-child { border-top: 0; padding-top: 4px; }

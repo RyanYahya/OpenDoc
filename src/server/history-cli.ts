@@ -63,8 +63,8 @@ function changeText(block: HistoryBlockChange & { words?: { removed: string; add
   }
   const kind = block.kindLabel.toLowerCase();
   const options = [
-    ...(block.block.ok ? [`--block ${block.id}${block.container ? ` (this ${kind}'s own wording only)` : ''}`] : []),
-    ...(block.container && block.section.ok ? [`--section ${block.id} (the ${kind} with everything inside)`] : []),
+    ...(block.block.ok ? [`--block ${block.id}${block.container ? ` (only this ${kind}'s own text)` : ''}`] : []),
+    ...(block.container && block.section.ok ? [`--section ${block.id} (the whole ${kind}, with everything inside)`] : []),
   ];
   if (options.length) lines.push(`      restore: ${options.join(' or ')}`);
   else if (block.block.reason ?? block.section.reason) lines.push(`      ${block.block.reason ?? block.section.reason}`);

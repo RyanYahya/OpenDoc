@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Menu } from '@base-ui/react/menu';
 import { api } from './api';
 import { Button, IconButton, useNotifications } from './ui';
 import { Icon } from './ui/Icon';
@@ -76,9 +77,9 @@ function Origin({ version }: { version: HistoryVersionSummary }) {
 }
 
 const wholeVersion = (comparison: HistoryComparison): Confirming => ({ key: 'version', versionId: comparison.version.id, scope: 'version', base: comparison.base,
-  message: 'Replace the whole document with this version? Media files are not changed, and you can undo the restore.' });
+  message: 'Replace the whole document with this version? Media files are not changed, and you can undo the restore.', noun: 'Version' });
 
-interface Confirming { key: string; versionId: string; scope: RestoreScope; blockId?: string; base?: string; message: string }
+interface Confirming { key: string; versionId: string; scope: RestoreScope; blockId?: string; base?: string; message: string; /** What the success notice names, such as “Section”. */ noun: string }
 
 /** The History tab of the reader's side panel: browse recorded versions, inspect changed blocks, and restore with Undo. */
 export function HistoryPanel({ documentId, target, generation, connected, pageLabel, unsaved, saving, onSave, onDiscard, onJump, onShowDocument, onClose }: {
@@ -157,8 +158,7 @@ export function HistoryPanel({ documentId, target, generation, connected, pageLa
       const body = { scope: item.scope, ...(item.blockId ? { blockId: item.blockId } : {}), ...(item.base ? { base: item.base } : {}) };
       const result = await api<RestoreResult>(`/api/documents/${documentId}/history/${item.versionId}/restore`, { method: 'POST', body: JSON.stringify(body) });
       setConfirming(null);
-      const noun = item.scope === 'version' ? 'Version' : item.scope === 'section' ? 'Section' : 'Block';
-      notify.success(`${noun} restored`, { label: 'Undo', onClick: async () => {
+      notify.success(`${item.noun} restored`, { label: 'Undo', onClick: async () => {
         await api<RestoreResult>(`/api/documents/${documentId}/history/${result.previous}/restore`, { method: 'POST', body: JSON.stringify({ scope: item.scope, ...(item.blockId ? { blockId: item.blockId } : {}) }) });
         notify.success('Restore undone');
       } });
@@ -182,6 +182,21 @@ export function HistoryPanel({ documentId, target, generation, connected, pageLa
   function action(label: string, item: Confirming) {
     return <Button className="history-action" disabled={restoring || blocked || !connected} aria-expanded={confirming?.key === item.key}
       onClick={() => setConfirming(confirming?.key === item.key ? null : item)}>{label}</Button>;
+  }
+
+  /** One visible restore per row; the wider scope sits in the attached menu, so a row never wraps into a button stack. */
+  function splitAction(label: string, item: Confirming, wider: { label: string; item: Confirming }) {
+    return <div className="history-split" role="group" aria-label="Restore choices">
+      {action(label, item)}
+      <Menu.Root>
+        <Menu.Trigger render={<IconButton label="More restore choices" className="history-action history-more" disabled={restoring || blocked || !connected} />}><Icon name="down" size={12} /></Menu.Trigger>
+        <Menu.Portal><Menu.Positioner className="ui-positioner" align="end" sideOffset={4}>
+          <Menu.Popup className="ui-menu-popup">
+            <Menu.Item className="ui-menu-item" onClick={() => setConfirming(wider.item)}><Icon name="history" size={16} /><span>{wider.label}…</span></Menu.Item>
+          </Menu.Popup>
+        </Menu.Positioner></Menu.Portal>
+      </Menu.Root>
+    </div>;
   }
 
   function versionRow(version: HistoryVersionSummary, nested = false) {
@@ -236,8 +251,9 @@ export function HistoryPanel({ documentId, target, generation, connected, pageLa
         <p><strong>{saving ? 'Saving your changes…' : `Save or discard ${unsaved} unsaved ${unsaved === 1 ? 'change' : 'changes'} first`}</strong>Restoring replaces the saved source, so drafts must be settled before you restore.</p>
         {!saving && <div className="history-notice-actions"><Button onClick={onDiscard}>Discard</Button><Button className="primary" onClick={() => void onSave()}>Save all</Button></div>}
       </div>}
-      {!connected && <p className="history-notice" role="status">Reconnect to the local workspace to restore versions.</p>}
-      {error && <p className="history-error" role="alert">{error}</p>}
+      {/* While disconnected, this one notice explains both the missing list and the paused restores. */}
+      {!connected && <p className="history-notice" role="status">OpenDoc can’t reach the local server. Versions load again, and restores resume, once it reconnects.</p>}
+      {error && connected && <p className="history-error" role="alert">{error}</p>}
       {loading && !list && !block && !error && <div className="history-skeleton" aria-hidden="true"><span /><span /><span /></div>}
 
       {blockId && block && <>
@@ -247,12 +263,13 @@ export function HistoryPanel({ documentId, target, generation, connected, pageLa
         </div>
         {block.entries.length ? <ol className="history-entries">{block.entries.map(entry => {
           const scope: RestoreScope = entry.container ? 'section' : 'block';
-          const item: Confirming = { key: entry.version.id, versionId: entry.version.id, scope, blockId: block.id, base: block.base,
-            message: `Replace this ${scope} with its wording from ${formatFull(entry.version.at)}? The rest of the ${whole} stays as it is.` };
+          const kind = block.kindLabel.toLowerCase();
+          const item: Confirming = { key: entry.version.id, versionId: entry.version.id, scope, blockId: block.id, base: block.base, noun: block.kindLabel,
+            message: `Replace this ${kind}${entry.container ? ', including everything inside it,' : ''} with its wording from ${formatFull(entry.version.at)}? The rest of the ${whole} stays as it is.` };
           return <li key={entry.version.id} className="history-entry">
             <div className="history-entry-meta"><time dateTime={entry.version.at} title={formatFull(entry.version.at)}>{formatWhen(entry.version.at)}</time><Origin version={entry.version} /></div>
             <WordingDiff before={entry.text} after={block.current} />
-            <div className="history-entry-actions">{action(scope === 'section' ? 'Restore section' : 'Restore', item)}</div>
+            <div className="history-entry-actions">{action(scope === 'section' ? `Restore whole ${kind}` : 'Restore', item)}</div>
             {confirmRow(item)}
           </li>;
         })}</ol> : !loading && <div className="history-empty"><strong>No earlier wording</strong><p>This block has not changed in the recorded history. Versions are kept for 90 days.</p></div>}
@@ -272,10 +289,12 @@ export function HistoryPanel({ documentId, target, generation, connected, pageLa
         {comparison.identical ? <p className="history-summary-line">This version matches the current {whole}.</p> : <>
           <p className="history-summary-line">{comparison.blocks.length ? `${differing} ${differing === 1 ? 'block differs' : 'blocks differ'} from now` : 'Only layout, code, or data files differ from now'}</p>
           {!!comparison.blocks.length && <ol className="history-changes">{comparison.blocks.map(change => {
-            const blockItem: Confirming = { key: `block:${change.id}`, versionId: comparison.version.id, scope: 'block', blockId: change.id, base: comparison.base,
-              message: change.container ? `Restore this ${change.kindLabel.toLowerCase()}’s own wording and keep the current blocks inside it?` : 'Replace this block with its wording from this version? Everything else stays as it is.' };
-            const sectionItem: Confirming = { key: `section:${change.id}`, versionId: comparison.version.id, scope: 'section', blockId: change.id, base: comparison.base,
-              message: `Replace this ${change.kindLabel.toLowerCase()}, including everything inside it, with this version? The rest stays as it is.` };
+            const kind = change.kindLabel.toLowerCase();
+            // A container's own text is what its Then and Now rows show; the blocks inside it are listed separately.
+            const blockItem: Confirming = { key: `block:${change.id}`, versionId: comparison.version.id, scope: 'block', blockId: change.id, base: comparison.base, noun: change.container ? `${change.kindLabel} text` : 'Block',
+              message: change.container ? `Restore only the ${kind}’s own text shown above, and keep the current blocks inside it?` : 'Replace this block with its wording from this version? Everything else stays as it is.' };
+            const sectionItem: Confirming = { key: `section:${change.id}`, versionId: comparison.version.id, scope: 'section', blockId: change.id, base: comparison.base, noun: change.kindLabel,
+              message: `Replace this whole ${kind}, including everything inside it, with this version? The rest stays as it is.` };
             const reason = !change.block.ok && !change.section.ok ? change.block.reason ?? change.section.reason : undefined;
             const inside = comparison.blocks.filter(item => item.parent === change.id).length;
             return <li key={`${change.file}:${change.id}`} className={`history-change status-${change.status}`}
@@ -290,8 +309,9 @@ export function HistoryPanel({ documentId, target, generation, connected, pageLa
               {reason && <p className="history-note">{reason}</p>}
               <div className="history-entry-actions">
                 {change.status !== 'removed' && <Button className="text-button" onClick={() => onJump([change.id, ...change.descendants])}>Show on {pageLabel.toLowerCase()}</Button>}
-                {change.block.ok && action(change.container ? `Restore ${change.kindLabel.toLowerCase()} only` : 'Restore block', blockItem)}
-                {change.container && change.section.ok && action(`Restore ${change.kindLabel.toLowerCase()}`, sectionItem)}
+                {change.container && change.block.ok && change.section.ok ? splitAction('Restore this text only', blockItem, { label: `Restore whole ${kind}`, item: sectionItem })
+                  : change.block.ok ? action(change.container ? 'Restore this text only' : 'Restore block', blockItem)
+                  : change.container && change.section.ok && action(`Restore whole ${kind}`, sectionItem)}
               </div>
               {confirmRow(blockItem)}
               {confirmRow(sectionItem)}

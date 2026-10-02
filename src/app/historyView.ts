@@ -21,11 +21,15 @@ export function blockSelectors(id: string) {
   return [own, `.inspection-layer:not(:has(${own})) :is(${through.join(', ')})`];
 }
 
-/** Page styles for the history panel: one outline per changed block, and a stronger one for the block in focus. */
+/**
+ * Page styles for the history panel: one outline per changed block, and a stronger one for the block in focus.
+ * The tint and line sit a few pixels outside the target, so they frame the words instead of touching them,
+ * while the target keeps its exact geometry for clicks.
+ */
 export function historyHighlightCss(changed: string[], focused: string[] = []) {
   const rule = (ids: string[], declarations: string) => ids.length ? `:is(${ids.flatMap(blockSelectors).join(', ')}) { ${declarations} }` : '';
   return [
-    rule(changed.filter(id => !focused.includes(id)), 'border-color: var(--history-mark-line); background: var(--history-mark);'),
-    rule(focused, 'border-color: var(--history-focus-line); background: var(--history-mark-strong); box-shadow: 0 0 0 1px var(--history-focus-line);'),
+    rule(changed.filter(id => !focused.includes(id)), 'border-radius: 3px; background: var(--history-mark); box-shadow: 0 0 0 3px var(--history-mark), 0 0 0 4px var(--history-mark-line);'),
+    rule(focused, 'border-radius: 3px; background: var(--history-mark-strong); box-shadow: 0 0 0 3px var(--history-mark-strong), 0 0 0 5px var(--history-focus-line);'),
   ].filter(Boolean).join('\n');
 }
