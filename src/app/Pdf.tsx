@@ -91,6 +91,10 @@ function releasePdf(key: string, entry: CachedPdf) {
 }
 
 function errorMessage(error: unknown) {
+  // PDF.js passes the browser's own network failure through, sometimes renamed by its worker.
+  if (error instanceof Error && /failed to fetch|networkerror|load failed/i.test(error.message)) {
+    return 'OpenDoc can’t reach the local server to load this PDF. Try again once it reconnects.';
+  }
   return error instanceof Error ? error.message : String(error);
 }
 
