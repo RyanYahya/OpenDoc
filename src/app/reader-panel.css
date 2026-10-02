@@ -40,7 +40,7 @@
 
 /* A tab's own heading, matching History's: the view it shows and a way back to the whole document. */
 .reader-panel-heading { display: flex; align-items: center; gap: 4px; flex-shrink: 0; min-height: 48px; padding: 8px 8px 8px 14px; border-bottom: 1px solid var(--line); }
-.reader-panel-heading h2 { flex: 1; min-width: 0; margin: 0; font-size: var(--label-size); line-height: var(--label-leading); font-weight: 500; color: var(--ink); }
+.reader-panel-heading h2 { flex: 1; min-width: 0; margin: 0; font-size: var(--page-title-size); line-height: var(--page-title-leading); font-weight: 600; color: var(--ink); }
 .reader-panel-heading h2:focus { outline: none; }
 .reader-panel-heading .ui-button.reader-panel-back { margin-inline-start: -8px; color: var(--muted); }
 .reader-panel-back:dir(rtl) svg { transform: scaleX(-1); }

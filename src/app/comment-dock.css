@@ -1,5 +1,10 @@
-.comment-dock-panel .comment-time { margin-inline-start: auto; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.comment-dock-panel .comment-status + .comment-time { margin-inline-start: 0; }
+/* One line: where the comment is gives way (truncating) before its status and age, which stay together at the end. */
+.comment-dock-panel .comment-location { flex-wrap: nowrap; min-width: 0; }
+.comment-where { display: flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; white-space: nowrap; }
+.comment-where > .comment-kind { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.comment-where > svg { flex-shrink: 0; }
+.comment-state { display: inline-flex; flex-shrink: 0; align-items: center; gap: 5px; margin-inline-start: auto; white-space: nowrap; }
+.comment-dock-panel .comment-time { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* The Comments tab of the reader's side panel: a scrolling list with the agent hand-off pinned below it. */
 .comment-dock-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
@@ -42,8 +47,8 @@
 @media (prefers-contrast: more) { .comment-quote { border-inline-start-color: var(--accent-ink); } }
 
 /* A neutral badge, not an accent link: Open reads in ink, Resolved stays muted with its check. */
-.comment-status { display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0; margin-inline-start: auto; min-height: 18px; padding: 0 6px; border-radius: var(--badge-radius); background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); font-size: var(--tag-size); line-height: var(--tag-leading); font-weight: 500; white-space: nowrap; }
-.comment-card.resolved .comment-status { background: transparent; color: var(--muted); }
+.comment-status { display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0; min-height: 18px; padding: 0 6px; border-radius: var(--badge-radius); background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); font-size: var(--tag-size); line-height: var(--tag-leading); font-weight: 500; white-space: nowrap; }
+.comment-card.resolved .comment-status { padding-inline: 0; background: transparent; color: var(--muted); }
 @media (forced-colors: active) { .comment-status { border: 1px solid CanvasText; } }
 .comment-card.resolved .comment-text { color: var(--muted); }
 [dir="rtl"] .comment-location .comment-status svg { transform: none; }

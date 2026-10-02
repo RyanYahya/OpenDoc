@@ -1,8 +1,13 @@
 .skill-index { width: 336px; padding: 12px; font-size: var(--menu-font-size); line-height: var(--menu-leading); }
-.skill-index-title { font-weight: 500; }
-.skill-index-intro { color: var(--muted); margin-top: 3px; }
+.skill-index-title { margin: 0; font-size: var(--title-size); line-height: var(--title-leading); font-weight: 500; }
+.skill-index-intro { margin: 4px 0 0; color: var(--muted); }
 .skill-index dl { margin: 12px 0 0; }
 .skill-index dl > div + div { margin-top: 10px; }
 .skill-index dt { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-weight: 500; }
 .skill-index-name { font-family: ui-monospace, monospace; font-size: 11px; font-weight: 400; color: var(--muted); overflow-wrap: anywhere; }
 .skill-index dd { margin: 2px 0 0; color: var(--muted); }
+/* The sidebar footer names the reference beside the appearance control. */
+.ui-button.tool-button.skill-index-trigger { gap: 5px; min-height: var(--control-hit-size); padding: 6px; font-size: var(--caption-size); line-height: var(--caption-leading); }
+.ui-button.tool-button.skill-index-trigger[data-popup-open] { background: var(--control-active); color: var(--ink); }
+/* Focus lands on the reference itself so it can scroll; the popup frame needs no second ring. */
+.skill-index:focus-visible { outline: none; }

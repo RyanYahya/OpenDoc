@@ -20,8 +20,8 @@
 .reader-document a { color: var(--muted); text-decoration: none; padding-block: 10px; max-width: 150px; }
 .reader-document a:hover { color: var(--ink); }
 .reader-context-separator { color: var(--muted); opacity: 0.55; }
-/* The document title is the reader's h1, set at the toolbar's label size. */
-.reader-document-title { font-size: inherit; line-height: inherit; font-weight: 500; }
+/* The document title is the reader's h1: one step above the toolbar's labels, within the compact bar. */
+.reader-document-title { font-size: var(--title-size); line-height: var(--title-leading); font-weight: 600; color: var(--ink); }
 .reader-document a, .reader-document-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .reader-page-controls { display: flex; align-items: center; flex: 0 0 auto; gap: 12px; }
 .reader-pagination { display: flex; align-items: center; gap: 2px; background: var(--background); border-radius: 7px; padding: 2px; }
@@ -89,8 +89,8 @@
   .reader-identity { gap: 2px; }
   .reader-toolbar .reader-back { min-width: 32px; min-height: 40px; }
   .reader-toolbar .reader-actions { gap: 2px; }
-  /* Phones keep the document title readable beside Comments; the library sidebar still has the skills reference. */
-  .reader-toolbar .reader-actions .undo-edit, .reader-toolbar .reader-skills { display: none; }
+  /* Phones keep the document title readable beside Comments. */
+  .reader-toolbar .reader-actions .undo-edit { display: none; }
   .reader-toolbar .reader-actions .export-button { min-width: var(--control-hit-size); min-height: 40px; padding: 8px; }
   .reader-toolbar .reader-actions .export-button > span { display: none; }
   .reader-toolbar .reader-actions .icon-button, .reader-toolbar .reader-reading-trigger { min-height: 40px; }

@@ -23,7 +23,7 @@ import { CreateDocumentDialog } from "./CreateDocumentDialog";
 import { ProjectDialog, MoveDocumentDialog } from "./ProjectDialogs";
 import { ProjectDocuments, DocumentsBrowser } from "./DocumentsBrowser";
 import { Sidebar } from "./Sidebar";
-import { AppearanceSubmenu } from "./AppearanceControl";
+import { AppMenu } from "./AppMenu";
 import { DocumentActionDialog, DocumentMenuItems, type DocumentActionHandler } from "./DocumentActions";
 import { useAppearance } from "./appearance";
 import { useDocumentView } from "./DocumentViewControl";
@@ -198,9 +198,15 @@ function App() {
   const activeTitle = active ? documentName(active) : undefined;
   const sharedTitle = Boolean(active && documents.some(document => document.id !== active.id && documentName(document) === activeTitle));
   const activeFormat = active ? documentFormat(active) : undefined;
+  // Every page names itself in the browser tab: the document, the project, the theme, or the library page.
+  const themeName = current.view === "themes" && current.id ? themes.find(theme => theme.id === current.id)?.name : undefined;
+  const pageName = current.view === "document" ? undefined : current.view === "project" ? project?.name
+    : current.view === "assets" ? "Media & Assets" : current.view === "themes" ? themeName ?? "Themes"
+    : current.view === "templates" ? "Templates"
+    : current.view === "presentations" ? "Presentations" : "Documents";
   useEffect(() => {
-    document.title = activeTitle ? `${activeTitle}${sharedTitle && activeFormat ? ` · ${formatLabel(activeFormat)}` : ''} · OpenDoc` : project ? `${project.name} · OpenDoc` : "OpenDoc";
-  }, [activeTitle, sharedTitle, activeFormat, project?.name]);
+    document.title = activeTitle ? `${activeTitle}${sharedTitle && activeFormat ? ` · ${formatLabel(activeFormat)}` : ''} · OpenDoc` : pageName ? `${pageName} · OpenDoc` : "OpenDoc";
+  }, [activeTitle, sharedTitle, activeFormat, pageName]);
   const onDocumentAction: DocumentActionHandler = (document, action) => {
     if (action === "exports") { setExportDocument(document); return; }
     if (action === "move") { setMoving(document); return; }
@@ -242,9 +248,8 @@ function App() {
           <IconButton label={`Back to ${backLabel}`} className="reader-back" render={<a href={`#${backHash}`} />} nativeButton={false}><Icon name="left" size={17} /></IconButton>
           <div className="reader-document"><a href={project ? `#project/${project.id}` : "#library"} title={project?.name ?? "Documents"} dir="auto" lang={project && textLang(project.name)}>{project?.name ?? "Documents"}</a><span className="reader-context-separator" aria-hidden="true">/</span><h1 className="reader-document-title" title={documentName(active)} dir="auto" lang={textLang(documentName(active), activeSummary?.language)}>{documentName(active)}</h1><StatusBadge status={itemStatus(tagState.manifest, active.id)} className="reader-status" /></div>
         </>}
-        options={<DocumentMenuItems document={active} onAction={onDocumentAction} disabled={!connected || duplicating} exports={false}>
-          <AppearanceSubmenu value={appearance} onChange={changeAppearance} />
-        </DocumentMenuItems>}
+        options={<DocumentMenuItems document={active} onAction={onDocumentAction} disabled={!connected || duplicating} exports={false} />}
+        appMenu={<AppMenu appearance={appearance} onAppearanceChange={changeAppearance} />}
       /> : <div className="empty-state"><h1>{loaded ? "Document not found" : error ? "Workspace unavailable" : "Loading document…"}</h1><p>{loaded ? "Its source may have been moved or removed from this workspace." : "Opening your local workspace."}</p><Button onClick={() => go("library")}>Back to documents</Button></div>
         : current.view === "project" ? project ? <ProjectDocuments key={project.id} project={project} documents={projectDocuments} tags={tagState} loaded={loaded} view={documentView} onViewChange={changeDocumentView} onCreate={() => createDocument()} onCreatePresentation={() => createDocument('presentation')} onSettings={() => setProjectDialog({ project })} onAction={onDocumentAction} disabled={!connected || duplicating} /> : <div className="empty-state"><h1>{loaded ? "Project not found" : "Loading project…"}</h1><p>{loaded ? "It may have been removed. Your other projects are still available." : "Opening your local workspace."}</p><Button onClick={() => go("library")}>Back to documents</Button></div>
         : current.view === "assets" ? <AssetsBrowser selection={current.id} generation={generation} documents={documents} themes={themes} connected={connected} />

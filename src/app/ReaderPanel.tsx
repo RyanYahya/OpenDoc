@@ -24,8 +24,8 @@ export function ReaderPanel({ tab, commentCount, sheet, onTabChange, onClose, cl
     <Tabs.Root value={tab} onValueChange={value => onTabChange(value as PanelTab)} className="reader-panel-tabs-root">
       <div className="reader-panel-header">
         <Tabs.List className="ui-tabs reader-panel-tabs" aria-label="Side panel">
-          <Tabs.Tab className="ui-tab" value="comments">
-            Comments<span className="reader-panel-count" aria-hidden="true">{commentCount}</span><span className="sr-only">, {commentCount} open</span>
+          <Tabs.Tab className="ui-tab" value="comments" aria-label={`Comments, ${commentCount} open`}>
+            Comments<span className="reader-panel-count" aria-hidden="true">{commentCount}</span>
           </Tabs.Tab>
           <Tabs.Tab className="ui-tab" value="history">History</Tabs.Tab>
         </Tabs.List>

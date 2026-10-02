@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import type { Comment } from '../shared/types';
 import { textLang } from '../shared/language';
+import { blockName } from '../shared/history';
 import { Button, IconButton } from './ui';
 import { Icon } from './ui/Icon';
 import { CommentHandoff } from './CommentHandoff';
@@ -44,6 +45,13 @@ export interface CommentDockProps {
   footer?: ReactNode;
 }
 
+const cardId = (id: string) => `comment-${id.replace(/[^\w-]/g, '_')}`;
+/** A comment's opening words name its card; the full text joins the description only when they are cut short. */
+function commentName(text: string) {
+  const name = blockName(text, 60);
+  return { name: name || 'Comment', shortened: name !== text.replace(/\s+/g, ' ').trim() };
+}
+
 /** The Comments tab of the side panel. The reader owns selection, drafts, and writes; this list only presents them. */
 export function CommentDock({
   pageLabel = 'Page',
@@ -77,7 +85,8 @@ export function CommentDock({
       if (form) { event.preventDefault(); if (!busy) form.requestSubmit(); }
     }
   }}>
-    <div className="reader-panel-heading">
+    {/* The Comments tab already names the whole list, so its heading is only read aloud there. */}
+    <div className={`reader-panel-heading${filtered ? '' : ' sr-only'}`}>
       {filtered && <IconButton label="All comments" className="reader-panel-back" onClick={onShowAll}><Icon name="left" size={15} /></IconButton>}
       <h2 id="comment-dock-heading" ref={headingRef} tabIndex={-1}>{heading}</h2>
     </div>
@@ -95,14 +104,20 @@ export function CommentDock({
             <Button className="primary" type="submit" disabled={!connected || busy || !editing.text.trim() || editing.text.trim() === comment.text}>{changing === comment.id ? 'Saving…' : 'Save'}</Button>
           </div>
         </form> : <div className="comment-row">
-          <Button static className="comment-jump" disabled={!canJump || busy} onClick={() => onJump(comment)}>
-            <span className="comment-location">
-              {page !== undefined ? <><span>{pageLabel} {page}</span><span aria-hidden="true">·</span><span className="comment-kind">{kind}</span>{canJump && <Icon name="arrow" size={12} />}</> : 'Component unavailable'}
-              <span className="comment-status">{comment.status === 'resolved' ? <><Icon name="check" size={11} />Resolved</> : 'Open'}</span>
-              <CommentTime value={comment.createdAt} />
+          {/* The button is named by the comment's opening words; where it is, its status, and its phrase describe it. */}
+          <Button static className="comment-jump" disabled={!canJump || busy} onClick={() => onJump(comment)}
+            aria-label={commentName(comment.text).name}
+            aria-describedby={[`${cardId(comment.id)}-location`, quote && `${cardId(comment.id)}-quote`, commentName(comment.text).shortened && `${cardId(comment.id)}-text`].filter(Boolean).join(' ')}>
+            <span className="comment-location" id={`${cardId(comment.id)}-location`}>
+              <span className="comment-where">{page !== undefined ? <><span>{pageLabel} {page}</span><span aria-hidden="true">·</span><span className="comment-kind">{kind}</span>{canJump && <Icon name="arrow" size={12} />}</> : 'Component unavailable'}</span>
+              {/* Status and age wrap together, so a narrow panel never strands the time on its own line. */}
+              <span className="comment-state">
+                <span className="comment-status">{comment.status === 'resolved' ? <><Icon name="check" size={11} />Resolved</> : 'Open'}</span>
+                <CommentTime value={comment.createdAt} />
+              </span>
             </span>
-            {quote && <span className="comment-quote">on “<bdi dir="auto" lang={textLang(quote)}>{quote}</bdi>”{textChanged && <span className="comment-anchor-changed"><span aria-hidden="true">·</span> Text changed</span>}</span>}
-            <span className="comment-text" dir="auto" lang={textLang(comment.text)}>{comment.text}</span>
+            {quote && <span className="comment-quote" id={`${cardId(comment.id)}-quote`}>on “<bdi dir="auto" lang={textLang(quote)}>{quote}</bdi>”{textChanged && <span className="comment-anchor-changed"><span aria-hidden="true">·</span> Text changed</span>}</span>}
+            <span className="comment-text" id={`${cardId(comment.id)}-text`} dir="auto" lang={textLang(comment.text)}>{comment.text}</span>
           </Button>
           <div className="comment-row-actions">
             <IconButton label="Edit comment" disabled={!connected || busy} onClick={() => onEdit(comment)}><Icon name="edit" size={15} /></IconButton>

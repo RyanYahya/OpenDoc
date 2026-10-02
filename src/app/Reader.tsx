@@ -11,9 +11,8 @@ import { closePanel, isShowing, loadPanelPreference, panelFromPreference, savePa
 import { saveBarStatus, saveBarVisible } from "./saveBar";
 import { unionBox, useAnchoredPanel } from "./anchoredPanel";
 import { applyCommentsPrompt } from "./agentPrompts";
-import { api } from "./api";
+import { api, failureMessage } from "./api";
 import { ExportMenu } from "./ExportMenu";
-import { SkillIndex } from './SkillIndex';
 import { getBlock, documentFormat, documentName, type Comment, type DocumentState } from "../shared/types";
 import { PageNumberInput } from "./PageNumberInput";
 import { commentDraftKey, componentCommentDraftKey, commentDrafts, type CommentDrafts } from "./commentDrafts";
@@ -69,6 +68,7 @@ export function Reader({
   connected,
   identity,
   options,
+  appMenu,
   onShowExports,
   language,
 }: {
@@ -77,6 +77,8 @@ export function Reader({
   connected: boolean;
   identity: React.ReactNode;
   options: React.ReactNode;
+  /** App-wide help and appearance, kept apart from the document's options. */
+  appMenu: React.ReactNode;
   onShowExports: () => void;
   /** The document's derived language, for page text without letters of its own. */
   language?: Language;
@@ -648,7 +650,7 @@ export function Reader({
       clearSelection();
       componentTrigger.current?.focus();
     } catch (e) {
-      notify.error((e as Error).message);
+      notify.error(failureMessage(e, 'Your comment is kept here; add it again once it reconnects.'));
     } finally {
       mutationPending.current = false;
       setSubmitting(false);
@@ -676,7 +678,7 @@ export function Reader({
         setComments(await api<Comment[]>(`/api/documents/${id}/comments/${comment.id}/restore`, { method: 'POST', body: JSON.stringify({ version: comment.version + 1 }) }));
         notify.success('Comment restored');
       } });
-    } catch (error) { notify.error((error as Error).message); }
+    } catch (error) { notify.error(action === 'edit' ? failureMessage(error, 'Your edit is kept here; save it again once it reconnects.') : (error as Error).message); }
     finally { mutationPending.current = false; setChanging(null); }
   }
   const unresolvedComments = useMemo(() => comments.filter((comment) => comment.status === "open"), [comments]);
@@ -769,7 +771,7 @@ export function Reader({
             <Icon name="comment" size={18} />{unresolvedComments.length > 0 && <span className="reader-comments-count" aria-hidden="true">{unresolvedComments.length > 99 ? '99+' : unresolvedComments.length}</span>}
           </IconButton>
           <IconButton ref={historyTrigger} className="reader-panel-toggle" label="Version history" aria-expanded={isShowing(panel, 'history')} aria-controls="reader-panel" onClick={() => changePanel(togglePanel(panel, 'history'))}><Icon name="history" size={18} /></IconButton>
-          <SkillIndex className="reader-skills" />
+          {appMenu}
           <ExportMenu state={state} connected={connected} ready={ready && !!pdf && !readerPreview.loading && artifact?.hash === state.artifact?.hash} unsaved={editing.count} saving={editPending || undoPending} correctionError={editError || editing.error || (editStale ? 'Refresh your draft before saving and exporting.' : '')} canSave={!!editing.count && ready && !editPending && !undoPending && !editStale && !editError && !editing.savedId} onSave={saveAll} onShowExports={onShowExports} />
           <Menu.Root>
             <Menu.Trigger ref={optionsTrigger} render={<IconButton label={`${formatLabel} options`} />}><Icon name="more" size={18} /></Menu.Trigger>
