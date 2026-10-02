@@ -1,10 +1,10 @@
-import { createContext, useContext, useId, useRef, useState, type FormEvent, type KeyboardEvent, type RefObject } from 'react';
+import { createContext, useContext, useRef, useState, type FormEvent, type KeyboardEvent, type RefObject } from 'react';
 import { Menu } from '@base-ui/react/menu';
 import {
-  cleanTag, documentStatus, documentStatuses, emptyTags, hasType, itemStatus, itemType, splitTags, standardType, standardTypes, statusLabel, tagCounts, tagKey,
-  tagLabel, tagLimits, tagProblem, taggedKinds, typeCounts, typeLabel, type DocumentStatus, type TaggedKind, type TagsManifest,
+  cleanTag, documentStatus, documentStatuses, emptyTags, hasType, itemStatus, itemType, splitTags, standardType, standardTypes, statusLabel, tagKey,
+  tagLabel, tagLimits, tagProblem, taggedKinds, type DocumentStatus, type TaggedKind, type TagsManifest,
 } from '../shared/tags';
-import { languageLabel, languages, parseLanguage, textLang, type Language } from '../shared/language';
+import { parseLanguage, textLang } from '../shared/language';
 import type { DocumentSummary } from '../shared/types';
 import { api } from './api';
 import { Button, Dialog, Input, SelectControl } from './ui';
@@ -69,86 +69,6 @@ export function StatusSubmenu({ document, disabled }: { document: DocumentSummar
       </Menu.RadioGroup>
     </Menu.Popup></Menu.Positioner></Menu.Portal>
   </Menu.SubmenuRoot>;
-}
-
-/** True when no tag is chosen or the item carries the chosen custom tag key. */
-export function matchesTag(manifest: TagsManifest, kind: TaggedKind, id: string, key: string) {
-  return !key || (manifest[kind][id] ?? []).some(tag => tagKey(tag) === key);
-}
-
-/** The display label for a custom tag filter value, whether or not any item still carries it. */
-export function filterLabel(manifest: TagsManifest, key: string) {
-  if (!key) return '';
-  for (const kind of taggedKinds) for (const tags of Object.values(manifest[kind])) for (const tag of tags) if (tagKey(tag) === key) return tagLabel(tag);
-  return manifest.custom.find(tag => tagKey(tag) === key) ?? standardType(key)?.label ?? key;
-}
-
-/** One custom tag filter with item counts; hidden when no item of this kind has a custom tag. */
-export function TagFilter({ manifest, kind, ids, value, onChange, className = '' }: { manifest: TagsManifest; kind: TaggedKind; ids?: Iterable<string>; value: string; onChange: (key: string) => void; className?: string }) {
-  const counts = tagCounts(manifest, kind, ids);
-  if (!counts.length && !value) return null;
-  const items = [{ value: '', label: 'All tags' }, ...counts.map(entry => ({ value: entry.key, label: `${entry.tag} (${entry.count})` }))];
-  if (value && !counts.some(entry => entry.key === value)) items.push({ value, label: `${filterLabel(manifest, value)} (0)` });
-  return <div className={`tag-filter ${className}`.trim()}><Icon name="tag" size={16} /><SelectControl label="Filter by tag" value={value} onValueChange={onChange} items={items} /></div>;
-}
-
-export interface ItemFilterValue { type: string; status: string; language: string; tag: string }
-export const noFilters: ItemFilterValue = { type: '', status: '', language: '', tag: '' };
-export const filtering = (value: ItemFilterValue) => Boolean(value.type || value.status || value.language || value.tag);
-type FilterItem = { id: string; language?: Language };
-
-/** True when the item passes every chosen filter. `none` selects items without a type or status. */
-export function matchesFilters(manifest: TagsManifest, kind: TaggedKind, item: FilterItem, value: ItemFilterValue) {
-  const { type, custom } = splitTags(kind, Object.hasOwn(manifest[kind], item.id) ? manifest[kind][item.id] : undefined);
-  if (value.type && (type ?? 'none') !== value.type) return false;
-  if (value.status && (itemStatus(manifest, item.id) ?? 'none') !== value.status) return false;
-  if (value.language && (item.language ?? 'english') !== value.language) return false;
-  return !value.tag || custom.some(tag => tagKey(tag) === value.tag);
-}
-
-/** Words a person can search for: the type, status, and custom tags. */
-export function detailsText(manifest: TagsManifest, kind: TaggedKind, id: string) {
-  const { type, custom } = splitTags(kind, manifest[kind][id]);
-  const status = kind === 'documents' ? itemStatus(manifest, id) : undefined;
-  return [type ? typeLabel(type) : '', status ? statusLabel(status) : '', ...custom].join(' ');
-}
-
-/**
- * Compact filters for a list: Type and, for documents, Status when any item has one; Language when
- * any item is not in English; custom tags behind More filters when any item has them.
- */
-export function ItemFilters({ manifest, kind, items, value, onChange }: { manifest: TagsManifest; kind: TaggedKind; items: FilterItem[]; value: ItemFilterValue; onChange: (value: ItemFilterValue) => void }) {
-  const [more, setMore] = useState(Boolean(value.tag));
-  const panel = useId();
-  const ids = items.map(item => item.id);
-  const set = (key: keyof ItemFilterValue) => (next: string) => onChange({ ...value, [key]: next });
-  const types = hasType(kind) ? typeCounts(manifest, kind, ids) : [];
-  const untyped = items.filter(item => !itemType(manifest, kind, item.id)).length;
-  const statuses = kind === 'documents' ? documentStatuses.map(status => ({ ...status, count: items.filter(item => itemStatus(manifest, item.id) === status.id).length })).filter(status => status.count) : [];
-  const unset = items.length - statuses.reduce((sum, status) => sum + status.count, 0);
-  const found = languages.map(language => ({ ...language, count: items.filter(item => (item.language ?? 'english') === language.id).length })).filter(language => language.count);
-  const custom = tagCounts(manifest, kind, ids);
-  const showMore = more || Boolean(value.tag);
-  return <>
-    {(types.length > 0 || value.type) && <SelectControl label="Filter by type" value={value.type} onValueChange={set('type')} items={[
-      { value: '', label: 'All types' }, ...types.map(type => ({ value: type.id, label: `${type.label} (${type.count})` })), ...(untyped && types.length ? [{ value: 'none', label: `No type (${untyped})` }] : []),
-      ...(value.type && value.type !== 'none' && !types.some(type => type.id === value.type) ? [{ value: value.type, label: `${typeLabel(value.type)} (0)` }] : []),
-    ]} />}
-    {(statuses.length > 0 || value.status) && <SelectControl label="Filter by status" value={value.status} onValueChange={set('status')} items={[
-      { value: '', label: 'Any status' }, ...statuses.map(status => ({ value: status.id, label: `${status.label} (${status.count})` })), ...(unset ? [{ value: 'none', label: `No status (${unset})` }] : []),
-      ...(value.status && value.status !== 'none' && !statuses.some(status => status.id === value.status) ? [{ value: value.status, label: `${statusLabel(value.status as DocumentStatus)} (0)` }] : []),
-    ]} />}
-    {(found.some(language => language.id !== 'english') || value.language) && <SelectControl label="Filter by language" value={value.language} onValueChange={set('language')} items={[
-      { value: '', label: 'All languages' }, ...found.map(language => ({ value: language.id, label: `${language.label} (${language.count})` })),
-      ...(value.language && !found.some(language => language.id === value.language) ? [{ value: value.language, label: `${languageLabel(parseLanguage(value.language) ?? 'english')} (0)` }] : []),
-    ]} />}
-    {(custom.length > 0 || value.tag) && <>
-      <Button className="text-button more-filters" aria-expanded={showMore} aria-controls={panel} onClick={() => { if (showMore) onChange({ ...value, tag: '' }); setMore(!showMore); }}>
-        <Icon name="tag" size={15} />{showMore ? 'Fewer filters' : 'More filters'}
-      </Button>
-      {showMore && <div id={panel} className="more-filters-panel"><TagFilter manifest={manifest} kind={kind} ids={ids} value={value.tag} onChange={set('tag')} /></div>}
-    </>}
-  </>;
 }
 
 /** Custom spellings the editor suggests; on documents and templates, never a word that names a type. */

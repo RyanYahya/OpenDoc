@@ -1,17 +1,7 @@
 .assets-content { padding-bottom: 70px; }
-.assets-heading { min-height: var(--control-hit-size); margin-bottom: 24px; }
-.assets-tabs { display: flex; flex-direction: row; gap: 24px; border-bottom: 1px solid var(--line); margin-bottom: 30px; }
-.assets-tabs a { position: relative; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 12px 0; border-radius: 0; background: transparent; color: var(--muted); font-size: var(--label-size); line-height: var(--label-leading); font-weight: 500; text-decoration: none; }
-.assets-tabs a::after { content: ''; position: absolute; height: 2px; left: 0; right: 0; bottom: -1px; background: transparent; }
-.assets-tabs a:hover { color: var(--ink); background: transparent; }
-.assets-tabs a:hover::after { background: var(--line-strong); }
-.assets-tabs a[aria-current] { color: var(--ink); }
-.assets-tabs a[aria-current]::after { background: var(--ink); }
-@media (forced-colors: active) { .assets-tabs a[aria-current]::after { background: Highlight; } }
-.assets-tabs a:focus-visible { outline-offset: -3px; border-radius: 4px; }
+/* Detail pages follow the heading with a back link; list pages with the filter bar, whose 24px margin wins. */
+.assets-heading { min-height: var(--control-hit-size); margin-bottom: 16px; }
 .assets-content > .materials-content { padding: 0; max-width: none; }
-.asset-collection-toolbar { display: flex; gap: 14px; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-.asset-collection-toolbar .search-field { max-width: 400px; }
 .asset-collection-status { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
 .asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(235px, 1fr)); gap: 30px 24px; }
 .asset-card { display: flex; flex-direction: column; gap: 14px; min-width: 0; color: var(--ink); text-decoration: none; border-radius: 7px; }
@@ -125,7 +115,7 @@
 .asset-font-defaults { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 1150px) { .asset-detail-grid { grid-template-columns: minmax(0, 1.5fr) minmax(225px, 1fr); gap: 26px; } .asset-font-defaults { grid-template-columns: 1fr; gap: 0; } }
 @media (max-width: 950px) { .asset-detail-grid { grid-template-columns: 1fr; gap: 32px; } .asset-logo-stage { aspect-ratio: 3 / 2; } .asset-side-column { display: block; } .asset-detail-heading { flex-wrap: wrap; gap: 16px; } .asset-font-defaults { grid-template-columns: 1fr 1fr; gap: 12px; } }
-@media (max-width: 620px) { .assets-heading { align-items: flex-start; gap: 14px; flex-wrap: wrap; } .assets-tabs { gap: 26px; margin-bottom: 24px; } .asset-grid { grid-template-columns: 1fr; } .asset-collection-toolbar { flex-wrap: wrap; } .asset-collection-toolbar .search-field { flex: 1 1 100%; max-width: none; } .asset-detail-heading h2 { font-size: var(--title-size); line-height: var(--title-leading); } .asset-logo-stage { min-height: 220px; aspect-ratio: 4 / 3; } .asset-preview-tools { gap: 9px; } .asset-preview-tools > a { flex-basis: 100%; margin-left: 0; } .asset-font-defaults { grid-template-columns: 1fr; gap: 0; } .asset-dialog { max-height: calc(100dvh - 24px); } }
+@media (max-width: 620px) { .assets-heading { align-items: flex-start; gap: 14px; flex-wrap: wrap; } .asset-grid { grid-template-columns: 1fr; } .asset-detail-heading h2 { font-size: var(--title-size); line-height: var(--title-leading); } .asset-logo-stage { min-height: 220px; aspect-ratio: 4 / 3; } .asset-preview-tools { gap: 9px; } .asset-preview-tools > a { flex-basis: 100%; margin-left: 0; } .asset-font-defaults { grid-template-columns: 1fr; gap: 0; } .asset-dialog { max-height: calc(100dvh - 24px); } }
 
 /* A logo opens to its files, followed by the selected artwork. */
 .logo-folder-contents { margin-bottom: 32px; padding-bottom: 28px; border-bottom: 1px solid var(--line); }

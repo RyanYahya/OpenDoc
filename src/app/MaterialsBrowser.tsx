@@ -1,10 +1,11 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
-import { documentName, documentFormat, formatLabel, pageUnit, type DocumentFormat, type DocumentSummary } from '../shared/types';
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { documentFormat, formatLabel, pageUnit, type DocumentFormat, type DocumentSummary } from '../shared/types';
 import { groupMedia, type Materials, type MediaItem, type MediaKind, type MediaMeta } from '../shared/media';
 import { textLang } from '../shared/language';
 import { api, ApiError } from './api';
 import { Button, Dialog, SelectControl, useNotifications } from './ui';
-import { SearchField } from './SearchField';
+import { FilterBar, useHashQuery, useSortPreference } from './FilterBar';
+import { compareText, countFacet, matchesSearch, sortItems, type SortOption } from './libraryFilters';
 import { Icon } from './ui/Icon';
 import './materials.css';
 
@@ -122,12 +123,20 @@ function Ownership({ item, format, connected, onEdit }: { item: MediaItem; forma
     <a className="material-file" href={fileUrl(item.documentId, `media/${item.id}/meta.json`)} download><Icon name="document" size={16}/><span>Media metadata</span><Icon name="download" size={16}/></a>
   </section>;
 }
-export function MaterialsBrowser({ selection, generation, documents, connected }: { selection: string; generation: number; documents: DocumentSummary[]; connected: boolean }) {
+const mediaSorts: SortOption[] = [{ value: 'document', label: 'Document' }, { value: 'title', label: 'Title A–Z' }];
+
+export function MaterialsBrowser({ selection, generation, documents, connected, collections }: { selection: string; generation: number; documents: DocumentSummary[]; connected: boolean;
+  /** The Media, Logos, and Fonts buttons that lead the filter bar. */
+  collections?: ReactNode;
+}) {
   const [materials, setMaterials] = useState<Materials>();
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
-  const [query, setQuery] = useState('');
-  const [owner, setOwner] = useState('all');
+  const { params, update } = useHashQuery();
+  const query = params.get('q') ?? '';
+  const owner = params.get('document') ?? '';
+  const mediaKind = params.get('kind') ?? '';
+  const [sort, setSort] = useSortPreference('media', mediaSorts, 'document');
   const [editor, setEditor] = useState<MediaEditor | null>(null);
   const formats = new Map(documents.map(document => [document.id, documentFormat(document)]));
   const formatOf = (documentId: string) => formats.get(documentId) ?? 'document';
@@ -143,8 +152,19 @@ export function MaterialsBrowser({ selection, generation, documents, connected }
     if (!connected) return;
     void api('/api/context', {method: 'POST', body: JSON.stringify({documentId: selected?.documentId ?? null, blockId: null, page:1, mediaId:selected?.id ?? null, themeId: null, selectedAsset: null})}).catch(() => {});
   }, [selected?.documentId, selected?.id, connected]);
-  const filtered = materials?.media.filter(item => (owner === 'all' || item.documentId === owner) && `${item.meta?.title ?? item.id} ${item.meta?.description ?? ''} ${item.documentTitle} ${item.meta?.kind ?? ''}`.toLowerCase().includes(query.toLowerCase())) ?? [];
-  const groups = groupMedia(filtered);
+  const all = materials?.media ?? [];
+  const facets = [
+    countFacet({ key: 'document', label: 'Document', anyLabel: 'Any document', items: all, value: owner, valueOf: item => item.documentId,
+      labelOf: id => { const item = all.find(entry => entry.documentId === id); return item ? ownerLabel(id, item.documentTitle) : id; } }),
+    countFacet({ key: 'kind', label: 'Kind', anyLabel: 'Any kind', items: all, value: mediaKind, valueOf: item => item.meta?.kind, labelOf: value => kindLabel(value as MediaKind) ?? value, order: kinds.map(entry => entry.value) }),
+  ];
+  const narrowed = Boolean(query || owner || mediaKind);
+  const title = (item: MediaItem) => item.meta?.title ?? item.id;
+  const filtered = all.filter(item => (!owner || item.documentId === owner) && (!mediaKind || item.meta?.kind === mediaKind)
+    && matchesSearch(`${title(item)} ${item.meta?.description ?? ''} ${item.documentTitle} ${kindLabel(item.meta?.kind) ?? ''}`, query));
+  // Identical images group into one card; the order follows each group's first copy.
+  const groups = sortItems(groupMedia(filtered), ...(sort === 'title' ? [] : [(a: MediaItem[], b: MediaItem[]) => compareText(a[0].documentTitle, b[0].documentTitle)]), (a, b) => compareText(title(a[0]), title(b[0])));
+  const clearAll = () => update({ q: null, document: null, kind: null });
 
   const duplicates = selected ? materials!.media.filter(item => selected.hash && !selected.error ? item.hash === selected.hash && !item.error : item === selected) : [];
   return <section className="materials-content">
@@ -158,10 +178,12 @@ export function MaterialsBrowser({ selection, generation, documents, connected }
         <div className="media-detail-info">{duplicates.map(item => <Ownership key={`${item.documentId}/${item.id}`} item={item} format={formatOf(item.documentId)} connected={connected} onEdit={item => setEditor({ item })}/>)}</div>
       </div>}
     </> : <>
-      <div className="asset-collection-toolbar materials-toolbar"><SearchField label="Search media" value={query} onValueChange={setQuery} /><SelectControl label="Filter by document" value={owner} onValueChange={setOwner} items={[{label:'All documents',value:'all'},...documents.map(doc => ({label:ownerLabel(doc.id, documentName(doc)),value:doc.id}))]}/></div>
+      <FilterBar search={{ label: 'Search media', value: query, onChange: value => update({ q: value }, { replace: true }) }} primary={collections}
+        facets={facets} onFacetChange={(key, value) => update({ [key]: value })} onClearFacets={() => update({ document: null, kind: null })}
+        sort={{ value: sort, options: mediaSorts, onChange: setSort }} />
       {!materials && !error && <p className="asset-collection-status" role="status">Reading local folders…</p>}
       <div className="media-grid">{groups.map(group => {const item=group[0];const owners=[...new Map(group.map(item=>[item.documentId,ownerLabel(item.documentId, item.documentTitle)])).values()];return <Button static className="media-card" key={`${item.documentId}/${item.id}`} onClick={() => {location.hash=`${rootPath}/${item.documentId}/${item.id}`;}} aria-label={`Open ${item.meta?.title ?? item.id}`}><span className="media-card-image"><MediaImage item={item}/></span><span className="media-card-caption"><strong>{item.meta?.title ?? item.id}</strong><span>{owners.length > 1 ? `${owners.length} documents` : owners[0]}{group.length > owners.length ? ` · ${group.length} copies` : ''}</span><span className={group.some(item=>item.error || item.freshness==='stale' || item.freshness==='unrecorded') ? 'media-problem' : 'muted'}>{item.error ? 'Check media metadata' : group.some(item=>item.freshness==='stale') ? 'Needs regeneration' : group.some(item=>item.freshness==='unrecorded') ? 'Generation not recorded' : group.every(item=>item.usageKnown && !item.usedIn.length) ? 'Not used in a PDF' : kindLabel(item.meta?.kind)}</span></span></Button>;})}</div>
-      {materials && !groups.length && <div className="empty-state"><h2>{query || owner !== 'all' ? 'No matching files' : 'A place for your visuals'}</h2><p>{query || owner !== 'all' ? 'Try another search or choose all documents.' : 'Share images with your agent, or ask it to generate or download visuals. They appear here when added to a document.'}</p>{(query || owner !== 'all') ? <Button onClick={()=>{setQuery('');setOwner('all');}}>Clear filters</Button> : null}</div>}
+      {materials && !groups.length && <div className="empty-state"><h2>{narrowed ? 'No matching files' : 'A place for your visuals'}</h2><p>{narrowed ? 'Try another search or filter.' : 'Share images with your agent, or ask it to generate or download visuals. They appear here when added to a document.'}</p>{narrowed ? <Button onClick={clearAll}>Clear filters</Button> : null}</div>}
     </>}
     {editor && <MediaEditorDialog editor={editor} connected={connected} onClose={() => setEditor(null)} onSaved={(documentId, itemId) => { setEditor(null); setRetry(value => value + 1); if (itemId) location.hash = `${rootPath}/${documentId}/${itemId}`; }} />}
   </section>;

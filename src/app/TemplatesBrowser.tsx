@@ -4,12 +4,14 @@ import { pageUnit, type DocumentFormat } from '../shared/types';
 import { api } from './api';
 import { catalogPreview } from './catalogPreview';
 import { PdfPage, usePdf } from './Pdf';
-import { Button, Dialog, Input, Tabs } from './ui';
+import { Button, Dialog, Input } from './ui';
 import { Icon } from './ui/Icon';
 import type { CreatePreset } from './CreateDocumentDialog';
 import { GuideDialog } from './GuideDialog';
-import { filtering, ItemFilters, matchesFilters, noFilters, tagText, type TagState, type TagTarget } from './Tags';
-import { emptyTags, itemCustomTags, itemType, typeLabel } from '../shared/tags';
+import { tagText, type TagState, type TagTarget } from './Tags';
+import { FilterBar, FilterChoices, useHashQuery, useSortPreference } from './FilterBar';
+import { compareNewest, compareText, detailsText, filtering, itemFacets, itemFilterKeys, matchesFilters, matchesSearch, noFilters, readItemFilters, sortItems, splitHash, type SortOption } from './libraryFilters';
+import { emptyTags, itemCustomTags, itemType, standardTypes, typeLabel } from '../shared/tags';
 import { languageLabel, textLang } from '../shared/language';
 import './templates.css';
 
@@ -53,6 +55,11 @@ function TemplatePreview({ item, allPages = false, onReady }: { item: TemplateIt
 }
 
 const customPrompt = '$opendoc-create-template';
+/** The gallery filters last shown, so a template page returns to the same view. */
+let galleryHash = '#templates';
+const sortOptions: SortOption[] = [{ value: 'title', label: 'Name A–Z' }, { value: 'updated', label: 'Last edited' }, { value: 'type', label: 'Type' }];
+/** Types in vocabulary order; templates without one follow. */
+const typeRank = (type?: string) => { const index = standardTypes.findIndex(item => item.id === type); return index < 0 ? standardTypes.length : index; };
 
 export function TemplatesBrowser({ selection, generation, format = 'document', connected = true, tags, onEditTags, onCreate }: {
   selection: string; generation: number; format?: DocumentFormat; connected?: boolean;
@@ -61,9 +68,13 @@ export function TemplatesBrowser({ selection, generation, format = 'document', c
   /** Optional workspace tags, filtered here and edited through the shared Details editor. */
   tags?: TagState; onEditTags?: (target: TagTarget) => void;
 }) {
-  const [filters, setFilters] = useState(noFilters);
+  const { params, update } = useHashQuery();
+  const query = params.get('q') ?? '';
   const tagManifest = tags?.manifest ?? emptyTags();
   const tagging = Boolean(onEditTags) && !tags?.error;
+  // Type and tags come from tags.json, so they filter only while it is readable; language is derived.
+  const filters = tagging ? readItemFilters(params) : { ...noFilters, language: params.get('language') ?? '' };
+  const [sort, setSort] = useSortPreference('templates', sortOptions, 'title');
   const [proof, setProof] = useState<{ revision: string; preview: Preview }>();
   const previewReady = useCallback((revision: string, preview: Preview) => setProof({ revision, preview }), []);
   const [items, setItems] = useState<TemplateItem[]>([]);
@@ -84,13 +95,29 @@ export function TemplatesBrowser({ selection, generation, format = 'document', c
   const item = items.find(item => item.id === selection);
   const presentation = item?.descriptor.documentFormat === 'presentation';
   const artifact = item && proof?.revision === item.revision ? proof.preview.artifact : undefined;
+  // The gallery shows one format at a time; search, filters, and sort apply within it.
+  const ofFormat = (category: DocumentFormat) => items.filter(item => (item.descriptor.documentFormat ?? 'document') === category);
+  const inFormat = ofFormat(format);
+  const narrowed = Boolean(query) || filtering(filters);
+  const name = (item: TemplateItem) => item.descriptor.name;
+  const byType = (a: TemplateItem, b: TemplateItem) => typeRank(itemType(tagManifest, 'templates', a.id)) - typeRank(itemType(tagManifest, 'templates', b.id));
+  const newest = (a: TemplateItem, b: TemplateItem) => compareNewest(a.updatedAt, b.updatedAt);
+  const visible = sortItems(inFormat.filter(item => matchesFilters(tagManifest, 'templates', item, filters)
+    && matchesSearch(`${name(item)} ${item.descriptor.description} ${item.descriptor.format} ${detailsText(tagManifest, 'templates', item.id)}`, query)),
+  ...(sort === 'updated' ? [newest] : sort === 'type' ? [byType] : []), (a, b) => compareText(name(a), name(b)));
+  const noun = format === 'presentation' ? 'presentation' : 'document';
+  // The hash can change a render before the selection does, so read the gallery's own address.
+  const hashQuery = params.toString();
+  useEffect(() => { if (!selection && splitHash(location.hash).path === 'templates') galleryHash = location.hash; }, [selection, hashQuery]);
+  // Opened directly, a template page returns to the gallery of its own format.
+  const backHash = galleryHash !== '#templates' ? galleryHash : presentation ? '#templates?format=presentation' : '#templates';
   async function copy() {
     try { await navigator.clipboard.writeText(customPrompt); setCopied(true); setCopyError(''); }
     catch { setCopyError('Copying isn’t available here. Select the skill name and copy it manually.'); promptField.current?.focus(); promptField.current?.select(); }
   }
   return <section className="library-content templates-content">
     {selection ? <>
-      <a className="template-back" href={presentation ? '#templates?format=presentation' : '#templates'}><Icon name="left" size={15} /> {presentation ? 'Presentation templates' : 'Document templates'}</a>
+      <a className="template-back" href={backHash}><Icon name="left" size={15} /> {presentation ? 'Presentation templates' : 'Document templates'}</a>
       {item ? <>
         <div className={`template-detail-layout${presentation ? ' template-detail-presentation' : ''}`}>
           <div className="template-proof">
@@ -138,19 +165,15 @@ export function TemplatesBrowser({ selection, generation, format = 'document', c
           </Dialog.Portal>
         </Dialog.Root>
       </div>
-      {tagging && <div className="template-filters"><ItemFilters manifest={tagManifest} kind="templates" items={items} value={filters} onChange={setFilters} /></div>}
-      <Tabs.Root value={format} onValueChange={value => { location.hash = value === 'presentation' ? 'templates?format=presentation' : 'templates'; }}>
-        <Tabs.List className="ui-tabs" aria-label="Template format">
-          <Tabs.Tab className="ui-tab" value="document">Documents</Tabs.Tab>
-          <Tabs.Tab className="ui-tab" value="presentation">Presentations</Tabs.Tab>
-        </Tabs.List>
-        {(['document', 'presentation'] as const).map(category => {
-          const filtered = tagging && filtering(filters);
-          const visible = items.filter(item => (item.descriptor.documentFormat ?? 'document') === category && (!filtered || matchesFilters(tagManifest, 'templates', item, filters)));
-          const tagged = filtered ? ' matching the filters' : '';
-          return <Tabs.Panel key={category} value={category}>
-      <div className="template-gallery-label"><span>{loaded ? `${visible.length} ${visible.length === 1 ? 'template' : 'templates'}${tagged}` : 'Preparing templates…'}</span><span>Previews use the Neutral theme</span></div>
-      <div className={`template-grid${category === 'presentation' ? ' template-grid-presentations' : ''}`}>{visible.map(item => <article className="template-card" key={item.id}>
+      <FilterBar search={{ label: 'Search templates', value: query, onChange: value => update({ q: value }, { replace: true }) }}
+        primary={<FilterChoices label="Template format" value={format} onChange={value => update({ format: value === 'presentation' ? value : null })} choices={[
+          { value: 'document', label: 'Documents', count: ofFormat('document').length }, { value: 'presentation', label: 'Presentations', count: ofFormat('presentation').length },
+        ]} />}
+        facets={itemFacets(tagManifest, 'templates', inFormat, filters).filter(facet => tagging || facet.key === 'language')}
+        onFacetChange={(key, value) => update({ [key]: value })} onClearFacets={() => update(Object.fromEntries(itemFilterKeys.map(key => [key, null])))}
+        sort={{ value: sort, options: sortOptions, onChange: setSort }} />
+      <div className="template-gallery-label"><span role="status">{loaded ? `${visible.length} ${visible.length === 1 ? 'template' : 'templates'}${narrowed ? ' matching the filters' : ''}` : 'Preparing templates…'}</span><span>Previews use the Neutral theme</span></div>
+      <div className={`template-grid${format === 'presentation' ? ' template-grid-presentations' : ''}`}>{visible.map(item => <article className="template-card" key={item.id}>
         <a href={`#templates/${item.id}`} className="template-card-link" aria-labelledby={`template-title-${item.id}`}>
           <div className="template-card-mat" aria-hidden="true"><TemplatePreview item={item} /></div>
           <h2 id={`template-title-${item.id}`}><bdi lang={textLang(item.descriptor.name, item.language)}>{item.descriptor.name}</bdi><Icon name="arrow" size={17} /></h2>
@@ -158,12 +181,9 @@ export function TemplatesBrowser({ selection, generation, format = 'document', c
         <p className="template-format">{tagging && itemType(tagManifest, 'templates', item.id) && <span className="card-type">{typeLabel(itemType(tagManifest, 'templates', item.id)!)} · </span>}{item.descriptor.format}</p>
         {item.error && <p className="comment-error" role="alert">Preview needs attention. Open the template for details.</p>}
       </article>)}</div>
-      {loaded && !visible.length && !loadError && (tagged
-        ? <div className="empty-state"><h2>No {category === 'presentation' ? 'presentation' : 'document'} templates{tagged}</h2><p>Choose other filters, or show every template.</p><Button onClick={() => setFilters(noFilters)}>Clear filters</Button></div>
-        : <div className="empty-state"><h2>No {category === 'presentation' ? 'presentation' : 'document'} templates yet</h2><p>Choose Create template to find the skill to use in your coding agent.</p></div>)}
-          </Tabs.Panel>;
-        })}
-      </Tabs.Root>
+      {loaded && !visible.length && !loadError && (narrowed
+        ? <div className="empty-state"><h2>No matching {noun} templates</h2><p>Try another search or filter, or show every template.</p><Button onClick={() => update(Object.fromEntries(['q', ...itemFilterKeys].map(key => [key, null])))}>Clear filters</Button></div>
+        : <div className="empty-state"><h2>No {noun} templates yet</h2><p>Choose Create template to find the skill to use in your coding agent.</p></div>)}
     </>}
     {loadError && <div className="error-banner" role="alert"><span>{loadError}</span><Button onClick={() => setAttempt(value => value + 1)}>Try again</Button></div>}
   </section>;

@@ -40,6 +40,7 @@ import { emptyThemeFolders, type ThemeFoldersManifest } from "../shared/theme-fo
 import type { ThemeOrganization } from "./ThemeFolders";
 import { emptyTags, itemStatus, type DocumentStatus, type TagsManifest } from "../shared/tags";
 import { textLang } from "../shared/language";
+import { splitHash } from "./libraryFilters";
 import { DetailsDialog, StatusBadge, TagsProvider, type TagState, type TagTarget } from "./Tags";
 import "./style.css";
 
@@ -48,21 +49,19 @@ const TemplatesBrowser = lazy(() => import("./TemplatesBrowser").then(module => 
 const ThemesBrowser = lazy(() => import("./ThemesBrowser").then(module => ({ default: module.ThemesBrowser })));
 const Reader = lazy(() => import("./Reader").then(module => ({ default: module.Reader })));
 
+/** The view and item from the hash; library filters in its query stay with the view they belong to. */
 function route() {
-  const hash = location.hash.slice(1);
-  if (hash === "presentations") return { view: "presentations", id: "" };
-  const [templatePath, templateQuery] = hash.split('?');
-  if (templatePath === "themes" || templatePath.startsWith("themes/")) {
-    const query = new URLSearchParams(templateQuery);
-    return { view: "themes", id: templatePath.slice(7), themeFolder: query.get('folder') ?? '', themeTag: query.get('tag') ?? '' };
-  }
-  if (templatePath === "templates" || templatePath.startsWith("templates/")) return { view: "templates", id: templatePath.slice(10), templateFormat: new URLSearchParams(templateQuery).get('format') === 'presentation' ? 'presentation' as const : 'document' as const };
-  if (hash === "assets" || hash.startsWith("assets/")) return { view: "assets", id: hash.slice(7) || "media" };
-  if (hash === "media" || hash.startsWith("media/")) return { view: "assets", id: `media${hash.length > 5 ? `/${hash.slice(6)}` : ""}` };
-  if (hash.startsWith("project/")) return { view: "project", id: hash.slice(8) };
+  const { path: hash, params } = splitHash(location.hash);
+  const query = params.toString() ? `?${params}` : "";
+  if (hash === "presentations") return { view: "presentations", id: "", query };
+  if (hash === "themes" || hash.startsWith("themes/")) return { view: "themes", id: hash.slice(7), query };
+  if (hash === "templates" || hash.startsWith("templates/")) return { view: "templates", id: hash.slice(10), templateFormat: params.get('format') === 'presentation' ? 'presentation' as const : 'document' as const, query };
+  if (hash === "assets" || hash.startsWith("assets/")) return { view: "assets", id: hash.slice(7) || "media", query };
+  if (hash === "media" || hash.startsWith("media/")) return { view: "assets", id: `media${hash.length > 5 ? `/${hash.slice(6)}` : ""}`, query };
+  if (hash.startsWith("project/")) return { view: "project", id: hash.slice(8), query };
   return hash.startsWith("document/")
-    ? { view: "document", id: hash.slice(9) }
-    : { view: "library", id: "" };
+    ? { view: "document", id: hash.slice(9), query: "" }
+    : { view: "library", id: "", query };
 }
 const go = (hash: string) => { location.hash = hash; };
 
@@ -185,8 +184,9 @@ function App() {
   const project = manifest.projects.find(project => project.id === routeProjectId);
   const origin = lastBrowseRoute.current;
   const originProject = origin?.view === "project" ? manifest.projects.find(project => project.id === origin.id) : undefined;
+  // Back returns to the page as it was left, with its filters.
   const backHash = origin
-    ? origin.view === "project" ? originProject ? `project/${originProject.id}` : "library" : `${origin.view}${origin.id ? `/${origin.id}` : ""}${origin.view === 'templates' && origin.templateFormat === 'presentation' ? '?format=presentation' : ''}${origin.view === 'themes' && origin.themeFolder ? `?folder=${encodeURIComponent(origin.themeFolder)}` : ''}`
+    ? origin.view === "project" ? originProject ? `project/${originProject.id}${origin.query}` : "library" : `${origin.view}${origin.id ? `/${origin.id}` : ""}${origin.query}`
     : project ? `project/${project.id}` : activeSummary && documentFormat(activeSummary) === "presentation" ? "presentations" : "library";
   const backLabel = origin
     ? origin.view === "project" ? originProject?.name ?? "Documents" : ({ library: "Documents", presentations: "Presentations", assets: "Media & Assets", templates: "Templates", themes: "Themes" }[origin.view] ?? "Documents")
@@ -283,7 +283,7 @@ function App() {
         : current.view === "assets" ? <AssetsBrowser selection={current.id} generation={generation} documents={documents} themes={themes} connected={connected} />
         : current.view === "templates" ? <TemplatesBrowser selection={current.id} generation={generation} format={current.templateFormat} connected={connected} tags={tagState} onEditTags={setTagTarget} onCreate={openCreate} />
         : current.view === "themes" ? <ThemesBrowser connected={connected} themes={themes} selection={current.id} generation={generation} loaded={loaded} documents={documents} projects={manifest.projects} onRefresh={() => void refresh()} onCreate={openCreate}
-          organization={themeOrganization} folder={current.themeFolder} tag={current.themeTag} onOrganizationChange={next => { setThemeOrganization({ manifest: next }); void refresh(); }} tags={tagState} onEditTags={setTagTarget} /> : <DocumentsBrowser key={current.view} format={current.view === 'presentations' ? 'presentation' : 'document'} projects={manifest.projects} documents={documents.filter(document => documentFormat(document) === (current.view === 'presentations' ? 'presentation' : 'document'))} tags={tagState} loaded={loaded} view={documentView} onViewChange={changeDocumentView} onCreate={() => createDocument(current.view === 'presentations' ? 'presentation' : 'document')} pending={pendingFor({ format: current.view === 'presentations' ? 'presentation' : 'document' })} onMove={setMoving} onAction={onDocumentAction} disabled={!connected || duplicating} />}
+          organization={themeOrganization} onOrganizationChange={next => { setThemeOrganization({ manifest: next }); void refresh(); }} tags={tagState} onEditTags={setTagTarget} /> : <DocumentsBrowser key={current.view} format={current.view === 'presentations' ? 'presentation' : 'document'} projects={manifest.projects} documents={documents.filter(document => documentFormat(document) === (current.view === 'presentations' ? 'presentation' : 'document'))} tags={tagState} loaded={loaded} view={documentView} onViewChange={changeDocumentView} onCreate={() => createDocument(current.view === 'presentations' ? 'presentation' : 'document')} onMove={setMoving} onAction={onDocumentAction} disabled={!connected || duplicating} />}
       </Suspense>
       </LoadBoundary>
     </main>

@@ -1,11 +1,11 @@
-.documents-content .library-heading, .project-documents .library-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 30px; }
+.documents-content .library-heading, .project-documents .library-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .documents-content .library-heading h1, .project-documents .library-heading h1 { margin: 0; overflow-wrap: anywhere; }
 .document-project-link { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; min-height: var(--control-hit-size); margin-top: 6px; color: var(--muted); font-size: var(--label-size); line-height: var(--label-leading); font-weight: 500; }
 .document-project-link span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .document-project-link:hover { color: var(--accent-ink); }
 .document-project-link:hover span { text-decoration: underline; text-underline-offset: 3px; }
 .project-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-.library-heading .primary.project-create-trigger { font-size: var(--label-size); padding: 7px 10px; }
+.library-heading .primary.project-create-trigger { font-size: var(--label-size); padding: 6px 10px; }
 .project-document { min-width: 0; }
 .project-document .document-card { width: 100%; }
 /* One frame for mixed formats; the paper inside keeps its real proportions. */
@@ -23,8 +23,6 @@
 .project-templates-link { display: inline-flex; align-items: center; gap: 8px; color: var(--accent-ink); margin-top: 16px; }
 .project-delete { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 18px; }
 .project-delete .field-hint { margin-top: 4px; }
-.document-browser-tools { flex-wrap: wrap; gap: 16px; justify-content: flex-start; }
-.document-view-tools { display: flex; align-items: center; gap: 20px; margin-left: auto; }
 .document-view-toggle { display: flex; align-items: center; gap: 2px; min-height: var(--control-hit-size); padding: 2px; border: 1px solid var(--line); border-radius: var(--control-radius); background: var(--surface); }
 .document-view-toggle .ui-button { min-height: calc(var(--control-hit-size) - 6px); padding: 3px 10px; border-radius: calc(var(--control-radius) - 2px); }
 .documents-list { display: flex; flex-direction: column; }
@@ -42,15 +40,6 @@
   .documents-content .library-heading, .project-documents .library-heading { align-items: flex-start; flex-wrap: wrap; }
   .documents-list .document-card { grid-template-columns: 28px minmax(0, 1fr); grid-template-areas: "preview title" "preview meta"; }
   .documents-list .card-meta { align-self: start; }
-}
-/* Narrow screens: search on its own line, then the filters and view toggle share one row. */
-@media (max-width: 700px) {
-  .document-browser-tools { gap: 8px; margin-bottom: 20px; }
-  .document-browser-tools .search-field { flex-basis: 100%; max-width: none; }
-  .document-browser-tools .tag-filter { flex: 0 1 auto; gap: 6px; }
-  .document-browser-tools .tag-filter .ui-select { min-width: 0; }
-  .document-browser-tools .document-view-toggle .ui-button { padding-inline: 8px; }
-  .document-browser-tools .document-view-toggle .ui-button > span { display: none; }
 }
 @media (max-width: 620px) {
   .project-actions { flex-wrap: wrap; }

@@ -1,24 +1,12 @@
-/* Optional single-level theme folders, shown as filter buttons beside the tag filter; tag styles live in tags.css. */
+/* Optional single-level theme folders, shown as the Themes filter bar's primary buttons beside Filter;
+   the buttons themselves are filter-bar.css choices, and tag styles live in tags.css. */
 .theme-heading-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; flex-shrink: 0; }
-.theme-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; margin-top: 20px; }
-.theme-folder-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; flex: 1 1 320px; min-width: 0; }
-.theme-folder-toggles { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
-.ui-button.theme-folder-toggle { gap: 6px; max-width: 100%; padding: 5px 10px; background: var(--surface-raised); color: var(--ink); }
-.ui-button.theme-folder-toggle > svg { flex-shrink: 0; color: var(--muted); }
-.theme-folder-toggle-name { min-width: 0; max-width: 24ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.theme-folder-toggle-count { color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
-.ui-button.theme-folder-toggle[data-pressed] { border-color: var(--accent); background: var(--selected-surface); color: var(--accent-ink); }
-.ui-button.theme-folder-toggle[data-pressed] > svg, .ui-button.theme-folder-toggle[data-pressed] .theme-folder-toggle-count { color: currentColor; }
-@media (forced-colors: active) {
-  .ui-button.theme-folder-toggle[data-pressed], .ui-button.theme-folder-toggle[data-pressed] * { color: HighlightText; }
-  .ui-button.theme-folder-toggle[data-pressed] { forced-color-adjust: none; background: Highlight; }
-}
+.theme-folder-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
 .ui-button.theme-manage-folders { gap: 6px; }
 .ui-button.theme-manage-folders[data-popup-open] { background: var(--control-hover); color: var(--ink); }
 .theme-manage-hint { max-width: 240px; font-weight: 400; }
-.theme-filters .theme-tag-filter { margin-inline-start: auto; }
 
-.is-drop-target { outline: 2px solid var(--focus-ring); outline-offset: 2px; background: var(--selected-surface); }
+.is-drop-target, .ui-button.filter-choice.is-drop-target { outline: 2px solid var(--focus-ring); outline-offset: 2px; background: var(--selected-surface); }
 
 .theme-gallery-preview .ui-button.theme-card-menu-trigger { position: absolute; top: 8px; right: 8px; z-index: 1; min-width: var(--control-hit-size); min-height: var(--control-hit-size); padding: 6px; border: 0; border-radius: 6px; background: var(--surface); color: var(--muted); box-shadow: none; }
 .theme-gallery-preview .ui-button.theme-card-menu-trigger:hover, .theme-gallery-preview .ui-button.theme-card-menu-trigger[data-popup-open] { color: var(--ink); background: var(--control-hover); }
@@ -44,13 +32,8 @@
 .theme-organization dd { margin: 0; }
 .theme-organization .theme-organization-actions { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 12px; }
 
-@media (max-width: 620px) {
-  .theme-filters { gap: 12px; }
-  .theme-filters .theme-tag-filter { margin-inline-start: 0; }
-  .theme-folder-toggle-name { max-width: 18ch; }
-}
 @media (pointer: coarse) {
-  .ui-button.theme-folder-toggle, .ui-button.theme-manage-folders, .theme-gallery-preview .ui-button.theme-card-menu-trigger { min-width: 40px; min-height: 40px; }
+  .ui-button.theme-manage-folders, .theme-gallery-preview .ui-button.theme-card-menu-trigger { min-width: 40px; min-height: 40px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .theme-gallery-preview .theme-card-menu-trigger { transition: none; }

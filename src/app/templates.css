@@ -1,6 +1,6 @@
 .template-intro { max-width: 65ch; line-height: 1.6; }
 .template-gallery-label, .template-proof-label { display: flex; justify-content: space-between; gap: 16px; color: var(--muted); font-size: var(--caption-size); }
-.template-gallery-label { margin: 32px 0 20px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.template-gallery-label { margin: 24px 0 20px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .template-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 28px 24px; }
 .template-card { max-width: 280px; min-width: 0; }
 .template-card-link { display: block; color: inherit; text-decoration: none; border-radius: 5px; }
@@ -48,7 +48,4 @@
 .template-grid-presentations .template-preview { aspect-ratio: 16 / 9; min-height: 0; }
 .template-detail-presentation .template-preview { min-height: 0; }
 
-.template-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 16px; }
-/* Without any filters to offer, the tabs sit under the heading as they do on Media & Assets. */
-.template-filters:empty { display: none; }
 .template-options .template-tags { margin-top: 28px; }

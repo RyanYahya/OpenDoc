@@ -1,0 +1,72 @@
+/* The one library toolbar: search, the primary dimension, Filter with its chips, then sort and view.
+   Wide pages hold it on one row; a narrower content area moves the dimension and filters to a
+   second row so search, sort, and view keep their places. */
+.filter-bar { container: filter-bar / inline-size; margin: 24px 0; }
+.filter-bar-layout {
+  display: grid;
+  grid-template-columns: minmax(200px, 280px) minmax(0, 1fr) auto;
+  grid-template-areas: "search facets arrange";
+  align-items: start;
+  gap: 8px 16px;
+}
+.filter-bar-search { grid-area: search; display: flex; min-width: 0; }
+.filter-bar-search .search-field { flex: 1; min-width: 0; max-width: var(--filter-search-max, none); }
+.filter-bar-facets { grid-area: facets; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; min-width: 0; }
+.filter-bar-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.filter-bar-arrange { grid-area: arrange; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+/* With primary buttons the facets need the room of their own row sooner than Filter alone does. */
+@container filter-bar (max-width: 820px) {
+  .filter-bar.has-primary .filter-bar-layout { --filter-search-max: 400px; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "search arrange" "facets facets"; }
+}
+@container filter-bar (max-width: 640px) {
+  .filter-bar .filter-bar-layout { --filter-search-max: 400px; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "search arrange" "facets facets"; }
+}
+/* Phones stack search, the filters, and sort with the view; phone polish beyond this is out of scope. */
+@container filter-bar (max-width: 480px) {
+  .filter-bar .filter-bar-layout, .filter-bar.has-primary .filter-bar-layout { --filter-search-max: none; grid-template-columns: minmax(0, 1fr); grid-template-areas: "search" "facets" "arrange"; }
+  .filter-bar-arrange { justify-content: space-between; }
+  .filter-bar .document-view-toggle .ui-button { padding-inline: 8px; }
+  .filter-bar .document-view-toggle .ui-button > span { display: none; }
+}
+
+/* Primary dimension: always-visible buttons, one chosen, each with its item count. */
+.filter-choices { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.ui-button.filter-choice { gap: 6px; max-width: 100%; padding: 5px 10px; background: var(--surface-raised); color: var(--ink); }
+.ui-button.filter-choice > svg { flex-shrink: 0; color: var(--muted); }
+.filter-choice-name { min-width: 0; max-width: 24ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.filter-choice-count { color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
+.ui-button.filter-choice[data-pressed] { border-color: var(--accent); background: var(--selected-surface); color: var(--accent-ink); }
+.ui-button.filter-choice[data-pressed] > svg, .ui-button.filter-choice[data-pressed] .filter-choice-count { color: currentColor; }
+
+/* Filter and sort are quiet tool buttons; an active filter count is the only accent. */
+.ui-button.filter-button, .ui-button.filter-sort { gap: 6px; padding-inline: 8px; color: var(--muted); }
+.ui-button.filter-button:hover, .ui-button.filter-sort:hover,
+.ui-button.filter-button[data-popup-open], .ui-button.filter-sort[data-popup-open] { background: var(--control-hover); color: var(--ink); }
+.ui-button.filter-button:has(.filter-count) { color: var(--ink); }
+.ui-button.filter-sort > svg:last-child { margin-inline-start: -2px; }
+.filter-count { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: var(--on-accent); font-size: var(--tag-size); line-height: 18px; font-weight: 600; text-align: center; font-variant-numeric: tabular-nums; }
+
+/* Each active filter is a removable chip naming its dimension and value. */
+.ui-button.filter-chip { gap: 5px; min-height: 28px; max-width: 100%; padding: 3px 6px 3px 10px; border-color: var(--line); border-radius: 999px; background: var(--selected-surface); color: var(--ink); font-weight: 500; }
+.ui-button.filter-chip:hover { background: var(--control-hover); }
+.ui-button.filter-chip > svg { flex-shrink: 0; color: var(--muted); }
+.ui-button.filter-chip:hover > svg { color: var(--ink); }
+.filter-chip-dimension { color: var(--muted); font-weight: 400; }
+.filter-chip-value { min-width: 0; max-width: 24ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-button.text-button.filter-clear { padding-inline: 6px; }
+
+/* Values line up with their counts; the check keeps its column whether shown or not. */
+.filter-menu .ui-menu-value { max-width: 18ch; overflow: hidden; text-overflow: ellipsis; }
+.filter-options { min-width: 200px; }
+.filter-option-count { font-variant-numeric: tabular-nums; }
+.ui-menu-check.filter-option-check { width: 14px; flex-shrink: 0; margin-inline-start: 0; }
+.filter-option > span:first-child { flex: 1; min-width: 0; }
+
+@media (forced-colors: active) {
+  .ui-button.filter-choice[data-pressed] { forced-color-adjust: none; background: Highlight; }
+  .ui-button.filter-choice[data-pressed], .ui-button.filter-choice[data-pressed] * { color: HighlightText; }
+  .filter-count { forced-color-adjust: none; background: Highlight; color: HighlightText; }
+}
+@media (pointer: coarse) {
+  .ui-button.filter-chip { min-height: var(--control-hit-size); }
+}

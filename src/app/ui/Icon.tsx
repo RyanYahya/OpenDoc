@@ -75,6 +75,10 @@ export function Icon({ name, size = 18 }: { name: string; size?: number }) {
     check: <path d="m4 12 5 5L20 6" />,
     more: <><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></>,
     down: <path d="m6 9 6 6 6-6" />,
+    /** Library Filter button; the narrowing lines read as a funnel without a second shape. */
+    filter: <path d="M4 7h16M7 12h10M10 17h4" />,
+    /** Library sort order. */
+    sort: <path d="M8 4v16m0 0-3.5-3.5M8 20l3.5-3.5M16 20V4m0 0-3.5 3.5M16 4l3.5 3.5" />,
     undo: <><path d="m8 5-5 5 5 5M3 10h11a6 6 0 0 1 0 12" /></>,
     redo: <path d="m16 5 5 5-5 5M21 10H10a6 6 0 0 0 0 12" />,
     arrow: <path d="M5 12h14m-6-6 6 6-6 6" />,

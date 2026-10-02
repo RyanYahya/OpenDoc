@@ -1,4 +1,4 @@
-/* Workspace tags: the type label and status badge on cards, compact filters, and the Details editor. */
+/* Workspace tags: the type label and status badge on cards, and the Details editor. Filters live in filter-bar.css. */
 :root { --status-review: var(--accent); --status-final: #1c7c37; }
 :root[data-appearance="dark"] { --status-final: #7ccf91; }
 
@@ -17,14 +17,6 @@
 .card-meta > .card-type { white-space: nowrap; }
 .reader-status { margin-inline-start: -2px; }
 .status-menu-value { color: var(--muted); font-size: inherit; }
-
-.tag-filter { display: flex; align-items: center; gap: 10px; min-width: 0; color: var(--muted); }
-.tag-filter .ui-select { min-width: 160px; max-width: 100%; }
-.ui-button.text-button.more-filters { gap: 6px; color: var(--muted); }
-.ui-button.text-button.more-filters[aria-expanded="true"] { color: var(--ink); }
-.more-filters-panel { display: contents; }
-/* The More filters button already carries the tag icon. */
-.more-filters-panel .tag-filter > svg { display: none; }
 
 .tag-dialog .field-hint { margin-top: 0; }
 .tag-dialog .create-field:first-of-type { margin-top: 20px; }
@@ -49,10 +41,6 @@
 .tag-details dd { margin: 0; overflow-wrap: anywhere; }
 .tag-details .tag-details-actions { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; }
 
-@media (max-width: 620px) {
-  .tag-filter { flex: 1 1 100%; }
-  .tag-filter .ui-select { flex: 1; }
-}
 @media (pointer: coarse) {
   .tag-list .ui-button.icon-button { min-width: 36px; min-height: 36px; }
   .tag-suggestions .ui-button.tag-choice { min-height: 36px; }

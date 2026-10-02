@@ -1,7 +1,5 @@
 import { useRef, useState, type DragEvent, type FormEvent, type ReactNode, type RefObject } from 'react';
 import { Menu } from '@base-ui/react/menu';
-import { Toggle } from '@base-ui/react/toggle';
-import { ToggleGroup } from '@base-ui/react/toggle-group';
 import type { ThemeSummary } from '../shared/themes';
 import { textLang } from '../shared/language';
 import {
@@ -12,6 +10,8 @@ import { api } from './api';
 import { Button, Dialog, Input, SelectControl, useNotifications } from './ui';
 import { Icon } from './ui/Icon';
 import { isolate, TagSummary } from './Tags';
+import { FilterChoices, type Choice } from './FilterBar';
+import { hashWith, splitHash } from './libraryFilters';
 import './theme-folders.css';
 
 export { isolate };
@@ -37,12 +37,6 @@ export function themesHash({ folder, tag }: { folder?: string | null; tag?: stri
   return `#themes${query ? `?${query}` : ''}`;
 }
 
-/** The current gallery filters, read from the hash when a change happens outside React. */
-function currentFilters() {
-  const query = new URLSearchParams(location.hash.split('?')[1] ?? '');
-  return { folder: query.get('folder'), tag: query.get('tag') };
-}
-
 const themeCount = (count: number) => `${count} ${count === 1 ? 'theme' : 'themes'}`;
 
 const themeDragType = 'application/x-opendoc-theme';
@@ -51,22 +45,24 @@ export function startThemeDrag(event: DragEvent, id: string) {
   event.dataTransfer.effectAllowed = 'move';
 }
 
-/** Drag-and-drop is a shortcut; every move is also available from menus and dialogs. */
-function useThemeDrop(onDrop?: (themeId: string) => void) {
-  const [over, setOver] = useState(false);
-  if (!onDrop) return { over: false, handlers: {} };
-  return { over, handlers: {
-    onDragOver: (event: DragEvent) => {
+/**
+ * Drag-and-drop is a shortcut; every move is also available from menus and dialogs. The drop
+ * highlight is set on the button itself so the handlers need no state of their own.
+ */
+function themeDropHandlers(onDrop?: (themeId: string) => void) {
+  if (!onDrop) return {};
+  return {
+    onDragOver: (event: DragEvent<HTMLElement>) => {
       if (!event.dataTransfer.types.includes(themeDragType)) return;
-      event.preventDefault(); event.dataTransfer.dropEffect = 'move'; setOver(true);
+      event.preventDefault(); event.dataTransfer.dropEffect = 'move'; event.currentTarget.classList.add('is-drop-target');
     },
-    onDragLeave: (event: DragEvent) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOver(false); },
-    onDrop: (event: DragEvent) => {
+    onDragLeave: (event: DragEvent<HTMLElement>) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) event.currentTarget.classList.remove('is-drop-target'); },
+    onDrop: (event: DragEvent<HTMLElement>) => {
       const id = event.dataTransfer.getData(themeDragType);
-      setOver(false);
+      event.currentTarget.classList.remove('is-drop-target');
       if (id) { event.preventDefault(); onDrop(id); }
     },
-  } };
+  };
 }
 
 /** Folders and tags are independent: either file can be unreadable without hiding the other. */
@@ -77,14 +73,6 @@ export function ThemeMenu({ theme, disabled, folders = true, tags = true, onActi
       {tags && <Menu.Item className="ui-menu-item" disabled={disabled} onClick={() => onAction({ kind: 'tags', theme })}><Icon name="tag" size={16} /><span>Edit tags…</span></Menu.Item>}
     </Menu.Popup></Menu.Positioner></Menu.Portal>
   </Menu.Root>;
-}
-
-function FolderToggle({ value, name, count, icon, onDropTheme }: { value: string; name: string; count: number; icon: boolean; onDropTheme?: (themeId: string) => void }) {
-  const drop = useThemeDrop(onDropTheme);
-  return <Toggle value={value} data-folder-filter={value} aria-label={`${name}, ${themeCount(count)}`} title={icon ? name : undefined}
-    className={`ui-button theme-folder-toggle${drop.over ? ' is-drop-target' : ''}`} {...drop.handlers}>
-    {icon && <Icon name="folder" size={15} />}<span className="theme-folder-toggle-name" dir="auto" lang={textLang(name)}>{name}</span><span className="theme-folder-toggle-count" aria-hidden="true">{count}</span>
-  </Toggle>;
 }
 
 /** Folder actions apply to the folder chosen in the filter, so the menu stays short and predictable. */
@@ -107,8 +95,8 @@ function ManageFoldersMenu({ selected, hasFolders, disabled, onAction }: { selec
 }
 
 /**
- * Folder filter: All plus one button per folder, each with its theme count. It combines with the
- * tag filter; dropping a theme card on a folder button files the theme there.
+ * Folder filter: All plus one button per folder, each with its theme count, in the library filter
+ * bar beside the Filter button. Dropping a theme card on a folder button files the theme there.
  */
 export function FolderFilter({ manifest, themes, value, disabled, onChange, onAction, onDropTheme }: {
   manifest: ThemeFoldersManifest; themes: ThemeSummary[]; value: string; disabled: boolean;
@@ -117,12 +105,14 @@ export function FolderFilter({ manifest, themes, value, disabled, onChange, onAc
   const folders = sortedFolders(manifest);
   const counts = folderCounts(manifest, themes.map(theme => theme.id));
   const selected = folders.find(folder => folder.id === value);
+  const choices: Choice[] = [{ value: allFolders, label: 'All', count: themes.length }, ...folders.map(folder => ({ value: folder.id, label: folder.name, count: counts.get(folder.id) ?? 0, icon: 'folder' }))];
   return <div className="theme-folder-filter">
-    {folders.length > 0 && <ToggleGroup className="theme-folder-toggles" aria-label="Filter by folder" value={selected ? [selected.id] : value ? [] : [allFolders]}
-      onValueChange={values => onChange(values[0] && values[0] !== allFolders ? values[0] : '')}>
-      <FolderToggle value={allFolders} name="All" count={themes.length} icon={false} />
-      {folders.map(folder => <FolderToggle key={folder.id} value={folder.id} name={folder.name} count={counts.get(folder.id) ?? 0} icon onDropTheme={onDropTheme && (id => onDropTheme(id, folder.id))} />)}
-    </ToggleGroup>}
+    {folders.length > 0 && <FilterChoices label="Folder" value={selected ? selected.id : value ? '' : allFolders} choices={choices}
+      onChange={next => onChange(next && next !== allFolders ? next : '')}
+      decorate={choice => ({
+        'data-folder-filter': choice.value, 'aria-label': `${choice.label}, ${themeCount(choice.count ?? 0)}`, title: choice.icon ? choice.label : undefined,
+        ...(choice.value === allFolders ? {} : themeDropHandlers(onDropTheme && (id => onDropTheme(id, choice.value)))),
+      })} />}
     <ManageFoldersMenu selected={selected} hasFolders={folders.length > 0} disabled={disabled} onAction={onAction} />
   </div>;
 }
@@ -212,10 +202,9 @@ function movedMessage(theme: ThemeSummary, manifest: ThemeFoldersManifest) {
   return folder ? `Moved ${isolate(theme.name)} to ${isolate(folder.name)}` : `Removed ${isolate(theme.name)} from its folder`;
 }
 
-/** A deleted folder can no longer filter the gallery; keep the tag filter. */
+/** A deleted folder can no longer filter the gallery; keep the other filters. */
 function showAllIfSelected(folder: ThemeFolder) {
-  const { folder: selected, tag } = currentFilters();
-  if (selected === folder.id) location.hash = themesHash({ tag });
+  if (splitHash(location.hash).params.get('folder') === folder.id) location.hash = hashWith(location.hash, { folder: null });
 }
 
 type Shell = (title: string, description: ReactNode, body: ReactNode, initialFocus?: RefObject<HTMLElement | null>) => ReactNode;

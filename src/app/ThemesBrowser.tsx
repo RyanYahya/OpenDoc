@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ThemePreview, ThemeSummary } from '../shared/themes';
 import { textLang } from '../shared/language';
 import { emptyThemeFolders, folderCounts, inFolder, themeFolder as folderOf, type ThemeFoldersManifest } from '../shared/theme-folders';
-import { emptyTags, filterKey } from '../shared/tags';
+import { emptyTags, filterKey, itemCustomTags } from '../shared/tags';
 import { documentName, documentFormat, formatLabel, type DocumentSummary } from '../shared/types';
 import { projectThemeDefaults, type Project } from '../shared/projects';
 import { api } from './api';
@@ -17,7 +17,9 @@ import {
   FolderFilter, isolate, startThemeDrag, ThemeCardMeta, ThemeFolderDialog, ThemeMenu, themesHash, themesHeadingId,
   useThemeFolderMutations, type ThemeFolderAction, type ThemeOrganization,
 } from './ThemeFolders';
-import { filterLabel, matchesTag, TagFilter, tagText, type TagState, type TagTarget } from './Tags';
+import { tagText, type TagState, type TagTarget } from './Tags';
+import { FilterBar, useHashQuery, useSortPreference } from './FilterBar';
+import { compareNewest, compareText, filtering, hashWith, itemFacets, splitHash, matchesFilters, matchesSearch, noFilters, sortItems, type ItemFilterValue, type SortOption } from './libraryFilters';
 import './themes.css';
 
 function ThemePdf({ id, preview, allPages, onRetry }: { id: string; preview: ThemePreview; allPages: boolean; onRetry: () => void }) {
@@ -126,12 +128,14 @@ function ThemeGallery({ themes, generation, onRefresh, organize }: { themes: The
 /** The gallery filters last shown, so a theme page returns to the same view. */
 let galleryHash = themesHash();
 
-export function ThemesBrowser({ themes, selection, generation, loaded, documents, projects, onRefresh, onCreate, connected = true, organization, folder = '', tag = '', onOrganizationChange, tags, onEditTags }: {
+const sortOptions: SortOption[] = [{ value: 'title', label: 'Name A–Z' }, { value: 'updated', label: 'Last edited' }];
+
+export function ThemesBrowser({ themes, selection, generation, loaded, documents, projects, onRefresh, onCreate, connected = true, organization, onOrganizationChange, tags, onEditTags }: {
   themes: ThemeSummary[]; selection: string; generation: number; loaded: boolean; documents: DocumentSummary[]; projects: Project[]; onRefresh: () => void; connected?: boolean;
   /** Opens the shared creation handoff with this theme chosen. */
   onCreate?: (preset: CreatePreset) => void;
-  /** Optional folders; without them the catalog is one flat gallery. */
-  organization?: ThemeOrganization; folder?: string; tag?: string; onOrganizationChange?: (manifest: ThemeFoldersManifest) => void;
+  /** Optional folders; without them the catalog is one flat gallery. The folder and filters come from the hash query. */
+  organization?: ThemeOrganization; onOrganizationChange?: (manifest: ThemeFoldersManifest) => void;
   /** Optional workspace tags, filtered here and edited through the shared tag editor. */
   tags?: TagState; onEditTags?: (target: TagTarget) => void;
 }) {
@@ -148,7 +152,10 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
     const label = defaults.document === theme.id ? defaults.presentation === theme.id ? 'Documents and presentations' : 'Documents' : defaults.presentation === theme.id ? 'Presentations' : '';
     return label ? [{ project, label }] : [];
   }) : [];
-  const ordered = [...themes].sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
+  const { params, update } = useHashQuery();
+  const folder = params.get('folder') ?? '';
+  const query = params.get('q') ?? '';
+  const [sort, setSort] = useSortPreference('themes', sortOptions, 'title');
   const manifest = organization?.manifest ?? emptyThemeFolders();
   const organizing = Boolean(onOrganizationChange) && !organization?.error;
   const tagManifest = tags?.manifest ?? emptyTags();
@@ -157,16 +164,25 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
   const [folderAction, setFolderAction] = useState<ThemeFolderAction | null>(null);
   const mutations = useThemeFolderMutations(next => onOrganizationChange?.(next));
   // Older links name a tag by its label; both resolve to the stored key.
-  const activeTag = tag && tagging ? filterKey(tag) : '';
-  const tagLabel = filterLabel(tagManifest, activeTag);
-  // Every theme is listed; a folder and a tag narrow the gallery together.
+  const tag = params.get('tag') ?? '';
+  const filters: ItemFilterValue = { ...noFilters, tag: tag && tagging ? filterKey(tag) : '', language: params.get('language') ?? '' };
+  // Every theme is listed; a folder, the search, and the filters narrow the gallery together.
   const folderFilter = organizing ? folder : '';
   const currentFolder = folderFilter ? manifest.folders.find(item => item.id === folderFilter) : undefined;
   const missingFolder = Boolean(folderFilter) && !currentFolder;
-  const visible = missingFolder ? [] : ordered.filter(theme => inFolder(manifest, theme.id, currentFolder?.id) && matchesTag(tagManifest, 'themes', theme.id, activeTag));
+  const inCurrentFolder = missingFolder ? [] : themes.filter(theme => inFolder(manifest, theme.id, currentFolder?.id));
+  const narrowed = Boolean(query) || filtering(filters);
+  const visible = sortItems(inCurrentFolder.filter(theme => matchesFilters(tagManifest, 'themes', theme, filters)
+    && matchesSearch(`${theme.name} ${theme.description} ${itemCustomTags(tagManifest, 'themes', theme.id).join(' ')}`, query)),
+  ...(sort === 'updated' ? [(a: ThemeSummary, b: ThemeSummary) => compareNewest(a.updatedAt, b.updatedAt)] : []), (a, b) => compareText(a.name, b.name));
+  // Tags are offered only while they can be edited; language is always derived.
+  const facets = itemFacets(tagManifest, 'themes', inCurrentFolder, filters).filter(facet => facet.key !== 'tag' || tagging);
   const folderEmpty = Boolean(currentFolder) && !folderCounts(manifest, themes.map(item => item.id)).get(currentFolder!.id);
-  const filterHash = (next: { folder?: string; tag?: string }) => themesHash({ folder: next.folder ?? folderFilter, tag: next.tag ?? activeTag });
-  useEffect(() => { if (!selection) galleryHash = themesHash({ folder: folderFilter, tag: activeTag }); }, [selection, folderFilter, activeTag]);
+  const clearFilters = () => update({ q: null, tag: null, language: null });
+  const showAllHash = () => hashWith(location.hash, { folder: null });
+  // The hash can change a render before the selection does, so read the gallery's own address.
+  const hashQuery = params.toString();
+  useEffect(() => { if (!selection && splitHash(location.hash).path === 'themes') galleryHash = location.hash; }, [selection, hashQuery]);
   const onFolderAction = (action: ThemeFolderAction) => {
     if (action.kind === 'tags') { editTags(action.theme, `[data-theme-menu="${action.theme.id}"]`); return; }
     if (action.kind === 'delete' && !folderCounts(manifest, themes.map(item => item.id)).get(action.folder.id)) { void mutations.deleteEmptyFolder(action.folder); return; }
@@ -180,7 +196,7 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
   const themeTags = theme ? tagManifest.themes[theme.id] ?? [] : [];
   // Custom tags appear on a theme's page and in its Tags editor, not on gallery cards.
   const cardTags: Record<string, string[]> = {};
-  const summary = `${visible.length} ${visible.length === 1 ? 'print system' : 'print systems'}${currentFolder ? ` in “${isolate(currentFolder.name)}”` : ''}${activeTag ? ` tagged “${isolate(tagLabel)}”` : ''}`;
+  const summary = `${visible.length} ${visible.length === 1 ? 'print system' : 'print systems'}${currentFolder ? ` in “${isolate(currentFolder.name)}”` : ''}${narrowed ? ' matching the filters' : ''}`;
   return <section className="library-content themes-content">
     {selection ? <>
       <a href={galleryHash} className="theme-back"><Icon name="left" size={16} />Themes</a>
@@ -210,16 +226,16 @@ export function ThemesBrowser({ themes, selection, generation, loaded, documents
       {organization?.error && <p className="field-error" role="alert">{organization.error}</p>}
       <div className="library-heading"><h1 id={themesHeadingId} tabIndex={-1}>Themes</h1>
         <div className="theme-heading-actions"><Button onClick={() => setPromptOpen(true)}><Icon name="plus" size={17} />Create theme</Button></div></div>
-      {(organizing || tagging) && <div className="theme-filters">
-        {organizing && <FolderFilter manifest={manifest} themes={themes} value={folderFilter} disabled={!loaded || !connected} onChange={value => { location.hash = filterHash({ folder: value }); }} onAction={onFolderAction} onDropTheme={dropTheme} />}
-        {tagging && <TagFilter className="theme-tag-filter" manifest={tagManifest} kind="themes" ids={themes.map(item => item.id)} value={activeTag} onChange={value => { location.hash = filterHash({ tag: value }); }} />}
-      </div>}
+      <FilterBar search={{ label: 'Search themes', value: query, onChange: value => update({ q: value }, { replace: true }) }}
+        primary={organizing && <FolderFilter manifest={manifest} themes={themes} value={folderFilter} disabled={!loaded || !connected} onChange={value => update({ folder: value })} onAction={onFolderAction} onDropTheme={dropTheme} />}
+        facets={facets} onFacetChange={(key, value) => update({ [key]: value })} onClearFacets={() => update({ tag: null, language: null })}
+        sort={{ value: sort, options: sortOptions, onChange: setSort }} />
       <p className="theme-gallery-label" role="status">{loaded ? summary : 'Reading local themes…'}</p>
-      <ThemeGallery themes={visible} generation={generation} onRefresh={onRefresh} organize={organizing || tagging ? { manifest, tags: cardTags, folders: organizing, tagging, showFolder: organizing && !currentFolder, tag: activeTag, disabled: !connected, onAction: onFolderAction } : undefined} />
+      <ThemeGallery themes={visible} generation={generation} onRefresh={onRefresh} organize={organizing || tagging ? { manifest, tags: cardTags, folders: organizing, tagging, showFolder: organizing && !currentFolder, tag: filters.tag, disabled: !connected, onAction: onFolderAction } : undefined} />
       {loaded && themes.length === 0 && <div className="empty-state"><h2>No themes yet</h2><p>Create a print system with your coding agent. Its reviewed PDF will appear here.</p><Button onClick={() => setPromptOpen(true)}>Create theme</Button></div>}
-      {loaded && missingFolder && <div className="empty-state"><h2>Folder not found</h2><p>It may have been deleted or renamed in another window. Your themes are still in the library.</p><a href={filterHash({ folder: '' })} className="project-templates-link">Show all themes<Icon name="arrow" size={16} /></a></div>}
-      {loaded && folderEmpty && <div className="empty-state theme-folder-empty"><h2><bdi lang={textLang(currentFolder!.name)}>{currentFolder!.name}</bdi> is empty</h2><p>Drag a theme card onto the <bdi lang={textLang(currentFolder!.name)}>{currentFolder!.name}</bdi> button, or choose Move to folder… from a theme’s options menu.</p><a href={filterHash({ folder: '' })} className="project-templates-link">Show all themes<Icon name="arrow" size={16} /></a></div>}
-      {loaded && themes.length > 0 && !missingFolder && !folderEmpty && activeTag && !visible.length && <div className="empty-state"><h2>No themes tagged “{tagLabel}”{currentFolder && <> in <bdi lang={textLang(currentFolder.name)}>{currentFolder.name}</bdi></>}</h2><p>{currentFolder ? 'Choose another tag or folder, or clear the tag filter.' : 'Choose another tag, or show every theme.'}</p><Button onClick={() => { location.hash = filterHash({ tag: '' }); }}>Clear tag filter</Button></div>}
+      {loaded && missingFolder && <div className="empty-state"><h2>Folder not found</h2><p>It may have been deleted or renamed in another window. Your themes are still in the library.</p><a href={showAllHash()} className="project-templates-link">Show all themes<Icon name="arrow" size={16} /></a></div>}
+      {loaded && folderEmpty && <div className="empty-state theme-folder-empty"><h2><bdi lang={textLang(currentFolder!.name)}>{currentFolder!.name}</bdi> is empty</h2><p>Drag a theme card onto the <bdi lang={textLang(currentFolder!.name)}>{currentFolder!.name}</bdi> button, or choose Move to folder… from a theme’s options menu.</p><a href={showAllHash()} className="project-templates-link">Show all themes<Icon name="arrow" size={16} /></a></div>}
+      {loaded && themes.length > 0 && !missingFolder && !folderEmpty && narrowed && !visible.length && <div className="empty-state"><h2>No matching themes{currentFolder && <> in <bdi lang={textLang(currentFolder.name)}>{currentFolder.name}</bdi></>}</h2><p>{currentFolder ? 'Try another search or filter, or choose another folder.' : 'Try another search or filter.'}</p><Button onClick={clearFilters}>Clear filters</Button></div>}
     </>}
     <ThemePromptDialog open={promptOpen} onOpenChange={setPromptOpen} theme={selection ? theme : undefined} />
     {organizing && <ThemeFolderDialog action={folderAction?.kind === 'tags' ? null : folderAction} manifest={manifest} themes={themes} connected={connected} onClose={() => setFolderAction(null)} onChange={next => onOrganizationChange?.(next)} />}

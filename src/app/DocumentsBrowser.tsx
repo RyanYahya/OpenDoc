@@ -1,31 +1,56 @@
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Menu } from '@base-ui/react/menu';
 import type { Project } from '../shared/projects';
 import { documentName, documentFormat, type DocumentFormat, type DocumentSummary } from '../shared/types';
 import { DocumentCard } from './DocumentCard';
 import type { DocumentActionHandler } from './DocumentActions';
-import { DocumentViewControl, type DocumentView } from './DocumentViewControl';
-import { Button, IconButton, SelectControl } from './ui';
-import { SearchField } from './SearchField';
+import type { DocumentView } from './DocumentViewControl';
+import { Button, IconButton } from './ui';
 import { Icon } from './ui/Icon';
-import { detailsText, filtering, ItemFilters, matchesFilters, noFilters, type TagState } from './Tags';
-import { emptyTags, type TagsManifest } from '../shared/tags';
+import type { TagState } from './Tags';
+import { FilterBar, FilterChoices, useHashQuery, useSortPreference } from './FilterBar';
+import {
+  compareNewest, compareText, detailsText, filtering, itemFacets, itemFilterKeys, matchesFilters, matchesSearch, readItemFilters, sortItems, statusRank, type SortOption,
+} from './libraryFilters';
+import { emptyTags, itemStatus, type TagsManifest } from '../shared/tags';
 import { textLang } from '../shared/language';
 import './projects.css';
 
 /** Search also matches the type, status, and custom tags, so typing “Minutes” or a client name finds work. */
 function searchText(document: DocumentSummary, tags: TagsManifest, extra = '') {
-  return `${documentName(document)} ${document.artifact?.meta.description ?? ''} ${extra} ${detailsText(tags, 'documents', document.id)}`.toLowerCase();
+  return `${documentName(document)} ${document.artifact?.meta.description ?? ''} ${extra} ${detailsText(tags, 'documents', document.id)}`;
 }
 
 type ViewProps = { view: DocumentView; onViewChange: (view: DocumentView) => void };
 
-function DocumentTools({ searchLabel, query, onQueryChange, view, onViewChange, filter }: ViewProps & { searchLabel: string; query: string; onQueryChange: (query: string) => void; filter?: ReactNode }) {
-  return <div className="library-tools document-browser-tools">
-    <SearchField label={searchLabel} value={query} onValueChange={onQueryChange} />
-    {filter}
-    <div className="document-view-tools"><DocumentViewControl value={view} onChange={onViewChange} /></div>
-  </div>;
+const lastEdited: SortOption = { value: 'updated', label: 'Last edited' };
+const byTitle: SortOption = { value: 'title', label: 'Title A–Z' };
+const byStatus: SortOption = { value: 'status', label: 'Status' };
+const byProject: SortOption = { value: 'project', label: 'Project' };
+
+/** Documents in the chosen order; ties fall back to the most recently edited, then the title. */
+function sortDocuments(documents: DocumentSummary[], sort: string, manifest: TagsManifest, projectName: (document: DocumentSummary) => string = () => '') {
+  const title = (a: DocumentSummary, b: DocumentSummary) => compareText(documentName(a), documentName(b));
+  const newest = (a: DocumentSummary, b: DocumentSummary) => compareNewest(a.updatedAt, b.updatedAt);
+  if (sort === 'title') return sortItems(documents, title);
+  if (sort === 'status') return sortItems(documents, (a, b) => statusRank(itemStatus(manifest, a.id)) - statusRank(itemStatus(manifest, b.id)), newest, title);
+  if (sort === 'project') return sortItems(documents, (a, b) => Number(!projectName(a)) - Number(!projectName(b)) || compareText(projectName(a), projectName(b)), newest, title);
+  return sortItems(documents, newest, title);
+}
+
+/** Filters from the hash query, and the updates that keep it in step. */
+function useDocumentFilters() {
+  const { params, update } = useHashQuery();
+  const filters = readItemFilters(params);
+  const query = params.get('q') ?? '';
+  return {
+    params, filters, query,
+    setQuery: (value: string) => update({ q: value }, { replace: true }),
+    setFacet: (key: string, value: string) => update({ [key]: value }),
+    clearFacets: () => update(Object.fromEntries(itemFilterKeys.map(key => [key, null]))),
+    clearAll: (extra: string[] = []) => update(Object.fromEntries(['q', ...itemFilterKeys, ...extra].map(key => [key, null]))),
+    update,
+  };
 }
 
 export function DocumentsBrowser({ format = 'document', projects, documents, tags, loaded, view, onViewChange, onCreate, pending, onMove, onAction, disabled }: ViewProps & {
@@ -33,18 +58,21 @@ export function DocumentsBrowser({ format = 'document', projects, documents, tag
   /** Creation prompts still waiting for the user's agent. */
   pending?: ReactNode;
 }) {
-  const [query, setQuery] = useState('');
-  const [filters, setFilters] = useState(noFilters);
+  const { filters, query, setQuery, setFacet, clearFacets, clearAll } = useDocumentFilters();
+  const sortOptions = [lastEdited, byTitle, byProject, byStatus];
+  const [sort, setSort] = useSortPreference(format === 'presentation' ? 'presentations' : 'documents', sortOptions, 'updated');
   const manifest = tags?.manifest ?? emptyTags();
   const plural = format === 'presentation' ? 'Presentations' : 'Documents';
   const projectById = new Map(projects.map(project => [project.id, project]));
+  const projectName = (document: DocumentSummary) => projectById.get(document.projectId ?? '')?.name ?? '';
   const hasFilters = Boolean(query) || filtering(filters);
-  const visible = documents.filter(document => matchesFilters(manifest, 'documents', document, filters)
-    && searchText(document, manifest, projectById.get(document.projectId ?? '')?.name).includes(query.toLowerCase()));
+  const visible = sortDocuments(documents.filter(document => matchesFilters(manifest, 'documents', document, filters)
+    && matchesSearch(searchText(document, manifest, projectName(document)), query)), sort, manifest, projectName);
   return <section className="library-content documents-content">
     <div className="library-heading"><h1>{plural}</h1><Button className="primary" aria-label={`Create ${format}`} onClick={onCreate} disabled={!loaded || disabled}><Icon name="plus" size={17} /><span>Create {format}</span></Button></div>
-    <DocumentTools searchLabel={`Search ${format}s`} query={query} onQueryChange={setQuery} view={view} onViewChange={onViewChange}
-      filter={<ItemFilters manifest={manifest} kind="documents" items={documents} value={filters} onChange={setFilters} />} />
+    <FilterBar search={{ label: `Search ${format}s`, value: query, onChange: setQuery }}
+      facets={itemFacets(manifest, 'documents', documents, filters)} onFacetChange={setFacet} onClearFacets={clearFacets}
+      sort={{ value: sort, options: sortOptions, onChange: setSort }} view={{ value: view, onChange: onViewChange }} />
     {pending}
     <div className={view === 'list' ? 'documents-list' : 'document-grid'} role="list">{visible.map(document => {
       const project = projectById.get(document.projectId ?? '');
@@ -54,7 +82,7 @@ export function DocumentsBrowser({ format = 'document', projects, documents, tag
           : <Button className="text-button document-move" onClick={() => onMove(document)} disabled={!projects.length}>Choose a project</Button>}
       </article>;
     })}</div>
-    {!visible.length && <div className="empty-state"><h2>{!loaded ? `Loading ${plural.toLowerCase()}…` : hasFilters ? `No matching ${plural.toLowerCase()}` : `Your ${plural.toLowerCase()} start here`}</h2><p>{!loaded ? 'Opening your local workspace.' : hasFilters ? filtering(filters) ? 'Try other filters, or another title or project name.' : 'Try a different title, project, or tag.' : projects.length ? format === 'presentation' ? 'Create a presentation with your agent and review every slide here.' : 'Create a document in a project, or choose a layout from Templates.' : 'Create your first project using the + beside Projects in the sidebar.'}</p>{loaded && hasFilters && <Button onClick={() => { setQuery(''); setFilters(noFilters); }}>Clear filters</Button>}</div>}
+    {!visible.length && <div className="empty-state"><h2>{!loaded ? `Loading ${plural.toLowerCase()}…` : hasFilters ? `No matching ${plural.toLowerCase()}` : `Your ${plural.toLowerCase()} start here`}</h2><p>{!loaded ? 'Opening your local workspace.' : hasFilters ? filtering(filters) ? 'Try other filters, or another title or project name.' : 'Try a different title, project, or tag.' : projects.length ? format === 'presentation' ? 'Create a presentation with your agent and review every slide here.' : 'Create a document in a project, or choose a layout from Templates.' : 'Create your first project using the + beside Projects in the sidebar.'}</p>{loaded && hasFilters && <Button onClick={() => clearAll()}>Clear filters</Button>}</div>}
   </section>;
 }
 
@@ -63,13 +91,19 @@ export function ProjectDocuments({ project, documents, tags, loaded, view, onVie
   /** Creation prompts still waiting for the user's agent. */
   pending?: ReactNode;
 }) {
-  const [query, setQuery] = useState('');
-  const [format, setFormat] = useState<'all' | DocumentFormat>('all');
-  const [filters, setFilters] = useState(noFilters);
+  const { params, filters, query, setQuery, setFacet, clearFacets, clearAll, update } = useDocumentFilters();
+  const sortOptions = [lastEdited, byTitle, byStatus];
+  const [sort, setSort] = useSortPreference('project', sortOptions, 'updated');
+  const requested = params.get('format');
+  const format: 'all' | DocumentFormat = requested === 'document' || requested === 'presentation' ? requested : 'all';
   const manifest = tags?.manifest ?? emptyTags();
+  // Facets count the documents of the chosen format, so their numbers match what a choice shows.
+  const inFormat = documents.filter(document => format === 'all' || documentFormat(document) === format);
   const hasFilters = Boolean(query) || format !== 'all' || filtering(filters);
-  const visible = documents.filter(document => (format === 'all' || documentFormat(document) === format)
-    && matchesFilters(manifest, 'documents', document, filters) && searchText(document, manifest).includes(query.toLowerCase()));
+  const visible = sortDocuments(inFormat.filter(document => matchesFilters(manifest, 'documents', document, filters) && matchesSearch(searchText(document, manifest), query)), sort, manifest);
+  const formatCount = (value: DocumentFormat) => documents.filter(document => documentFormat(document) === value).length;
+  // Formats are worth a choice only when the project holds both, or one is already chosen.
+  const formats = format !== 'all' || (formatCount('document') > 0 && formatCount('presentation') > 0);
   return <section className="library-content project-documents">
     <div className="library-heading"><h1 dir="auto" lang={textLang(project.name)}>{project.name}</h1><div className="project-actions">
       <IconButton label="Project settings" onClick={onSettings}><Icon name="gear" size={18} /></IconButton>
@@ -80,12 +114,16 @@ export function ProjectDocuments({ project, documents, tags, loaded, view, onVie
         <Menu.Item className="ui-menu-item" onClick={onCreatePresentation}><Icon name="monitor" size={16} />Presentation</Menu.Item>
       </Menu.Popup></Menu.Positioner></Menu.Portal></Menu.Root>
     </div></div>
-    <DocumentTools searchLabel="Search this project" query={query} onQueryChange={setQuery} view={view} onViewChange={onViewChange}
-      filter={<><SelectControl label="Filter by format" value={format} onValueChange={value => { if (value === 'all' || value === 'document' || value === 'presentation') setFormat(value); }} items={[
-        { label: 'All formats', value: 'all' }, { label: 'Documents', value: 'document' }, { label: 'Presentations', value: 'presentation' },
-      ]} /><ItemFilters manifest={manifest} kind="documents" items={documents} value={filters} onChange={setFilters} /></>} />
+    <FilterBar search={{ label: 'Search this project', value: query, onChange: setQuery }}
+      primary={formats && <FilterChoices label="Format" value={format} onChange={value => update({ format: value === 'all' ? null : value })} choices={[
+        { value: 'all', label: 'All', count: documents.length },
+        { value: 'document', label: 'Documents', count: formatCount('document') },
+        { value: 'presentation', label: 'Presentations', count: formatCount('presentation') },
+      ]} />}
+      facets={itemFacets(manifest, 'documents', inFormat, filters)} onFacetChange={setFacet} onClearFacets={clearFacets}
+      sort={{ value: sort, options: sortOptions, onChange: setSort }} view={{ value: view, onChange: onViewChange }} />
     {pending}
     <div className={view === 'list' ? 'documents-list' : 'document-grid'} role="list">{visible.map(document => <article className="project-document" key={document.id} role="listitem"><DocumentCard document={document} view={view} onAction={onAction} disabled={disabled} /></article>)}</div>
-    {!visible.length && <div className="empty-state"><h2>{!loaded ? 'Loading project…' : hasFilters ? 'No matching items' : 'Your project is ready'}</h2><p>{!loaded ? 'Opening your local workspace.' : hasFilters ? 'Try another search, format, or filter.' : 'Create a document or presentation with your agent.'}</p>{loaded && (hasFilters ? <Button onClick={() => { setQuery(''); setFormat('all'); setFilters(noFilters); }}>Clear filters</Button> : <a href="#templates" className="project-templates-link">Browse templates<Icon name="arrow" size={16} /></a>)}</div>}
+    {!visible.length && <div className="empty-state"><h2>{!loaded ? 'Loading project…' : hasFilters ? 'No matching items' : 'Your project is ready'}</h2><p>{!loaded ? 'Opening your local workspace.' : hasFilters ? 'Try another search, format, or filter.' : 'Create a document or presentation with your agent.'}</p>{loaded && (hasFilters ? <Button onClick={() => clearAll(['format'])}>Clear filters</Button> : <a href="#templates" className="project-templates-link">Browse templates<Icon name="arrow" size={16} /></a>)}</div>}
   </section>;
 }
