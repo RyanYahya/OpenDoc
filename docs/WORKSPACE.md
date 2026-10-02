@@ -69,7 +69,7 @@ Updates preserve the chosen edition: normal OpenDoc updates from `@ryanyahya/ope
 
 Both editions use the same [agent guide](../AGENTS.md) and skills. In Headless, the agent works from explicit task context and catalog IDs and delivers files remotely; it does not require an active browser selection. The following browser interactions apply to normal OpenDoc.
 
-**Skills** in the sidebar footer, and **Agent skills** in the reader's **Help and appearance** menu, open a quick index of the ten `opendoc-` skills with each skill's name and purpose. The root [AGENTS.md](../AGENTS.md) routes ordinary requests to the matching workflow; naming a skill is optional. The app does not run the agent itself.
+**Skills** in the sidebar footer, and **Agent skills** in the reader's **Skills and appearance** menu, open a quick index of the ten `opendoc-` skills with each skill's name and purpose. The root [AGENTS.md](../AGENTS.md) routes ordinary requests to the matching workflow; naming a skill is optional. The app does not run the agent itself.
 
 ### Create in the app
 
