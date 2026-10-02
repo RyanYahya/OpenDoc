@@ -1,9 +1,13 @@
-/* One line: where the comment is gives way (truncating) before its status and age, which stay together at the end. */
-.comment-dock-panel .comment-location { flex-wrap: nowrap; min-width: 0; }
-.comment-where { display: flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; white-space: nowrap; }
+/*
+ * Where the comment is, then its status and age at the end of the line. When a narrow panel cannot fit both,
+ * status and age move together to the next line instead of cutting the location short; only a location wider
+ * than the whole line truncates.
+ */
+.comment-dock-panel .comment-location { flex-wrap: wrap; min-width: 0; row-gap: 2px; }
+.comment-where { display: flex; flex: 1 1 auto; align-items: center; gap: 5px; min-width: 0; overflow: hidden; white-space: nowrap; }
 .comment-where > .comment-kind { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .comment-where > svg { flex-shrink: 0; }
-.comment-state { display: inline-flex; flex-shrink: 0; align-items: center; gap: 5px; margin-inline-start: auto; white-space: nowrap; }
+.comment-state { display: inline-flex; flex-shrink: 0; align-items: center; gap: 5px; white-space: nowrap; }
 .comment-dock-panel .comment-time { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* The Comments tab of the reader's side panel: a scrolling list with the agent hand-off pinned below it. */

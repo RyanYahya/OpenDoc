@@ -24,8 +24,9 @@ export function ReaderPanel({ tab, commentCount, sheet, onTabChange, onClose, cl
     <Tabs.Root value={tab} onValueChange={value => onTabChange(value as PanelTab)} className="reader-panel-tabs-root">
       <div className="reader-panel-header">
         <Tabs.List className="ui-tabs reader-panel-tabs" aria-label="Side panel">
-          <Tabs.Tab className="ui-tab" value="comments" aria-label={`Comments, ${commentCount} open`}>
-            Comments<span className="reader-panel-count" aria-hidden="true">{commentCount}</span>
+          {/* The count badge appears only while comments are open, as on the toolbar's Comments button. */}
+          <Tabs.Tab className="ui-tab" value="comments" aria-label={commentCount ? `Comments, ${commentCount} open` : undefined}>
+            Comments{commentCount > 0 && <span className="reader-panel-count" aria-hidden="true">{commentCount}</span>}
           </Tabs.Tab>
           <Tabs.Tab className="ui-tab" value="history">History</Tabs.Tab>
         </Tabs.List>
