@@ -41,8 +41,12 @@ jobs:
           const log = readFileSync(`${process.env.RUNNER_TEMP}/opendoc-verify.log`, 'utf8');
           const excerpt = log.split('\n').slice(-160).join('\n');
           appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Verification failure\n\n\`\`\`text\n${excerpt}\n\`\`\`\n`);
-          const escaped = excerpt.replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A');
-          console.log(`::error title=Verification failure details::${escaped}`);
+          const failureStart = log.lastIndexOf('failing tests:');
+          const details = (failureStart < 0 ? excerpt : log.slice(failureStart)).slice(-12000);
+          for (let offset = 0; offset < details.length; offset += 3000) {
+            const escaped = details.slice(offset, offset + 3000).replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A');
+            console.log(`::error title=Verification failure details ${offset / 3000 + 1}::${escaped}`);
+          }
           NODE
           exit 1
       - run: pnpm package:pack --skip-build
