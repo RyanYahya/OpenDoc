@@ -47,7 +47,7 @@ async function fixture(run: (root: string, container: string) => Promise<void>) 
   } finally { await rm(container, { recursive: true, force: true }); }
 }
 
-function fakeNpm(options: { installError?: string; reportedVersion?: string; checkError?: boolean; versions?: string[]; packageName?: string; edition?: string } = {}) {
+function fakeNpm(options: { installError?: string; reportedVersion?: string; checkError?: boolean; versions?: string[]; packageName?: string; edition?: string; requireEmptyDocuments?: boolean } = {}) {
   const calls: { args: string[]; cwd: string }[] = [];
   const npm: NonNullable<UpdateDependencies['npm']> = async (args, cwd) => {
     calls.push({ args, cwd });
@@ -60,7 +60,7 @@ function fakeNpm(options: { installError?: string; reportedVersion?: string; che
     const version = identity.version;
     await mkdir(join(cwd, 'node_modules/opendoc/bin'), { recursive: true });
     await writeFile(join(cwd, 'node_modules/opendoc/package.json'), JSON.stringify({ name: options.packageName ?? identity.name, version, opendoc: { edition: options.edition ?? identity.edition }, bin: { opendoc: 'bin/opendoc.mjs' } }));
-    await writeFile(join(cwd, 'node_modules/opendoc/bin/opendoc.mjs'), `if (process.argv[2] === '--version') console.log(${JSON.stringify(options.reportedVersion ?? version)}); else if (process.argv[2] === 'check') { console.log(JSON.stringify({ ok: ${!options.checkError} })); } else process.exitCode = 1;\n`);
+    await writeFile(join(cwd, 'node_modules/opendoc/bin/opendoc.mjs'), `if (process.argv[2] === '--version') console.log(${JSON.stringify(options.reportedVersion ?? version)}); else if (process.argv[2] === 'check') { ${options.requireEmptyDocuments ? `const { readdirSync } = await import('node:fs'); if (readdirSync('documents').length) throw new Error('The installation probe must not contain user documents.');` : ''} console.log(JSON.stringify({ ok: ${!options.checkError} })); } else process.exitCode = 1;\n`);
     await writeFile(join(cwd, 'node_modules/opendoc/new-runtime.txt'), `runtime ${version}`);
     await writeFile(join(cwd, 'package-lock.json'), JSON.stringify({ lockfileVersion: 3, packages: { '': { dependencies: manifest.dependencies }, 'node_modules/opendoc': { version } } }) + '\n');
     return '';
@@ -550,5 +550,20 @@ test('unknown workspace formats and inexact requested versions fail before regis
     }
     assert.equal(executor.calls.length, 0);
     await assert.rejects(updateWorkspace(root, { version: '9.9.9' }, executor), /not a published stable version/);
+  });
+});
+
+
+test('update candidate checks have an empty document catalog without copying user files', async () => {
+  await fixture(async root => {
+    const before = await snapshot(root);
+    const result = await updateWorkspace(root, {}, fakeNpm({ requireEmptyDocuments: true }));
+    assert.equal(result.status, 'updated');
+    const after = await snapshot(root);
+    for (const [file, bytes] of Object.entries(before)) {
+      if (file.startsWith('node_modules/') || ['package.json', 'package-lock.json'].includes(file)) continue;
+      assert.equal(after[file], bytes, `${file} remains unchanged`);
+    }
+    assert.equal(await readFile(join(root, 'documents/my-document/index.tsx'), 'utf8'), 'user authored source');
   });
 });

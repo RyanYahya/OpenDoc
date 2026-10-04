@@ -114,6 +114,8 @@ async function verifyCandidate(stage: string, target: PackageIdentity) {
   // User-authored files and package scripts never run as part of runtime updates.
   // The marker also prevents discovery from falling through to an ancestor workspace.
   await mkdir(join(stage, '.opendoc'));
+  // `check` discovers documents for history capture, even in an empty probe.
+  await mkdir(join(stage, 'documents'));
   await writeFile(join(stage, '.opendoc/workspace.json'), JSON.stringify({ formatVersion: 1, edition: target.edition }) + '\n', { flag: 'wx' });
   await writeFile(join(stage, '.opendoc/installation-check.ts'), 'export {};\n', { flag: 'wx' });
   await writeFile(join(stage, 'tsconfig.json'), JSON.stringify({ extends: 'opendoc/tsconfig.workspace.json', include: ['.opendoc/installation-check.ts'] }) + '\n', { flag: 'wx' });
