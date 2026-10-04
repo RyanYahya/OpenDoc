@@ -1,6 +1,6 @@
 ---
 name: opendoc-review-document
-description: Review OpenDoc documents and presentations before delivery or when the user requests an audit, including PDF pages, editable PowerPoint exports, and theme or template specimens.
+description: Review OpenDoc documents, presentations, and theme or template specimens before delivery or when the user asks for a check or audit, covering PDF pages, extracted text, and editable PowerPoint exports. Also use to export a document again, send the PDF or PowerPoint of a document, export everything, or leave review findings as comments.
 ---
 
 Use the user's OpenDoc workspace as the working directory. `documents/`, `templates/`, `themes/`, `assets/`, and `.opendoc/` are workspace paths; guide links are relative to this installed skill. Use `npx opendoc` for commands and keep authoring changes out of `node_modules/opendoc`. In Headless, follow [the remote workflow](../../../docs/HEADLESS.md); these commands and imports stay the same, and no browser or recipient-side installation is needed.
@@ -32,17 +32,23 @@ Use `pages[].elements` to inspect actual element bounds, parent coordinates, cli
 
 Read render warnings and relevant feedback. Reuse a just-produced export when its source is unchanged. Rendering/error states may leave an older PDF visible.
 
+A request only for the files again ("export this again", "send me the PDF of X") still starts from a current render: run `npx opendoc review <document-id> --json`, inspect at least the pages in `changes.changedPages` (a first review lists every page), then export and deliver as above. To export everything, run `npx opendoc export --all --json` for every PDF, find presentations in the `formats` map of `npx opendoc projects list --json` (each has the value `presentation`), and export their PowerPoint with `npx opendoc export <id...> --format pptx --json`. Inspect each batch result, report failures by ID, and review any document changed since its last review before delivering it.
+
 **Ready:** the exact current files, page/slide count, brief, and review scope are known.
 
 ## 2. Inspect every page
 
 Inspect the review command's page images at legible scale, render pages with an available PDF tool, or use the normal OpenDoc reader. A contact sheet helps assess rhythm; review each page legibly as well. Check hierarchy, reading measure, spacing, page furniture, stranded headings, awkward endings, clipped figures, table continuation, and captions against the document's purpose. Generating page images is not inspection. If the agent cannot view images, state that visual review remains unverified; do not claim the manifest proves visual quality.
 
+For Arabic or other right-to-left text, also check that letters join, mixed Arabic and English words read in the intended order, numbers, brackets, and punctuation sit where an Arabic reader expects them, paragraphs start at the right edge unless aligned explicitly, and lists, tables, and page furniture are mirrored.
+
 **Ready:** every page is accounted for and each material layout issue has a page and description.
 
 ## 3. Check content and extraction
 
 Read the review command's extracted text or extract representative text with available PDF tools, including ligatures, symbols, mixed bold/italic boundaries, code, final table rows, and references where present. Verify link/bookmark destinations. Confirm the document addresses its brief and distinguishes evidence, inference, and illustrative material. When claim verification is in scope, compare citations with the underlying sources; a valid reference record alone does not establish support.
+
+Treat every `missing-glyphs` issue as a defect: the named characters print as `?`, and the space after one can disappear. Fix the font list or binding; do not accept the warning. The check covers only paragraphs that contain right-to-left text, so also look for `?` in the page images. Extracted right-to-left text follows reading order, but some viewers omit the space where the direction changes; judge word order from the page images.
 
 Load [Media](../../../docs/MEDIA.md) for managed images/charts: inspect labels, values, provenance, and the actual image. Load [Assets](../../../docs/ASSETS.md) for logos/fonts: compare saved choices with rendered use, inspect the chosen artwork on its page background, and verify copied text. Recorded hashes and isolated specimens are not substitutes for checking the delivered PDF.
 
@@ -52,13 +58,24 @@ Load [Media](../../../docs/MEDIA.md) for managed images/charts: inspect labels, 
 
 Follow [PowerPoint delivery](../../../docs/AUTHORING.md#powerpoint-delivery). Confirm the PPTX opens as a valid presentation package, has the intended slide count/order, preserves text and images, and contains native text objects and embedded fonts. Compare slide text with the reviewed PDF or its captured layout; account for whitespace and ligature normalization. A ZIP containing font parts proves packaging, not correct rendering by PowerPoint.
 
+For right-to-left slides, inspect the slide XML: each Arabic paragraph carries `rtl="1"` and a language tag such as `ar-SA`, its runs name the font the PDF used in both the Latin and complex-script (`cs`) slots, and its alignment matches the reviewed PDF lines.
+
 When PowerPoint is available, open the export and inspect slides for font substitution, clipping, missing visuals, and unexpected line wrapping. Verify text remains editable without changing the delivered file; use a disposable copy if testing an edit/save. When native inspection is unavailable, finish available package/content checks and state that native appearance was not verified. This limitation alone does not prevent delivering a valid requested PPTX. Do not require the recipient to install OpenDoc, install fonts or software, rasterize the deck, or change the chosen design just to make a check pass.
 
-If export rejects an unsupported effect or font, resolve it within the user's design direction. Ask when the remedy would change an explicit visual choice or reduce editability. Keep a successful PDF available and clearly identify an outstanding PPTX failure.
+If export rejects an unsupported effect or font, resolve it within the user's design direction. Ask when the remedy would change an explicit visual choice or reduce editability. Keep a successful PDF available and identify an outstanding PPTX failure.
+
+**Ready:** the PPTX checks have results, with unverified native appearance and any failed export stated, or no PowerPoint was requested.
 
 ## 5. Close the review
 
-For review-only requests, report findings without editing. When revision is in scope, fix material defects, re-export every requested format from the same final source, and inspect changed pages/slides and adjacent breaks. Repeat broader checks only when the change affects them. Shared themes/templates need representative short and long cases and affected-instance checks.
+For review-only requests, report findings without editing. When the user wants findings left in the document, add each as a comment on its block, using block IDs from the review manifest; it works in both editions, with or without a running service:
+
+```sh
+npx opendoc comments add <document-id> <block-id> "Finding and suggested fix"
+npx opendoc comments add <document-id> <block-id> "Finding and suggested fix" --phrase "exact words"
+```
+
+`--phrase` anchors the finding to those words, such as one sentence or table cell; add `--target <field-id>` when the words appear in more than one text field of the block. Leave these comments open for the user or [opendoc-apply-comments](../opendoc-apply-comments/SKILL.md). When revision is in scope, fix material defects, re-export every requested format from the same final source, and inspect changed pages/slides and adjacent breaks. Repeat broader checks only when the change affects them. Shared themes/templates need representative short and long cases and affected-instance checks.
 
 Return verified changes to the calling workflow, which owns feedback resolution. Preserve IDs and comment history during revisions.
 

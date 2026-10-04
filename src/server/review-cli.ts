@@ -4,6 +4,7 @@ import { parseArgs } from 'node:util';
 import { reviewTarget, type ReviewTarget } from './review';
 import { validId } from './render';
 import { checkWorkspace } from '../cli/check';
+import { recordAgentChanges } from './history-capture';
 
 export const reviewUsage = 'Usage: npx opendoc review <document-id> [--export] [--json]\n       npx opendoc review --theme <id> [--json]\n       npx opendoc review --template <id> [--json]\n--export: typecheck, review, and prepare PDF plus editable PPTX for presentations from one render.';
 
@@ -22,6 +23,7 @@ export function parseReviewArgs(args: string[]): { help: true; json?: boolean; t
 export async function runReviewCli(args: string[], root = process.cwd()): Promise<void> {
   const options = parseReviewArgs(args);
   if (options.help) { console.log(options.json ? JSON.stringify({ usage: reviewUsage }, null, 2) : reviewUsage); return; }
+  if (options.target.kind === 'document') await recordAgentChanges(root, [options.target.id]);
   if (options.export) await checkWorkspace(root, false, true);
   const result = await reviewTarget(root, options.target, { export: options.export });
   if (options.json) console.log(JSON.stringify(result, null, 2));

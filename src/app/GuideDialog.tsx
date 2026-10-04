@@ -15,7 +15,8 @@ type GuideVisit = GuideLocation & { scrollTop?: number };
 export function GuideDialog({ kind, id, name, generation }: { kind: 'template' | 'theme'; id: string; name: string; generation: number | string }) {
   const template = kind === 'template';
   const initialFile = template ? `templates/${id}/AGENTS.md` : `themes/${id}/design.md`;
-  const title = template ? 'AGENTS.md' : 'Design guide';
+  // Templates keep their agent-facing guide in AGENTS.md; name it by purpose for people.
+  const title = template ? 'Agent instructions' : 'Design guide';
   const body = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [visits, setVisits] = useState<GuideVisit[]>([{ file: initialFile }]);
@@ -59,20 +60,20 @@ export function GuideDialog({ kind, id, name, generation }: { kind: 'template' |
   }
 
   return <Dialog.Root open={open} onOpenChange={next => { if (next) { setVisits([{ file: initialFile }]); setError(''); } setOpen(next); }}>
-    <Dialog.Trigger render={<Button className={`text-button${template ? ' template-guide-trigger' : ''}`} />}>{template ? 'View AGENTS.md' : <>Design guide<Icon name="arrow" size={16} /></>}</Dialog.Trigger>
+    <Dialog.Trigger render={<Button className={`text-button${template ? ' template-guide-trigger' : ''}`} />}>{title}<Icon name="arrow" size={16} /></Dialog.Trigger>
     <Dialog.Portal><Dialog.Backdrop className="ui-dialog-backdrop" />
       <Dialog.Popup className="help-dialog template-guide-dialog">
         <header className="template-guide-heading">
           <Dialog.Title>{initial ? title : visit.file.split('/').at(-1)}</Dialog.Title>
           <Dialog.Description>{initial ? name : visit.file}</Dialog.Description>
-          <Dialog.Close render={<Button className="icon-button modal-close" aria-label={template ? 'Close template guide' : 'Close design guide'} />}><Icon name="close" /></Dialog.Close>
+          <Dialog.Close render={<Button className="icon-button modal-close" aria-label={`Close ${title.toLowerCase()}`} />}><Icon name="close" /></Dialog.Close>
           {visits.length > 1 && <Button className="text-button guide-back" onClick={() => { setError(''); setVisits(previous => previous.length > 1 ? previous.slice(0, -1) : previous); }}><Icon name="left" size={15} />Back to {visits.at(-2)!.file === initialFile ? title : visits.at(-2)!.file.split('/').at(-1)}</Button>}
         </header>
-        <div ref={body} className="template-guide-body" tabIndex={0} role="region" aria-label={template ? 'Template guide content' : `${name} design guide`} aria-busy={!guide && !error}>
-          {error ? <div role="alert"><p>{initial ? template ? 'Could not load this template’s AGENTS.md.' : 'Could not load this theme’s design guide.' : 'Could not load this guide.'}</p><p>{error}</p><Button onClick={() => { body.current?.focus(); setAttempt(value => value + 1); }}>Try again</Button></div>
+        <div ref={body} className="template-guide-body" tabIndex={0} role="region" aria-label={`${name} ${title.toLowerCase()}`} aria-busy={!guide && !error}>
+          {error ? <div role="alert"><p>{initial ? template ? 'Could not load this template’s agent instructions.' : 'Could not load this theme’s design guide.' : 'Could not load this guide.'}</p><p>{error}</p><Button onClick={() => { body.current?.focus(); setAttempt(value => value + 1); }}>Try again</Button></div>
             : !guide ? <p role="status">Loading guide…</p>
               : guide.markdown.trim() && Markdown ? <Markdown file={guide.file} onNavigate={navigate} onReady={restorePosition}>{guide.markdown}</Markdown>
-                : <p>{initial ? template ? 'This template’s AGENTS.md is empty.' : 'This theme’s design guide is empty.' : 'This guide is empty.'}</p>}
+                : <p>{initial ? template ? 'This template’s agent instructions are empty.' : 'This theme’s design guide is empty.' : 'This guide is empty.'}</p>}
         </div>
       </Dialog.Popup>
     </Dialog.Portal>

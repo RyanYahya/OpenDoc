@@ -50,7 +50,7 @@ Use the existing image tool or a suitable chart/diagram tool to produce the visu
 npx opendoc media import my-report overview --file /path/to/image.png --title "Overview" --description "The main stages." --kind diagram
 ```
 
-Media imports copy an image and refuse to overwrite an existing media folder. Media is added by the agent from chat attachments, generated visuals, or downloaded images. The app browses these document-owned folders and edits their details; it has no media upload form. An ordinary photograph can consist of only an image and metadata. For generated work, add the prepared data and recipe before recording it. Add provenance notes when useful. Editing a title, description, or other metadata in the app never records a generated visual as reviewed.
+Media imports copy a PNG or JPEG and refuse to overwrite an existing media folder; `--kind` defaults to `image`. Media is added by the agent from chat attachments, generated visuals, or downloaded images. The app browses these document-owned folders and edits their details; it has no media upload form. An ordinary photograph can consist of only an image and metadata. For generated work, add the prepared data and recipe before recording it. Add provenance notes when useful. Editing a title, description, or other metadata in the app never records a generated visual as reviewed.
 
 After generating, review the actual image for values, labels, scales, units, and provenance. Then record the reviewed inputs:
 
@@ -101,11 +101,11 @@ The installed renderer prepares cropped/rounded frames as bounded PNGs, leaving 
 
 For starting compositions, read workspace-root `templates/image-story/AGENTS.md` and view its real PDF in **Templates**. It demonstrates full bleed, vertical/horizontal halves, panoramas with insets, diptychs, collage, and floating text panels. You can use the primitives without using that template. Generate or choose images for their intended aspect ratio and quiet text areas; never crop away a face, important object, label, or evidence merely to match a frame. Always inspect the rendered PDF for image visibility, crop, contrast, caption placement, and text extraction. A successful export is not a visual review.
 
-## Browse and continue with Codex
+## Browse and continue with your agent
 
-The **Media** tab in **Media & Assets** lists visuals across documents, searchable by title, description, kind, and document. Existing Media links keep working. Byte-identical images share one browser card; ownership, metadata, and source relationships stay separate. A filename match alone never merges images. The detail view shows their document, current PDF usage, prepared files, and optional source notes.
+The **Media** tab in **Media & Assets** lists visuals across documents, searchable by title, description, kind, and document. Existing Media links keep working. `npx opendoc media list [<document>]` prints these items as JSON; it does not render documents, so it reports PDF usage as unknown (`usageKnown: false`). Byte-identical images share one browser card; ownership, metadata, and source relationships stay separate. A filename match alone never merges images. The detail view shows their document, current PDF usage, prepared files, and optional source notes.
 
-File downloads are limited to document-owned media files. Original references are shown only as source notes. Selecting a media item updates `.opendoc/current.json` with its folder, metadata, and input status so Codex can work on the right item. Selection remains observed context, never an instruction to change the document. Metadata is editable in the app or through ordinary local files and the coding agent; prepared data, recipes, and regeneration remain agent work.
+File downloads are limited to document-owned media files. Original references are shown only as source notes. Selecting a media item updates `.opendoc/current.json` with its folder, metadata, and input status (`selectedMedia`) so your agent can work on the right item. Selection remains observed context, never an instruction to change the document. Metadata is editable in the app or through ordinary local files and the coding agent; prepared data, recipes, and regeneration remain agent work.
 
 ## Existing projects
 

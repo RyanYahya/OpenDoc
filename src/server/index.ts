@@ -15,7 +15,7 @@ import { builtClient } from './client';
 import { GuideError, readGuide } from './guides';
 import { Workspace } from './workspace';
 import { atomicWrite } from './files';
-import { addComment, changeComment, editComment, deleteComment, readComments, Conflict, withCommentLock } from './comments';
+import { addComment, changeComment, editComment, deleteComment, restoreComment, readComments, recentlyDeletedComments, Conflict, withCommentLock } from './comments';
 import { renameDocument, duplicateDocument, deleteDocument, restoreDocument } from './documents';
 import { validId } from './render';
 import { createDocument, listStarters, CreateDocumentError } from './create';
@@ -31,10 +31,21 @@ import { TextEditService } from './edits';
 import { ThemeCatalog, readThemeGuide, themeFile } from './themes';
 import { TemplateCatalog, createFromTemplate, readTemplateGuide } from './templates';
 import { assignProject, createProject, deleteProject, ProjectError, readProjects, requireProject, updateProject } from './projects';
+import { ThemeFoldersError, themeFoldersFile } from './theme-folders';
+import { handleThemeFoldersRequest } from './theme-folders-http';
+import { TagsError, tagsFile } from './tags';
+import { handleTagsRequest } from './tags-http';
+import { sourceLanguage } from './language';
+import { sourceFiles, sourceUpdatedAt } from './source-files';
+import { coverImage } from './covers';
 
 import { readAssetHead as selectedAssetHead, readAssetRevision as selectedAssetRevision } from '../assets/files';
 import type { SelectedAsset } from '../shared/assets';
 import { applicationRoot } from '../runtime/paths';
+import { ignoredByWatcher } from './watch';
+import { HistoryError, HistoryRecorder, HistoryStore } from './history';
+import { blockHistory, compareVersion, restoreVersion, RestoreRefusal } from './history-restore';
+import type { RestoreScope } from '../shared/history';
 
 const root = process.cwd();
 const workspace = new Workspace(root);
@@ -42,6 +53,8 @@ const edits = new TextEditService(root);
 const exports = new ExportStore(root);
 const assets = new AssetStore(root, () => workspace.list());
 workspace.manualEditSummary = id => edits.summary(id);
+const historyStore = new HistoryStore(root);
+const history = new HistoryRecorder(historyStore, error => console.error('Could not record document history:', error));
 const templates = new TemplateCatalog(root);
 const themes = new ThemeCatalog(root);
 const token = randomBytes(24).toString('hex');
@@ -131,7 +144,13 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/documents') {
       const states = workspace.list();
       await Promise.all(states.map(async state => { state.manualEdit = await edits.summary(state.id); }));
-      json(res, url.searchParams.get('view') === 'summary' ? states.map(summarizeDocument) : states); return;
+      if (url.searchParams.get('view') !== 'summary') { json(res, states); return; }
+      // Language is derived from source, as on the command line, so both editions classify an item alike.
+      // The same files give the last-edited time used to sort the library.
+      json(res, await Promise.all(states.map(async state => {
+        const files = await sourceFiles(root, 'documents', state.id).catch(() => []);
+        return { ...summarizeDocument(state), language: await sourceLanguage(root, 'documents', state.id, files).catch(() => undefined), updatedAt: sourceUpdatedAt(files) };
+      }))); return;
     }
     if (req.method === 'GET' && url.pathname === '/api/projects') { json(res, await readProjects(root)); return; }
     const documentRoute = url.pathname.match(/^\/api\/documents\/([a-z0-9-]+)$/);
@@ -184,6 +203,8 @@ const server = createServer(async (req, res) => {
       const assigned = await assignProject(root, assignmentRoute[1], input.projectId);
       await workspace.refreshProjects(); json(res, assigned); return;
     }
+    if (await handleThemeFoldersRequest(root, req, res, url, json, body, () => workspace.changed())) return;
+    if (await handleTagsRequest(root, req, res, url, json, body, () => workspace.changed())) return;
     if (req.method === 'GET' && url.pathname === '/api/themes') { json(res, await themes.list()); return; }
     const themeRoute = url.pathname.match(/^\/api\/themes\/([a-z0-9-]+)\/(preview|pdf|guide)$/);
     if (themeRoute && req.method === 'GET') {
@@ -295,16 +316,46 @@ const server = createServer(async (req, res) => {
       const state = workspace.states.get(id);
       if (!state) { json(res, { error: 'Document not found.' }, 404); return; }
       const input = await body(req, 256_000);
+      // Outside changes made before this save keep their own version.
+      await history.flush(id).catch(error => console.error('Could not record document history:', error));
       state.manualEdit = editId ? await edits.undo(id, editId) : await edits.apply(id, input, state);
       const files = edits.changedFiles(id);
       if (files.length) for (const file of files) workspace.noteChange(resolve(root, file));
       else workspace.invalidate(id);
       workspace.changed();
+      await history.record(id, editId ? 'undo' : 'edit').catch(error => console.error('Could not record document history:', error));
       json(res, state); return;
     }
-    const match = url.pathname.match(/^\/api\/documents\/([^/]+)\/(pdf|export|comments)(?:\/([^/]+))?$/);
+    const historyRoute = url.pathname.match(/^\/api\/documents\/([a-z0-9-]+)\/history(?:\/blocks\/([^/]+)|\/(\d{8}T\d{9}Z-[a-f0-9]{8})(\/restore)?)?$/);
+    if (historyRoute) {
+      const [, id, encodedBlock, versionId, restore] = historyRoute;
+      const state = workspace.states.get(id);
+      if (!state) { json(res, { error: 'Document not found.' }, 404); return; }
+      if (req.method === 'GET' && !encodedBlock && !versionId) { json(res, { documentId: id, retentionDays: historyStore.retentionDays, versions: await historyStore.list(id) }); return; }
+      if (req.method === 'GET' && encodedBlock) {
+        const requested = decodeURIComponent(encodedBlock);
+        json(res, await blockHistory(historyStore, id, requested, getBlock(state.artifact, requested))); return;
+      }
+      if (req.method === 'GET' && versionId && !restore) { json(res, await compareVersion(historyStore, id, versionId)); return; }
+      if (req.method === 'POST' && versionId && restore) {
+        const input = await body(req);
+        if (Object.keys(input).some(key => !['scope', 'blockId', 'base'].includes(key)) || !['version', 'block', 'section'].includes(input.scope)
+          || (input.blockId !== undefined && typeof input.blockId !== 'string') || (input.base !== undefined && typeof input.base !== 'string')) throw new HistoryError('Invalid restore request.');
+        // Restoring would leave unsaved browser drafts against replaced source.
+        if (workspace.context.documentId === id && (workspace.context.pendingEdits ?? 0) > 0) throw new Conflict('Save or discard your unsaved text edits before restoring an earlier version.');
+        const result = await edits.withDocument(id, () => restoreVersion(historyStore, id, versionId, {
+          scope: input.scope as RestoreScope, blockId: input.blockId, base: input.base,
+          record: (origin, extra) => history.record(id, origin, extra),
+          written: path => { workspace.noteChange(path); },
+        }));
+        workspace.changed();
+        json(res, result); return;
+      }
+      json(res, { error: 'Not found.' }, 404); return;
+    }
+    const match = url.pathname.match(/^\/api\/documents\/([^/]+)\/(pdf|cover|export|comments)(?:\/([^/]+)(?:\/(restore))?)?$/);
     if (!match || !validId(match[1])) { json(res, { error: 'Not found.' }, 404); return; }
-    const [, id, action, commentId] = match;
+    const [, id, action, commentId, commentAction] = match;
     const state = workspace.states.get(id);
     if (!state) { json(res, { error: 'Document not found.' }, 404); return; }
     if (action === 'pdf' && req.method === 'GET') {
@@ -312,6 +363,13 @@ const server = createServer(async (req, res) => {
       if (!output) { json(res, { error: 'This preview was replaced. Reload the document.' }, 409); return; }
       const bytes = await readFile(resolve(output.directory, 'document.pdf'));
       res.writeHead(200, { 'Content-Type': 'application/pdf', 'Content-Length': bytes.length, 'Cache-Control': 'no-store' }); res.end(bytes); return;
+    }
+    if (action === 'cover' && req.method === 'GET') {
+      const output = workspace.output(id, url.searchParams.get('hash') ?? '');
+      if (!output) { json(res, { error: 'This preview was replaced. Reload the document.' }, 409); return; }
+      const bytes = await coverImage(output.directory);
+      // The URL names one exact render, so its cover never changes.
+      res.writeHead(200, { 'Content-Type': 'image/webp', 'Content-Length': bytes.length, 'Cache-Control': 'private, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff' }); res.end(bytes); return;
     }
     if (action === 'export' && req.method === 'POST') {
       const { hash, format: requestedFormat } = await body(req);
@@ -326,7 +384,10 @@ const server = createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': info.mime, 'Content-Length': bytes.length, 'Content-Disposition': `attachment; filename="${id}${info.extension}"`, 'Cache-Control': 'no-store' }); res.end(bytes); return;
     }
     if (action === 'comments') {
-      if (req.method === 'GET') { json(res, (await readComments(root, id)).filter(comment => comment.status !== 'deleted')); return; }
+      if (req.method === 'GET') {
+        const rows = await readComments(root, id);
+        json(res, url.searchParams.get('status') === 'deleted' ? recentlyDeletedComments(rows) : rows.filter(comment => comment.status !== 'deleted')); return;
+      }
       if (req.method === 'POST' && !commentId) {
         const value = await body(req);
         if (state.status !== 'ready' || state.artifact?.hash !== value.hash) throw new Conflict('The preview changed. Wait for the latest version before commenting.');
@@ -339,20 +400,24 @@ const server = createServer(async (req, res) => {
         if (selection?.targetId && !anchor && getTextTarget(state.artifact, selection.targetId)?.stable !== false) throw new Error('Select the phrase again before commenting.');
         json(res, (await addComment(root, id, { blockId: block.id, text: value.text, quote: selection?.quote ?? block.text, anchor, exactQuote: !!selection?.quote })).filter(comment => comment.status !== 'deleted')); workspace.changed(); return;
       }
-      if (req.method === 'PATCH' && commentId) {
+      if (req.method === 'PATCH' && commentId && !commentAction) {
         const value = await body(req);
         const comments = Object.hasOwn(value, 'text')
           ? await editComment(root, id, commentId, value.text, value.version)
           : await changeComment(root, id, commentId, value.status, value.version);
         json(res, comments.filter(comment => comment.status !== 'deleted')); workspace.changed(); return;
       }
-      if (req.method === 'DELETE' && commentId) {
+      if (req.method === 'POST' && commentId && commentAction === 'restore') {
+        const value = await body(req);
+        json(res, (await restoreComment(root, id, commentId, value.version)).filter(comment => comment.status !== 'deleted')); workspace.changed(); return;
+      }
+      if (req.method === 'DELETE' && commentId && !commentAction) {
         const value = await body(req);
         json(res, (await deleteComment(root, id, commentId, value.version)).filter(comment => comment.status !== 'deleted')); workspace.changed(); return;
       }
     }
     json(res, { error: 'Not found.' }, 404);
-  } catch (error) { json(res, { error: (error as NodeJS.ErrnoException).code === 'ENOENT' ? 'That local file is missing. Restore it or reload the library.' : error instanceof Error ? error.message : String(error) }, error instanceof CreateDocumentError || error instanceof ProjectError || error instanceof ExportError || error instanceof AssetError || error instanceof GuideError ? error.status : error instanceof Conflict || error instanceof ExportChangedError ? 409 : (error as NodeJS.ErrnoException).code === 'ENOENT' ? 404 : 400); }
+  } catch (error) { json(res, { error: (error as NodeJS.ErrnoException).code === 'ENOENT' ? 'That local file is missing. Restore it or reload the library.' : error instanceof Error ? error.message : String(error) }, error instanceof CreateDocumentError || error instanceof ProjectError || error instanceof ThemeFoldersError || error instanceof TagsError || error instanceof ExportError || error instanceof AssetError || error instanceof GuideError || error instanceof HistoryError ? error.status : error instanceof RestoreRefusal ? 422 : error instanceof Conflict || error instanceof ExportChangedError ? 409 : (error as NodeJS.ErrnoException).code === 'ENOENT' ? 404 : 400); }
 });
 
 // Upgraded sockets do not occupy the browser's six HTTP/1 request slots.
@@ -390,26 +455,28 @@ workspace.on('change', () => {
   materialsVersion++;
   for (const client of events.clients) if (client.readyState === WebSocket.OPEN) client.send('changed');
 });
-const watcher = watch([...new Set([root, resolve(applicationRoot, 'src'), resolve(applicationRoot, 'package.json'), resolve(applicationRoot, 'pnpm-lock.yaml'), resolve(applicationRoot, 'tsconfig.workspace.json')])], { ignoreInitial: true, ignored: path => {
-  const installed = relative(applicationRoot, path);
-  const rel = installed === '' || (!installed.startsWith('../') && installed !== '..') ? installed : relative(root, path);
-  return /(^|[/\\])(node_modules|\.git|\.opendoc|output|tmp|dist|tests)([/\\]|$)/.test(rel) || /\.forme-render-|\.tmp$/.test(rel);
-} });
+const watcher = watch([...new Set([root, resolve(applicationRoot, 'src'), resolve(applicationRoot, 'package.json'), resolve(applicationRoot, 'pnpm-lock.yaml'), resolve(applicationRoot, 'tsconfig.workspace.json')])], { ignoreInitial: true, ignored: path => ignoredByWatcher(applicationRoot, root, path) });
 watcher.on('all', (_event, path) => {
   if (relative(root, path) === 'projects.json') {
     void workspace.refreshProjects().catch(error => workspace.emit('workspace-error', error)); return;
   }
+  // Folders and tags only regroup and filter; they never change a document, theme, or specimen.
+  if ([themeFoldersFile, tagsFile].includes(relative(root, path))) { workspace.changed(); return; }
   // Catalogs follow their own imports and asset bindings, including local data files.
   void Promise.all([templates.noteChange(path), themes.noteChange(path)])
     .then(() => workspace.changed()).catch(error => workspace.emit('workspace-error', error));
   if (/^themes\/.*\.md$/.test(relative(root, path))) return;
   if (path.endsWith('comments.json')) { workspace.changed(); return; }
+  // Debounced, so one save or one burst of agent writes becomes one version.
+  history.noteChange(path);
   // Documents may import modules or read local assets in any format (CSV, text,
   // diagrams, and fonts included). Dependency handling decides what is affected.
   workspace.noteChange(path);
 });
 workspace.on('workspace-error', error => console.error('Workspace refresh failed:', error));
 await workspace.refresh();
+// Record any change made while OpenDoc was closed, and apply the retention period.
+void (async () => { for (const id of workspace.states.keys()) await history.record(id, 'external').catch(error => console.error('Could not record document history:', error)); })();
 console.log(`\nOpenDoc is running at ${origin}\nDocuments: ${resolve(root, 'documents')}\n`);
 let closing = false;
 async function close() {
@@ -421,6 +488,7 @@ async function close() {
   // Complete accepted saves while their preview files and source watcher are still available.
   await stopped;
   await watcher.close();
+  await history.close();
   await workspace.close(); await edits.close(); await templates.close(); await themes.close(); await vite?.close();
   const sessionFile = resolve(root, '.opendoc/server.json');
   const session = await readFile(sessionFile, 'utf8').then(JSON.parse, error => { if (error.code === 'ENOENT') return null; throw error; });

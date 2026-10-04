@@ -18,6 +18,19 @@ import { parseGlobalArgs } from '../src/cli/main';
 const version = '0.4.2';
 const normalPin = `npm:@ryanyahya/opendoc@${version}`;
 const starterSource = 'export const title = "An authored starter";\n';
+const shippedSkills = ['opendoc-create', 'opendoc-current-document', 'opendoc-apply-comments', 'opendoc-revise-document', 'opendoc-assets-media', 'opendoc-create-theme', 'opendoc-create-template', 'opendoc-review-document', 'opendoc-history', 'opendoc-organize'];
+
+/** Every shipped skill gets a workspace stub that forwards to its installed, version-matched SKILL.md. */
+async function assertSkillStubs(destination: string) {
+  assert.deepEqual((await readdir(join(destination, '.agents/skills'))).sort(), [...shippedSkills].sort());
+  const guide = await readFile(join(destination, 'AGENTS.md'), 'utf8');
+  for (const name of shippedSkills) {
+    const stub = await readFile(join(destination, '.claude/skills', name, 'SKILL.md'), 'utf8');
+    assert.ok(stub.startsWith(`---\nname: ${name}\n`), name);
+    assert.ok(stub.includes(`(../../../node_modules/opendoc/.agents/skills/${name}/SKILL.md)`), name);
+    assert.ok(guide.includes(`[${name}](node_modules/opendoc/.agents/skills/${name}/SKILL.md)`), name);
+  }
+}
 
 async function fixture(t: TestContext, edition: Edition = 'normal') {
   const container = await realpath(await mkdtemp(join(tmpdir(), 'opendoc-cli-workspace-')));
@@ -29,7 +42,7 @@ async function fixture(t: TestContext, edition: Edition = 'normal') {
   await writeFile(join(sourceRoot, 'starter/documents/welcome/index.tsx'), starterSource);
   await writeFile(join(sourceRoot, 'starter/assets/reference.bin'), Buffer.from([0, 1, 127, 255]));
   await writeFile(join(sourceRoot, 'starter/projects.json'), JSON.stringify({ version: 1, projects: [{ id: 'getting-started', name: 'Getting started', defaultTheme: null }], assignments: { welcome: 'getting-started' } }));
-  for (const name of ['opendoc-create', 'opendoc-current-document', 'opendoc-apply-comments', 'opendoc-create-theme', 'opendoc-create-template', 'opendoc-review-document']) {
+  for (const name of shippedSkills) {
     const folder = join(sourceRoot, '.agents/skills', name);
     await mkdir(folder, { recursive: true });
     await writeFile(join(folder, 'SKILL.md'), `---\nname: ${name}\ndescription: Versioned workflow.\n---\n\nThe installed workflow body.\n`);
@@ -61,6 +74,11 @@ async function snapshot(root: string) {
   }
   return files;
 }
+
+test('workspace initialization covers every skill shipped in the package', async () => {
+  const shipped = (await readdir(join(applicationRoot, '.agents/skills'), { withFileTypes: true })).filter(entry => entry.isDirectory()).map(entry => entry.name);
+  assert.deepEqual(shipped.sort(), [...shippedSkills].sort());
+});
 
 for (const existing of [false, true]) {
   test(`initialization publishes a checked workspace into ${existing ? 'an empty' : 'a new'} path with spaces and Unicode`, async t => {
@@ -100,6 +118,8 @@ for (const existing of [false, true]) {
     for (const entry of await readdir(join(destination, '.agents/skills'))) {
       assert.ok(guide.includes(`node_modules/opendoc/.agents/skills/${entry}/SKILL.md`), 'Every installed skill remains discoverable by reading the guide.');
     }
+    for (const command of ['npx opendoc tags', 'npx opendoc tags status', 'npx opendoc history restore']) assert.ok(guide.includes(command), `Agents learn about ${command} from the workspace guide.`);
+    await assertSkillStubs(destination);
     await assert.rejects(lstat(installer.calls[0].stage), { code: 'ENOENT' });
     const executable = join(destination, 'node_modules/.bin/opendoc');
     assert.equal((await lstat(executable)).isSymbolicLink(), true);
@@ -142,6 +162,8 @@ test('headless initialization preserves the starter library and installs an exac
   assert.match(guide, /recipients receive finished PDF and PowerPoint files/);
   assert.match(guide, /npx opendoc review/);
   assert.ok(!guide.includes('npx opendoc start'));
+  for (const command of ['npx opendoc tags', 'npx opendoc tags status', 'npx opendoc history restore']) assert.ok(guide.includes(command), `Headless agents learn about ${command} too.`);
+  await assertSkillStubs(destination);
   assert.equal(await realpath(join(destination, '.claude/skills')), await realpath(join(destination, '.agents/skills')));
   assert.equal(await readFile(join(destination, 'CLAUDE.md'), 'utf8'), '@AGENTS.md\n');
   const before = await snapshot(destination);

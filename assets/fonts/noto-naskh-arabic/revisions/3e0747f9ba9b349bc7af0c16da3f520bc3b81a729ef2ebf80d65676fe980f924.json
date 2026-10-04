@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "kind": "font",
+  "id": "noto-naskh-arabic",
+  "name": "Noto Naskh Arabic",
+  "description": "Noto Naskh Arabic is a modulated (“serif”) Naskh design for the Arabic script, suited to use alongside serif fonts. This full build from the Noto project also covers Latin letters, digits, and punctuation, so mixed Arabic and English sentences can use one family. It has regular, medium, semibold, and bold faces and no italics.",
+  "createdAt": "2026-10-01T13:01:46.474Z",
+  "faces": [
+    {
+      "id": "400-normal",
+      "family": "Noto Naskh Arabic",
+      "postscriptName": "NotoNaskhArabic-Regular",
+      "weight": 400,
+      "style": "normal",
+      "file": {
+        "file": "files/c9a039ce48a477243c1eb7d561b13de115cfd651d8a83fa42e2f4d63c2e11b00.ttf",
+        "hash": "c9a039ce48a477243c1eb7d561b13de115cfd651d8a83fa42e2f4d63c2e11b00",
+        "mime": "font/ttf",
+        "bytes": 291980
+      }
+    },
+    {
+      "id": "500-normal",
+      "family": "Noto Naskh Arabic",
+      "postscriptName": "NotoNaskhArabic-Medium",
+      "weight": 500,
+      "style": "normal",
+      "file": {
+        "file": "files/3e876c8262142470384d00644c02689a8a6620a666ef071555414e889267c687.ttf",
+        "hash": "3e876c8262142470384d00644c02689a8a6620a666ef071555414e889267c687",
+        "mime": "font/ttf",
+        "bytes": 310868
+      }
+    },
+    {
+      "id": "600-normal",
+      "family": "Noto Naskh Arabic",
+      "postscriptName": "NotoNaskhArabic-SemiBold",
+      "weight": 600,
+      "style": "normal",
+      "file": {
+        "file": "files/8ce9659622d3479744b2b5404f8caee17e956d25d672b57d160d7b0e8207c52a.ttf",
+        "hash": "8ce9659622d3479744b2b5404f8caee17e956d25d672b57d160d7b0e8207c52a",
+        "mime": "font/ttf",
+        "bytes": 311392
+      }
+    },
+    {
+      "id": "700-normal",
+      "family": "Noto Naskh Arabic",
+      "postscriptName": "NotoNaskhArabic-Bold",
+      "weight": 700,
+      "style": "normal",
+      "file": {
+        "file": "files/d328b92b6bb762fd61d6438dddb7b00dd0663115afb292a358101808efe117b2.ttf",
+        "hash": "d328b92b6bb762fd61d6438dddb7b00dd0663115afb292a358101808efe117b2",
+        "mime": "font/ttf",
+        "bytes": 325232
+      }
+    }
+  ],
+  "compatibility": {
+    "status": "ready",
+    "defaultEligible": true
+  },
+  "specimen": {
+    "file": "files/f46ae13c8939ea27ccc30983338df304f3a107230b630fe438be9cc976dab15a.pdf",
+    "hash": "f46ae13c8939ea27ccc30983338df304f3a107230b630fe438be9cc976dab15a",
+    "mime": "application/pdf",
+    "bytes": 63280
+  },
+  "revision": "3e0747f9ba9b349bc7af0c16da3f520bc3b81a729ef2ebf80d65676fe980f924"
+}

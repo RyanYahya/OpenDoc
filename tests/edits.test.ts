@@ -147,11 +147,12 @@ test('a single correction must render successfully before its source is saved', 
   const f = await fixture();
   const service = new TextEditService(f.root);
   try {
-    const original = document('<Paragraph id="text">First draft</Paragraph>').replace('Paragraph,Heading', 'Paragraph as NativeParagraph,Heading')
-      + `\nfunction Paragraph({children}: {children:string}) { if(children === 'Rejected') throw new Error('This wording cannot render.'); return <NativeParagraph id="text">{children}</NativeParagraph>; }`;
+    // Text that drives logic stays read-only, so the rejected wording comes from the renderer's own validation.
+    const original = document('<Paragraph id="text">First draft</Paragraph>').replace('Paragraph,Heading', 'Heading')
+      + `\nfunction Paragraph({children}: {children:string}) { return <Heading id="text">{children}</Heading>; }`;
     await writeFile(f.entry, original);
     const current = sourceState(original);
-    await assert.rejects(service.apply('proof', input(current, 'Rejected'), current), /This wording cannot render/);
+    await assert.rejects(service.apply('proof', input(current, ' '), current), /must be nonempty text/);
     assert.equal(await readFile(f.entry, 'utf8'), original);
     assert.equal(await service.summary('proof'), undefined);
     await assert.rejects(service.apply('proof', 'invalid' as any, current), /Save between/);

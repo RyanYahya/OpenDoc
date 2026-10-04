@@ -8,6 +8,6 @@ export function resolveJsonTextSource(file: string, source: string, path: JsonTe
 
 export function replaceSourceValue(source: string, value: TextSourceValue, next: string): string {
   if (textDigest(source) !== value.digest) throw new Error('This source changed. Refresh the selection before editing.');
-  const token = serializeSourceValue(value, next);
+  const token = serializeSourceValue(value, next, source.slice(value.start, value.end));
   return source.slice(0, value.start) + token + source.slice(value.end);
 }

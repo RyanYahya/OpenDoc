@@ -5,6 +5,9 @@ output/
 tmp/
 .forme-render-*
 .DS_Store
+# Personal theme folders and workspace tags; the starter library ships without them.
+themes/folders.json
+/tags.json
 
 .impeccable/review/
 .playwright-cli/
@@ -22,3 +25,6 @@ tmp/
 .claude/settings.local.json
 CLAUDE.local.md
 AGENTS.override.md
+
+# Per-document version history (kept inside each document folder).
+.history/

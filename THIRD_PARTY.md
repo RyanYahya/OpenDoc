@@ -1,6 +1,6 @@
 # Third-party notices
 
-- **Forme 0.20.1**: shared React serializer, JavaScript definitions, and PDF rendering through repaired Node WASM. OpenDoc carries PDF text-writer and embedded font-subset metadata repairs in core 0.20.1-opendoc.3; both editions bundle the same repaired Node engine. Source patches, rebuild instructions, and MIT license are in `vendor/formepdf/`; the source repository also retains the rebuild archive, excluded from runtime packages. The attributed asset resolver in `src/rendering/resolve-sources.ts` is adapted from `@formepdf/renderer` 0.20.1 under that MIT license (Daniel Molitor, 2026); OpenDoc supplies its own TSX bundling and source-location capture. Original imported font files remain unchanged. https://github.com/formepdf/forme
+- **Forme 0.20.1**: shared React serializer, JavaScript definitions, and PDF rendering through repaired Node WASM. OpenDoc carries PDF text-writer, embedded font-subset metadata, and bidirectional (Arabic and other right-to-left) text repairs in core 0.20.1-opendoc.4; both editions bundle the same repaired Node engine. Source patches, rebuild instructions, and MIT license are in `vendor/formepdf/`; the source repository also retains the rebuild archive, excluded from runtime packages. The attributed asset resolver in `src/rendering/resolve-sources.ts` is adapted from `@formepdf/renderer` 0.20.1 under that MIT license (Daniel Molitor, 2026); OpenDoc supplies its own TSX bundling and source-location capture. Original imported font files remain unchanged. https://github.com/formepdf/forme
 - **PDF.js**: PDF preview, review page rendering, and text extraction. Apache-2.0. https://github.com/mozilla/pdf.js
 - **@napi-rs/canvas 1.0.8**: Skia-backed Node canvas for PDF review page PNGs, without a browser. MIT; native dependencies retain their upstream notices. https://github.com/Brooooooklyn/canvas
 - **Base UI 1.8.0**: accessible interface controls. MIT. https://github.com/mui/base-ui
@@ -35,6 +35,14 @@ Each `assets/fonts/<family-id>/` folder retains `OFL.txt` with the original copy
 - Merriweather: https://fonts.google.com/specimen/Merriweather
 
 The bundled revisions include PDF compatibility results and specimens. The app uses those checks to determine eligibility for theme defaults; `tests/bundled-fonts.test.ts` and `tests/font-renderer.test.ts` cover the bundled files and text rendering, while `tests/font-subset.test.ts` checks metadata in the actual embedded font streams. Original font files, names, shaping tables, and hashes are preserved.
+
+## Noto Naskh Arabic
+
+Noto Naskh Arabic 2.021 is bundled as the shared `noto-naskh-arabic` font asset under the SIL Open Font License 1.1, with regular (400), medium (500), semibold (600), and bold (700) faces. The family has no italics. The files are the static TTFs from the `full/ttf` folder of the Noto project's official `NotoNaskhArabic-v2.021` release archive, preserved byte for byte. That build includes Latin letters, digits, and punctuation alongside Arabic, so mixed Arabic and English text can use one family; the release's `hinted/ttf` build omits Latin. `assets/fonts/noto-naskh-arabic/` retains `OFL.txt` and `source.json` with the release and archive URLs, the archive's SHA-256 hash, each file's path inside the archive and SHA-256 hash, and its managed asset path. Its bundled revision includes a PDF compatibility result and specimen; `tests/bundled-fonts.test.ts` checks the files, provenance, Arabic and Latin coverage, and shaping features.
+
+The browser interface draws Arabic letters with WOFF2 subsets of the same four faces in `assets/ui-fonts/noto-naskh-arabic/`, cut to the Arabic blocks with every layout feature kept. `source.json` there records the source file, unicode ranges, subsetting command, and SHA-256 hash of each subset, and `OFL.txt` retains the license.
+
+- Noto Naskh Arabic: https://github.com/notofonts/arabic
 
 ## Geist and interface fonts
 

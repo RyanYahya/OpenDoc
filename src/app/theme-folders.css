@@ -1,0 +1,40 @@
+/* Optional single-level theme folders, shown as the Themes filter bar's primary buttons beside Filter;
+   the buttons themselves are filter-bar.css choices, and tag styles live in tags.css. */
+.theme-heading-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; flex-shrink: 0; }
+.theme-folder-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
+.ui-button.theme-manage-folders { gap: 6px; }
+.ui-button.theme-manage-folders[data-popup-open] { background: var(--control-hover); color: var(--ink); }
+.theme-manage-hint { max-width: 240px; font-weight: 400; }
+
+.is-drop-target, .ui-button.filter-choice.is-drop-target { outline: 2px solid var(--focus-ring); outline-offset: 2px; background: var(--selected-surface); }
+
+.theme-gallery-preview .ui-button.theme-card-menu-trigger { position: absolute; top: 8px; right: 8px; z-index: 1; min-width: var(--control-hit-size); min-height: var(--control-hit-size); padding: 6px; border: 0; border-radius: 6px; background: var(--surface); color: var(--muted); box-shadow: none; }
+.theme-gallery-preview .ui-button.theme-card-menu-trigger:hover, .theme-gallery-preview .ui-button.theme-card-menu-trigger[data-popup-open] { color: var(--ink); background: var(--control-hover); }
+@media (hover: hover) and (pointer: fine) {
+  /* Quiet at rest, as on document cards, so the menu is discoverable without hovering. */
+  .theme-gallery-preview .theme-card-menu-trigger { opacity: 0.6; transition: opacity 120ms ease; }
+  .theme-gallery-preview:is(:hover, :focus-within, :has([data-popup-open])) .theme-card-menu-trigger { opacity: 1; }
+}
+.theme-card-meta { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; min-width: 0; }
+.theme-card-folder { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; min-height: var(--control-hit-size); color: var(--muted); font-size: var(--label-size); line-height: var(--label-leading); font-weight: 500; }
+.theme-card-folder span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.theme-card-folder:hover { color: var(--accent-ink); }
+.theme-card-folder:hover span { text-decoration: underline; text-underline-offset: 3px; }
+
+.theme-folder-empty { padding-top: 48px; }
+.theme-folder-empty p { max-width: 52ch; margin-inline: auto; line-height: 1.6; }
+
+.theme-folder-dialog .field-hint { margin-top: 8px; }
+.theme-organization dl { margin: 0; font-size: 12px; }
+.theme-organization dl div { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 12px; }
+.theme-organization dl div + div { margin-top: 10px; }
+.theme-organization dt { color: var(--muted); }
+.theme-organization dd { margin: 0; }
+.theme-organization .theme-organization-actions { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 12px; }
+
+@media (pointer: coarse) {
+  .ui-button.theme-manage-folders, .theme-gallery-preview .ui-button.theme-card-menu-trigger { min-width: 40px; min-height: 40px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .theme-gallery-preview .theme-card-menu-trigger { transition: none; }
+}

@@ -31,7 +31,7 @@ export async function readComments(root: string, id: string): Promise<Comment[]>
     || !['open', 'resolved', 'deleted'].includes(row.status) || !Number.isInteger(row.version) || row.version < 1
     || !validDate(row.createdAt) || !validDate(row.updatedAt) || !Array.isArray(row.history) || !row.history.length
     || row.history.some((event: Comment['history'][number]) => !event || !validDate(event.at)
-      || !['created', 'resolved', 'reopened', 'edited', 'deleted'].includes(event.action)
+      || !['created', 'resolved', 'reopened', 'edited', 'deleted', 'restored'].includes(event.action)
       || (event.previousText !== undefined && typeof event.previousText !== 'string'))
     || (row.anchor !== undefined && !validAnchor(row.anchor)))) throw new Error(`Invalid comments file for ${id}. Restore valid JSON; existing feedback has not been overwritten.`);
   return rows as Comment[];
@@ -96,11 +96,11 @@ export async function addComment(root: string, id: string, input: { blockId: str
 }
 
 /** Every mutation checks the same current record before appending its history. */
-async function updateComment(root: string, documentId: string, commentId: string, version: number, update: (comment: Comment, at: string) => Partial<Comment> | undefined) {
+async function updateComment(root: string, documentId: string, commentId: string, version: number, update: (comment: Comment, at: string) => Partial<Comment> | undefined, restoring = false) {
   return mutate(root, documentId, rows => {
     const comment = rows.find(row => row.id === commentId);
     if (!comment) throw new Error('Comment not found.');
-    if (comment.status === 'deleted' || comment.version !== version) throw new Conflict('This comment changed elsewhere. Refresh and try again.');
+    if ((comment.status === 'deleted') !== restoring || comment.version !== version) throw new Conflict('This comment changed elsewhere. Refresh and try again.');
     const at = new Date().toISOString();
     const changes = update(comment, at);
     if (!changes) return rows;
@@ -127,4 +127,20 @@ export async function editComment(root: string, documentId: string, commentId: s
 /** Keep the local audit history while removing deleted feedback from the app. */
 export async function deleteComment(root: string, documentId: string, commentId: string, version: number) {
   return updateComment(root, documentId, commentId, version, (comment, at) => ({ status: 'deleted', history: [...comment.history, { at, action: 'deleted' }] }));
+}
+
+/** Undo a deletion with the same record, identity, anchor, and its earlier open or resolved status. */
+export async function restoreComment(root: string, documentId: string, commentId: string, version: number) {
+  return updateComment(root, documentId, commentId, version, (comment, at) => {
+    const status = comment.history.reduce<'open' | 'resolved'>((current, event) => event.action === 'resolved' ? 'resolved' : event.action === 'reopened' ? 'open' : current, 'open');
+    return { status, history: [...comment.history, { at, action: 'restored' }] };
+  }, true);
+}
+
+/** Deleted feedback that is still offered for restoring, newest deletion first. Records themselves are never pruned. */
+export function recentlyDeletedComments(rows: Comment[], now = Date.now(), days = 90) {
+  return rows.filter(row => row.status === 'deleted')
+    .map(row => ({ row, at: Date.parse([...row.history].reverse().find(event => event.action === 'deleted')?.at ?? row.updatedAt) }))
+    .filter(({ at }) => now - at <= days * 86_400_000)
+    .sort((a, b) => b.at - a.at).map(({ row }) => row);
 }

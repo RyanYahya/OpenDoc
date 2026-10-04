@@ -27,7 +27,10 @@ test('every shipped skill appears under its invocable name with a short UI descr
   }
   const index = skillIndex(entries);
   assert.deepEqual(index.map(skill => skill.name), names.sort());
-  for (const skill of index) assert.ok(skill.description.length <= 80, skill.name);
+  for (const skill of index) {
+    assert.ok(skill.description.length <= 80, skill.name);
+    assert.ok(skill.title && !skill.title.startsWith('OpenDoc') && skill.title !== skill.name, `${skill.name} needs a readable display name`);
+  }
 });
 
 test('root routing, skill workflow, and disclosed-reference links resolve after renaming', async () => {
@@ -46,6 +49,8 @@ test('root routing, skill workflow, and disclosed-reference links resolve after 
 test('index descriptions preserve quoted text and fail clearly on missing metadata', () => {
   const path = '/.agents/skills/opendoc-example/agents/openai.yaml';
   assert.equal(skillIndex({ [path]: 'interface:\n  short_description: "Use \\"quoted\\" text."\n' })[0].description, 'Use "quoted" text.');
+  assert.equal(skillIndex({ [path]: 'interface:\n  display_name: "OpenDoc: Worked example"\n  short_description: "Text."\n' })[0].title, 'Worked example');
+  assert.equal(skillIndex({ [path]: 'interface:\n  short_description: "Text."\n' })[0].title, 'Example');
   assert.throws(() => skillIndex({ [path]: 'interface:\n' }), /Invalid skill index metadata/);
   assert.throws(() => skillIndex({ [path]: '  short_description: ""\n' }), /Missing skill description/);
 });

@@ -57,7 +57,7 @@ Import `theme` from `themes/civic-spectrum` and the components from its `compone
 - `SquareSignal({id, label, color?})`, `CivicBadge({id, value, label, color?, filled?})`, and `SignalBlock({id, code, title, color?, children})` are reusable wayfinding elements.
 - `SpectrumRail({height?})` carries the identity. `SpectrumLegend({id})` displays exact palette values when explaining the system.
 
-Pass unique, stable IDs. Native `Heading`, `Paragraph`, `DataTable`, `Figure`, and `Callout` also consume this theme's rules; do not recreate their styling in each document.
+Pass unique, stable IDs. Text a document passes to these components, such as titles, subtitles, codes, badge values and labels, and `children`, edits in the reader and saves at the document's call site. `SquareSignal` labels, including `CivicOpening`'s kicker, are set in capitals by the theme, and `SpectrumLegend` writes the palette's names and values; these stay read-only and say why. Native `Heading`, `Paragraph`, `DataTable`, `Figure`, and `Callout` also consume this theme's rules; do not recreate their styling in each document.
 
 ## Evidence, imagery, and application
 

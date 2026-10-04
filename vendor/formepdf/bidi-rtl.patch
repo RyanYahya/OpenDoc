@@ -1,0 +1,2649 @@
+diff --git a/engine/src/layout/mod.rs b/engine/src/layout/mod.rs
+index e119872..1c9284a 100644
+--- a/engine/src/layout/mod.rs
++++ b/engine/src/layout/mod.rs
+@@ -124,6 +124,10 @@ pub struct ElementStyleInfo {
+     pub letter_spacing: f64,
+     pub text_decoration: TextDecoration,
+     pub text_transform: TextTransform,
++    /// Base direction. Text containers report the authored value (`auto`
++    /// included); their `TextLine` children report the resolved paragraph
++    /// direction (`ltr` or `rtl`) and the alignment actually applied.
++    pub direction: Direction,
+     // Visual
+     pub color: Color,
+     pub background_color: Option<Color>,
+@@ -206,6 +210,7 @@ impl ElementStyleInfo {
+             letter_spacing: style.letter_spacing,
+             text_decoration: style.text_decoration,
+             text_transform: style.text_transform,
++            direction: style.direction,
+             color: style.color,
+             background_color: style.background_color,
+             border_color: style.border_color,
+@@ -259,6 +264,7 @@ impl Default for ElementStyleInfo {
+             letter_spacing: 0.0,
+             text_decoration: TextDecoration::None,
+             text_transform: TextTransform::None,
++            direction: Direction::default(),
+             color: Color::BLACK,
+             background_color: None,
+             border_color: EdgeValues::uniform(Color::BLACK),
+@@ -359,8 +365,11 @@ impl LayoutInfo {
+                     DrawCommand::Text { lines, .. } => {
+                         let text: String = lines
+                             .iter()
+-                            .flat_map(|line| {
+-                                line.glyphs.iter().flat_map(|g| {
++                            .flat_map(|line| -> Box<dyn Iterator<Item = char> + '_> {
++                                if let Some(logical) = &line.logical_text {
++                                    return Box::new(logical.chars());
++                                }
++                                Box::new(line.glyphs.iter().flat_map(|g| {
+                                     // Use cluster_text for ligatures (e.g., "fi" → 2 chars)
+                                     g.cluster_text.as_deref().unwrap_or("").chars().chain(
+                                         if g.cluster_text.is_none() {
+@@ -369,7 +378,7 @@ impl LayoutInfo {
+                                             None
+                                         },
+                                     )
+-                                })
++                                }))
+                             })
+                             .collect();
+                         if text.is_empty() {
+@@ -825,6 +834,27 @@ pub struct TextLine {
+     pub height: f64,
+     /// Extra width added to each space character for justification (PDF `Tw` operator).
+     pub word_spacing: f64,
++    /// Logical (reading-order) text of a bidi line, whose glyphs are stored in
++    /// visual order. `None` when glyph order already is reading order.
++    pub logical_text: Option<String>,
++    /// For bidi lines, the order in which the PDF writer emits glyphs (each
++    /// at its visual position): directional runs in logical order, glyphs
++    /// within a run left to right. Extractors that follow content order
++    /// (pdf.js, tagged reading order) then see runs in reading order, while
++    /// those that rebuild words from positions keep their usual input.
++    pub logical_order: Option<Vec<usize>>,
++}
++
++/// One laid-out line of a bidi paragraph.
++struct BidiLine {
++    /// Glyphs in visual order, positioned from x = 0.
++    glyphs: Vec<PositionedGlyph>,
++    /// Emission order: runs in logical order, glyphs left to right in a run.
++    logical_order: Vec<usize>,
++    /// Whether the paragraph is right-to-left.
++    rtl: bool,
++    /// The line's text in logical order.
++    text: String,
+ }
+ 
+ #[derive(Debug, Clone)]
+@@ -994,6 +1024,66 @@ fn substitute_page_placeholders(text: &str) -> String {
+     }
+ }
+ 
++/// A single run carrying a plain Text node's content when that content needs
++/// the bidi pipeline; `None` keeps the left-to-right single-style path.
++fn bidi_content_runs(content: &str, style: &ResolvedStyle) -> Option<Vec<TextRun>> {
++    if !bidi::needs_bidi(&substitute_page_placeholders(content), style.direction) {
++        return None;
++    }
++    Some(vec![TextRun {
++        content: content.to_string(),
++        // Letter spacing is not inherited by runs; everything else is.
++        style: Style {
++            letter_spacing: Some(style.letter_spacing),
++            ..Default::default()
++        },
++        href: None,
++    }])
++}
++
++/// Resolve UAX#9 embedding levels across a whole paragraph (all of a Text
++/// node's styled runs) when it needs the bidi pipeline.
++fn annotate_bidi(chars: &mut [StyledChar], direction: Direction) {
++    let text: String = chars.iter().map(|sc| sc.ch).collect();
++    if !bidi::needs_bidi(&text, direction) {
++        return;
++    }
++    for (sc, state) in chars
++        .iter_mut()
++        .zip(bidi::paragraph_levels(&text, direction))
++    {
++        sc.bidi = Some(state);
++    }
++}
++
++/// Alignment of one line. Without an explicit `textAlign` anywhere in the
++/// inheritance chain, a line starts at its paragraph's resolved direction
++/// (CSS `start`); the last line of a justified paragraph does too.
++fn line_text_align(style: &ResolvedStyle, rtl: bool, is_last_line: bool) -> TextAlign {
++    let start = if rtl {
++        TextAlign::Right
++    } else {
++        TextAlign::Left
++    };
++    match style.text_align {
++        TextAlign::Justify if is_last_line => start,
++        TextAlign::Justify => TextAlign::Justify,
++        _ if style.text_align_from_direction => start,
++        align => align,
++    }
++}
++
++/// Style reported for a TextLine: the resolved paragraph direction and the
++/// applied alignment (justified paragraphs stay `Justify`).
++fn line_resolved_style(style: &ResolvedStyle, rtl: bool, align: TextAlign) -> ResolvedStyle {
++    let mut line = style.clone();
++    line.direction = if rtl { Direction::Rtl } else { Direction::Ltr };
++    if !matches!(style.text_align, TextAlign::Justify) {
++        line.text_align = align;
++    }
++    line
++}
++
+ /// Apply a text transform to a single character, given whether it's the first
+ /// letter of a word (for Capitalize).
+ fn apply_char_transform(ch: char, transform: TextTransform, is_word_start: bool) -> char {
+@@ -3061,6 +3151,14 @@ impl LayoutEngine {
+ 
+             let line_elem_start = cursor.elements.len();
+             let mut x = content_x + start_offset;
++            // A right-to-left row starts at the right edge (CSS `direction`):
++            // each item is laid out in place, then its box is mirrored within
++            // the line. `row-reverse` is left as before.
++            let mirror = matches!(parent_style.map(|s| s.direction), Some(Direction::Rtl))
++                && matches!(
++                    parent_style.map(|s| s.flex_direction),
++                    Some(FlexDirection::Row)
++                );
+ 
+             for (j, item) in line_items.iter().enumerate() {
+                 if j > 0 {
+@@ -3068,6 +3166,8 @@ impl LayoutEngine {
+                 }
+ 
+                 let fw = final_widths[line.start + j];
++                let item_elem_start = cursor.elements.len();
++                let item_pages = pages.len();
+ 
+                 let align = item
+                     .style
+@@ -3136,6 +3236,14 @@ impl LayoutEngine {
+                     Some(fw),
+                 );
+ 
++                // Items that continued onto another page keep their position.
++                if mirror && pages.len() == item_pages {
++                    let dx = 2.0 * content_x + available_width - 2.0 * x - fw;
++                    for el in &mut cursor.elements[item_elem_start..] {
++                        offset_element_x(el, dx);
++                    }
++                }
++
+                 cursor.y = saved_y;
+                 x += fw;
+             }
+@@ -3845,7 +3953,13 @@ impl LayoutEngine {
+             };
+             let start_col = col_offsets.get(cell_i).copied().unwrap_or(0);
+             let col_width: f64 = col_widths.iter().skip(start_col).take(span).copied().sum();
+-            let cell_x = start_x + col_widths.iter().take(start_col).copied().sum::<f64>();
++            let before: f64 = col_widths.iter().take(start_col).copied().sum();
++            // Right-to-left tables start their first column at the right edge.
++            let cell_x = if matches!(row_style.direction, Direction::Rtl) {
++                start_x + total_width - before - col_width
++            } else {
++                start_x + before
++            };
+ 
+             let cell_style = cell.style.resolve(Some(&row_style), col_width);
+ 
+@@ -4070,6 +4184,16 @@ impl LayoutEngine {
+ 
+         cursor.y += margin.top;
+ 
++        // Bidi paragraphs use the runs pipeline, which resolves embedding
++        // levels across the whole paragraph. Left-to-right text keeps the
++        // single-style path below unchanged.
++        let bidi_runs = if runs.is_empty() {
++            bidi_content_runs(content, style)
++        } else {
++            None
++        };
++        let runs = bidi_runs.as_deref().unwrap_or(runs);
++
+         // Runs path: if runs are provided, use multi-style line breaking
+         if !runs.is_empty() {
+             self.layout_text_runs(
+@@ -4242,7 +4366,10 @@ impl LayoutEngine {
+                 (last.x_offset + last.x_advance).max(line.width * 0.5)
+             };
+ 
+-            let line_x = match style.text_align {
++            let is_last_line = line_idx == lines.len() - 1;
++            // This path only receives left-to-right paragraphs.
++            let align = line_text_align(style, false, is_last_line);
++            let line_x = match align {
+                 TextAlign::Left => text_x,
+                 TextAlign::Right => text_x + text_width - rendered_width,
+                 TextAlign::Center => text_x + (text_width - rendered_width) / 2.0,
+@@ -4256,7 +4383,6 @@ impl LayoutEngine {
+             //
+             // User-set `word_spacing` is the base; when text is justified, the
+             // computed slack-per-space is added on top.
+-            let is_last_line = line_idx == lines.len() - 1;
+             let user_ws = style.word_spacing;
+             let (justified_width, word_spacing) =
+                 if matches!(style.text_align, TextAlign::Justify) && !is_last_line {
+@@ -4297,6 +4423,8 @@ impl LayoutEngine {
+                 width: justified_width,
+                 height: line_height,
+                 word_spacing,
++                logical_text: None,
++                logical_order: None,
+             };
+ 
+             cursor.elements.push(LayoutElement {
+@@ -4312,7 +4440,7 @@ impl LayoutEngine {
+                 },
+                 children: vec![],
+                 node_type: Some("TextLine".to_string()),
+-                resolved_style: Some(style.clone()),
++                resolved_style: Some(line_resolved_style(style, false, align)),
+                 source_location: None,
+                 href: href.map(|s| s.to_string()),
+                 bookmark: None,
+@@ -4396,9 +4524,11 @@ impl LayoutEngine {
+                     href: run_href.map(|s| s.to_string()),
+                     text_decoration: run_style.text_decoration,
+                     letter_spacing: run_style.letter_spacing,
++                    bidi: None,
+                 });
+             }
+         }
++        annotate_bidi(&mut styled_chars, style.direction);
+ 
+         // Break into lines
+         let justify = matches!(style.text_align, TextAlign::Justify);
+@@ -4512,22 +4642,41 @@ impl LayoutEngine {
+                 container_start_y = cursor.content_y + cursor.y;
+             }
+ 
+-            let line_x = match style.text_align {
++            let is_last_line = line_idx == broken_lines.len() - 1;
++            let bidi_line = run_line.chars.iter().any(|sc| sc.bidi.is_some());
++            let (glyphs, logical_text, logical_order, rtl, content_width) = if bidi_line {
++                let line = self.build_positioned_glyphs_bidi(run_line, font_context);
++                let width: f64 = line.glyphs.iter().map(|g| g.x_advance).sum();
++                (
++                    line.glyphs,
++                    Some(line.text),
++                    Some(line.logical_order),
++                    line.rtl,
++                    width,
++                )
++            } else {
++                (
++                    self.build_positioned_glyphs_runs(run_line, font_context),
++                    None,
++                    None,
++                    false,
++                    run_line.width,
++                )
++            };
++            let align = line_text_align(style, rtl, is_last_line);
++            let line_x = match align {
+                 TextAlign::Left => text_x,
+-                TextAlign::Right => text_x + text_width - run_line.width,
+-                TextAlign::Center => text_x + (text_width - run_line.width) / 2.0,
++                TextAlign::Right => text_x + text_width - content_width,
++                TextAlign::Center => text_x + (text_width - content_width) / 2.0,
+                 TextAlign::Justify => text_x,
+             };
+ 
+-            let glyphs = self.build_positioned_glyphs_runs(run_line, font_context, style.direction);
+-
+             // Justify: compute extra word spacing so the line fills the column width.
+             // Use the sum of natural glyph advances (what PDF Tj actually renders)
+             // rather than KP-adjusted line width.
+             //
+             // User-set `word_spacing` is the base; when text is justified, the
+             // computed slack-per-space is added on top.
+-            let is_last_line = line_idx == broken_lines.len() - 1;
+             let user_ws = style.word_spacing;
+             let (justified_width, word_spacing) =
+                 if matches!(style.text_align, TextAlign::Justify) && !is_last_line {
+@@ -4550,7 +4699,7 @@ impl LayoutEngine {
+                     };
+                     (text_width, user_ws + ws)
+                 } else {
+-                    (run_line.width, user_ws)
++                    (content_width, user_ws)
+                 };
+ 
+             let text_line = TextLine {
+@@ -4568,6 +4717,8 @@ impl LayoutEngine {
+                 width: justified_width,
+                 height: line_height,
+                 word_spacing,
++                logical_text,
++                logical_order,
+             };
+ 
+             // Determine text decoration: use the run's decoration if any glyph has one
+@@ -4591,7 +4742,7 @@ impl LayoutEngine {
+                 },
+                 children: vec![],
+                 node_type: Some("TextLine".to_string()),
+-                resolved_style: Some(style.clone()),
++                resolved_style: Some(line_resolved_style(style, rtl, align)),
+                 source_location: None,
+                 href: parent_href.map(|s| s.to_string()),
+                 bookmark: None,
+@@ -4635,7 +4786,8 @@ impl LayoutEngine {
+ 
+     /// Build PositionedGlyphs for a single-style BrokenLine.
+     /// For custom fonts, shapes the line text to get real glyph IDs.
+-    /// For standard fonts, uses char-as-u16 glyph IDs.
++    /// For standard fonts, uses char-as-u16 glyph IDs. Only left-to-right
++    /// paragraphs reach this path; bidi text is laid out as runs.
+     fn build_positioned_glyphs_single_style(
+         &self,
+         line: &BrokenLine,
+@@ -4645,9 +4797,6 @@ impl LayoutEngine {
+     ) -> Vec<PositionedGlyph> {
+         let italic = matches!(style.font_style, FontStyle::Italic | FontStyle::Oblique);
+         let line_text: String = line.chars.iter().collect();
+-        let direction = style.direction;
+-        // Check if BiDi processing is needed
+-        let has_bidi = !bidi::is_pure_ltr(&line_text, direction);
+ 
+         // Segment by font — handles both explicit fallback chains and
+         // automatic builtin font fallback (Noto Sans for non-Latin chars)
+@@ -4661,174 +4810,39 @@ impl LayoutEngine {
+         let needs_per_char_fallback = font_runs.len() > 1
+             || (font_runs.len() == 1 && font_runs[0].family != style.font_family);
+ 
+-        // Per-char fallback path: segment by font within each BiDi run
++        // Per-char fallback path: shape each font segment
+         if needs_per_char_fallback {
+-            let bidi_runs = if has_bidi {
+-                bidi::analyze_bidi(&line_text, direction)
+-            } else {
+-                vec![crate::text::bidi::BidiRun {
+-                    char_start: 0,
+-                    char_end: line.chars.len(),
+-                    level: unicode_bidi::Level::ltr(),
+-                    is_rtl: false,
+-                }]
+-            };
+-
+             let mut all_glyphs = Vec::new();
+-            let mut bidi_levels = Vec::new();
+             let mut x = 0.0_f64;
+ 
+-            // Process each BiDi run
+-            for bidi_run in &bidi_runs {
+-                // Within this BiDi run, sub-segment by font
+-                for font_run in &font_runs {
+-                    // Intersect font_run with bidi_run
+-                    let start = font_run.start.max(bidi_run.char_start);
+-                    let end = font_run.end.min(bidi_run.char_end);
+-                    if start >= end {
+-                        continue;
+-                    }
+-
+-                    let sub_chars: Vec<char> = line.chars[start..end].to_vec();
+-                    let sub_text: String = sub_chars.iter().collect();
+-                    let resolved_family = &font_run.family;
+-
+-                    if let Some(font_data) =
+-                        font_context.font_data(resolved_family, style.font_weight, italic)
+-                    {
+-                        if let Some(shaped) = shaping::shape_text_with_direction(
+-                            &sub_text,
+-                            font_data,
+-                            bidi_run.is_rtl,
+-                        ) {
+-                            let units_per_em = font_context.units_per_em(
+-                                resolved_family,
+-                                style.font_weight,
+-                                italic,
+-                            );
+-                            let scale = style.font_size / units_per_em as f64;
+-
+-                            for sg in &shaped {
+-                                let cluster = sg.cluster as usize;
+-                                let char_value = sub_chars.get(cluster).copied().unwrap_or(' ');
+-
+-                                let cluster_text = if shaped.len() < sub_chars.len() {
+-                                    let cluster_end =
+-                                        self.find_cluster_end(&shaped, sg, sub_chars.len());
+-                                    if cluster_end > cluster + 1 {
+-                                        Some(
+-                                            sub_chars[cluster..cluster_end]
+-                                                .iter()
+-                                                .collect::<String>(),
+-                                        )
+-                                    } else {
+-                                        None
+-                                    }
+-                                } else {
+-                                    None
+-                                };
+-
+-                                let glyph_x = x + sg.x_offset as f64 * scale;
+-                                let glyph_y = sg.y_offset as f64 * scale;
+-                                let advance = sg.x_advance as f64 * scale + style.letter_spacing;
+-
+-                                all_glyphs.push(PositionedGlyph {
+-                                    glyph_id: sg.glyph_id,
+-                                    x_offset: glyph_x,
+-                                    y_offset: glyph_y,
+-                                    x_advance: advance,
+-                                    font_size: style.font_size,
+-                                    font_family: Arc::from(resolved_family.as_str()),
+-                                    font_weight: style.font_weight,
+-                                    font_style: style.font_style,
+-                                    char_value,
+-                                    color: Some(style.color),
+-                                    href: href.map(|s| s.to_string()),
+-                                    text_decoration: style.text_decoration,
+-                                    letter_spacing: style.letter_spacing,
+-                                    cluster_text,
+-                                });
+-                                bidi_levels.push(bidi_run.level);
+-                                x += advance;
+-                            }
+-                            continue;
+-                        }
+-                    }
+-
+-                    // Fallback: standard font or shaping failure for this sub-segment
+-                    for i in start..end {
+-                        let ch = line.chars[i];
+-                        let glyph_x = x;
+-                        let char_width = font_context.char_width(
+-                            ch,
+-                            resolved_family,
+-                            style.font_weight,
+-                            italic,
+-                            style.font_size,
+-                        );
+-                        let advance = char_width + style.letter_spacing;
+-                        all_glyphs.push(PositionedGlyph {
+-                            glyph_id: ch as u16,
+-                            x_offset: glyph_x,
+-                            y_offset: 0.0,
+-                            x_advance: advance,
+-                            font_size: style.font_size,
+-                            font_family: Arc::from(resolved_family.as_str()),
+-                            font_weight: style.font_weight,
+-                            font_style: style.font_style,
+-                            char_value: ch,
+-                            color: Some(style.color),
+-                            href: href.map(|s| s.to_string()),
+-                            text_decoration: style.text_decoration,
+-                            letter_spacing: style.letter_spacing,
+-                            cluster_text: None,
+-                        });
+-                        bidi_levels.push(bidi_run.level);
+-                        x += advance;
+-                    }
++            for font_run in &font_runs {
++                let start = font_run.start;
++                let end = font_run.end;
++                if start >= end {
++                    continue;
+                 }
+-            }
+ 
+-            // Apply BiDi visual reordering if needed
+-            if has_bidi && !all_glyphs.is_empty() {
+-                all_glyphs = bidi::reorder_line_glyphs(all_glyphs, &bidi_levels);
+-                bidi::reposition_after_reorder(&mut all_glyphs, 0.0);
+-            }
+-            return all_glyphs;
+-        }
++                let sub_chars: Vec<char> = line.chars[start..end].to_vec();
++                let sub_text: String = sub_chars.iter().collect();
++                let resolved_family = &font_run.family;
+ 
+-        // Original single-font path (no comma in font_family)
+-        // Try shaping for custom fonts
+-        if let Some(font_data) =
+-            font_context.font_data(&style.font_family, style.font_weight, italic)
+-        {
+-            if has_bidi {
+-                // BiDi path: analyze runs, shape each with correct direction
+-                let bidi_runs = bidi::analyze_bidi(&line_text, direction);
+-                let units_per_em =
+-                    font_context.units_per_em(&style.font_family, style.font_weight, italic);
+-                let scale = style.font_size / units_per_em as f64;
++                if let Some(font_data) =
++                    font_context.font_data(resolved_family, style.font_weight, italic)
++                {
++                    if let Some(shaped) = shaping::shape_text(&sub_text, font_data) {
++                        let units_per_em =
++                            font_context.units_per_em(resolved_family, style.font_weight, italic);
++                        let scale = style.font_size / units_per_em as f64;
+ 
+-                let mut all_glyphs = Vec::new();
+-                let mut bidi_levels = Vec::new();
+-                let mut x = 0.0_f64;
+-
+-                for run in &bidi_runs {
+-                    let run_chars: Vec<char> = line.chars[run.char_start..run.char_end].to_vec();
+-                    let run_text: String = run_chars.iter().collect();
+-
+-                    if let Some(shaped) =
+-                        shaping::shape_text_with_direction(&run_text, font_data, run.is_rtl)
+-                    {
+                         for sg in &shaped {
+                             let cluster = sg.cluster as usize;
+-                            let char_value = run_chars.get(cluster).copied().unwrap_or(' ');
++                            let char_value = sub_chars.get(cluster).copied().unwrap_or(' ');
+ 
+-                            let cluster_text = if shaped.len() < run_chars.len() {
++                            let cluster_text = if shaped.len() < sub_chars.len() {
+                                 let cluster_end =
+-                                    self.find_cluster_end(&shaped, sg, run_chars.len());
++                                    self.find_cluster_end(&shaped, sg, sub_chars.len());
+                                 if cluster_end > cluster + 1 {
+-                                    Some(run_chars[cluster..cluster_end].iter().collect::<String>())
++                                    Some(sub_chars[cluster..cluster_end].iter().collect::<String>())
+                                 } else {
+                                     None
+                                 }
+@@ -4846,7 +4860,7 @@ impl LayoutEngine {
+                                 y_offset: glyph_y,
+                                 x_advance: advance,
+                                 font_size: style.font_size,
+-                                font_family: Arc::from(style.font_family.as_str()),
++                                font_family: Arc::from(resolved_family.as_str()),
+                                 font_weight: style.font_weight,
+                                 font_style: style.font_style,
+                                 char_value,
+@@ -4856,19 +4870,51 @@ impl LayoutEngine {
+                                 letter_spacing: style.letter_spacing,
+                                 cluster_text,
+                             });
+-                            bidi_levels.push(run.level);
+-
+                             x += advance;
+                         }
++                        continue;
+                     }
+                 }
+ 
+-                // Reorder glyphs visually and reposition
+-                let mut glyphs = bidi::reorder_line_glyphs(all_glyphs, &bidi_levels);
+-                bidi::reposition_after_reorder(&mut glyphs, 0.0);
+-                return glyphs;
++                // Fallback: standard font or shaping failure for this sub-segment
++                for i in start..end {
++                    let ch = line.chars[i];
++                    let glyph_x = x;
++                    let char_width = font_context.char_width(
++                        ch,
++                        resolved_family,
++                        style.font_weight,
++                        italic,
++                        style.font_size,
++                    );
++                    let advance = char_width + style.letter_spacing;
++                    all_glyphs.push(PositionedGlyph {
++                        glyph_id: ch as u16,
++                        x_offset: glyph_x,
++                        y_offset: 0.0,
++                        x_advance: advance,
++                        font_size: style.font_size,
++                        font_family: Arc::from(resolved_family.as_str()),
++                        font_weight: style.font_weight,
++                        font_style: style.font_style,
++                        char_value: ch,
++                        color: Some(style.color),
++                        href: href.map(|s| s.to_string()),
++                        text_decoration: style.text_decoration,
++                        letter_spacing: style.letter_spacing,
++                        cluster_text: None,
++                    });
++                    x += advance;
++                }
+             }
++            return all_glyphs;
++        }
+ 
++        // Original single-font path (no comma in font_family)
++        // Try shaping for custom fonts
++        if let Some(font_data) =
++            font_context.font_data(&style.font_family, style.font_weight, italic)
++        {
+             // Pure LTR path: shape normally
+             if let Some(shaped) = shaping::shape_text(&line_text, font_data) {
+                 let units_per_em =
+@@ -4893,7 +4939,7 @@ impl LayoutEngine {
+         }
+ 
+         // Fallback: standard fonts or shaping failure
+-        let mut glyphs: Vec<PositionedGlyph> = line
++        let glyphs: Vec<PositionedGlyph> = line
+             .chars
+             .iter()
+             .enumerate()
+@@ -4925,39 +4971,205 @@ impl LayoutEngine {
+             })
+             .collect();
+ 
+-        // For standard fonts with BiDi text, still reorder visually
+-        if has_bidi && !glyphs.is_empty() {
+-            let bidi_runs = bidi::analyze_bidi(&line_text, direction);
+-            let mut levels = Vec::with_capacity(glyphs.len());
+-            let mut char_idx = 0;
+-            for run in &bidi_runs {
+-                for _ in run.char_start..run.char_end {
+-                    if char_idx < glyphs.len() {
+-                        levels.push(run.level);
+-                        char_idx += 1;
+-                    }
+-                }
+-            }
+-            // Pad if needed
+-            while levels.len() < glyphs.len() {
+-                levels.push(unicode_bidi::Level::ltr());
+-            }
+-            glyphs = bidi::reorder_line_glyphs(glyphs, &levels);
+-            bidi::reposition_after_reorder(&mut glyphs, 0.0);
+-        }
+-
+         glyphs
+     }
+ 
+-    /// Build PositionedGlyphs for a multi-style RunBrokenLine.
+-    /// Shapes contiguous runs of the same custom font, with BiDi support.
+-    /// When a StyledChar has a comma-separated font_family, resolves each
+-    /// character to a single font before grouping for shaping.
++    /// Build the glyphs of one bidi line in visual order, positioned from x = 0.
++    ///
++    /// Levels come from the paragraph-wide analysis; rule L1 is applied to the
++    /// line and L2 orders its runs. Each run of equal level and font is shaped
++    /// in its own direction (rustybuzz returns right-to-left runs in visual
++    /// order, with contextual forms and mirrored brackets), so glyphs are
++    /// never reversed after shaping and GPOS offsets are kept.
++    ///
++    /// Returns the glyphs, whether the paragraph is right-to-left, and the
++    /// line's logical text. Trailing whitespace is omitted: it would sit at
++    /// the paragraph's visual end and only shift the alignment.
++    fn build_positioned_glyphs_bidi(
++        &self,
++        run_line: &RunBrokenLine,
++        font_context: &FontContext,
++    ) -> BidiLine {
++        let chars = &run_line.chars;
++        let rtl = chars
++            .iter()
++            .find_map(|sc| sc.bidi)
++            .is_some_and(|b| b.paragraph_is_rtl());
++        let mut end = chars.len();
++        while end > 0 && chars[end - 1].ch.is_whitespace() {
++            end -= 1;
++        }
++        let line = &chars[..end];
++        let plain: Vec<char> = line.iter().map(|sc| sc.ch).collect();
++        let logical: String = plain.iter().collect();
++        if line.is_empty() {
++            return BidiLine {
++                glyphs: Vec::new(),
++                logical_order: Vec::new(),
++                rtl,
++                text: logical,
++            };
++        }
++
++        let states: Vec<Option<bidi::CharBidi>> = line.iter().map(|sc| sc.bidi).collect();
++        let levels = bidi::line_levels(&plain, &states);
++        let mut visual_position = vec![0usize; line.len()];
++        for (visual, logical_index) in bidi::visual_order(&levels).into_iter().enumerate() {
++            visual_position[logical_index] = visual;
++        }
++        // Runs have one level, so each occupies a contiguous visual span.
++        let mut runs = crate::text::shaping_runs(font_context, line, &levels);
++        runs.sort_by_key(|run| visual_position[run.start..run.end].iter().min().copied());
++
++        let mut glyphs = Vec::with_capacity(line.len());
++        // Emission order key: the logical start of the glyph's shaping run;
++        // glyphs keep their visual order inside a run.
++        let mut logical_keys: Vec<usize> = Vec::with_capacity(line.len());
++        let mut pen = 0.0_f64;
++        for run in &runs {
++            let first = &line[run.start];
++            let italic = matches!(first.font_style, FontStyle::Italic | FontStyle::Oblique);
++            let family: Arc<str> = Arc::from(run.family.as_str());
++            let run_chars = &plain[run.start..run.end];
++            let shaped = font_context
++                .font_data(&run.family, first.font_weight, italic)
++                .and_then(|data| {
++                    let text: String = run_chars.iter().collect();
++                    shaping::shape_run(&text, data, run.rtl)
++                });
++            let font = font_context
++                .registry()
++                .resolve(&run.family, first.font_weight, italic);
++            let mut seen = std::collections::HashSet::new();
++            let missing: Vec<String> = run_chars
++                .iter()
++                .filter(|&&ch| {
++                    !ch.is_whitespace()
++                        && !ch.is_control()
++                        && !bidi::is_format_control(ch)
++                        && ch != PAGE_NUMBER_SENTINEL
++                        && ch != TOTAL_PAGES_SENTINEL
++                        && !font.has_char(ch)
++                        && seen.insert(ch)
++                })
++                .map(|&ch| format!("U+{:04X} {}", ch as u32, ch))
++                .collect();
++            if !missing.is_empty() {
++                let mut listed = missing.clone();
++                listed.truncate(8);
++                self.defect(format!(
++                    "Missing glyphs: no font in fontFamily \"{}\" covers {}{}. They render \
++                     as missing-glyph boxes; add a font for this script to the fontFamily \
++                     fallback list.",
++                    first.font_family,
++                    listed.join(", "),
++                    if missing.len() > listed.len() {
++                        ", ..."
++                    } else {
++                        ""
++                    }
++                ));
++            }
++
++            if let Some(shaped) = shaped {
++                let units_per_em =
++                    font_context.units_per_em(&run.family, first.font_weight, italic);
++                let scale = first.font_size / units_per_em as f64;
++                let texts = shaping::glyph_texts(&shaped, run_chars, run.rtl);
++                for (sg, text) in shaped.iter().zip(texts) {
++                    let cluster = (sg.cluster as usize).min(run_chars.len() - 1);
++                    logical_keys.push(run.start);
++                    let sc = &line[run.start + cluster];
++                    let char_value = text.chars().next().unwrap_or(sc.ch);
++                    let cluster_text = if text.chars().count() == 1 {
++                        None
++                    } else {
++                        Some(text)
++                    };
++                    // Marks have no advance and must not be spaced apart.
++                    let spacing = if run.tracking && sg.x_advance != 0 {
++                        sc.letter_spacing
++                    } else {
++                        0.0
++                    };
++                    let advance = sg.x_advance as f64 * scale + spacing;
++                    glyphs.push(PositionedGlyph {
++                        glyph_id: sg.glyph_id,
++                        x_offset: pen + sg.x_offset as f64 * scale,
++                        y_offset: sg.y_offset as f64 * scale,
++                        x_advance: advance,
++                        font_size: sc.font_size,
++                        font_family: family.clone(),
++                        font_weight: sc.font_weight,
++                        font_style: sc.font_style,
++                        char_value,
++                        color: Some(sc.color),
++                        href: sc.href.clone(),
++                        text_decoration: sc.text_decoration,
++                        letter_spacing: spacing,
++                        cluster_text,
++                    });
++                    pen += advance;
++                }
++                continue;
++            }
++
++            // Standard fonts: one glyph per character, reversed and mirrored
++            // at odd levels.
++            let mut indices: Vec<usize> = (run.start..run.end).collect();
++            if run.rtl {
++                indices.reverse();
++            }
++            for i in indices {
++                logical_keys.push(run.start);
++                let sc = &line[i];
++                let ch = if run.rtl {
++                    bidi::mirror_char(sc.ch)
++                } else {
++                    sc.ch
++                };
++                let spacing = if run.tracking { sc.letter_spacing } else { 0.0 };
++                let advance =
++                    font_context.char_width(ch, &run.family, sc.font_weight, italic, sc.font_size)
++                        + spacing;
++                glyphs.push(PositionedGlyph {
++                    glyph_id: ch as u16,
++                    x_offset: pen,
++                    y_offset: 0.0,
++                    x_advance: advance,
++                    font_size: sc.font_size,
++                    font_family: family.clone(),
++                    font_weight: sc.font_weight,
++                    font_style: sc.font_style,
++                    char_value: ch,
++                    color: Some(sc.color),
++                    href: sc.href.clone(),
++                    text_decoration: sc.text_decoration,
++                    letter_spacing: spacing,
++                    cluster_text: None,
++                });
++                pen += advance;
++            }
++        }
++        // Stable sort: glyphs stay left to right within a level run.
++        let mut logical_order: Vec<usize> = (0..glyphs.len()).collect();
++        logical_order.sort_by_key(|&i| logical_keys[i]);
++        BidiLine {
++            glyphs,
++            logical_order,
++            rtl,
++            text: logical,
++        }
++    }
++
++    /// Build PositionedGlyphs for a left-to-right multi-style RunBrokenLine.
++    /// Shapes contiguous runs of the same custom font. When a StyledChar has a
++    /// comma-separated font_family, resolves each character to a single font
++    /// before grouping for shaping. Bidi lines use `build_positioned_glyphs_bidi`.
+     fn build_positioned_glyphs_runs(
+         &self,
+         run_line: &RunBrokenLine,
+         font_context: &FontContext,
+-        direction: Direction,
+     ) -> Vec<PositionedGlyph> {
+         let chars = &run_line.chars;
+         if chars.is_empty() {
+@@ -4984,16 +5196,7 @@ impl LayoutEngine {
+             })
+             .collect();
+ 
+-        let line_text: String = chars.iter().map(|c| c.ch).collect();
+-        let has_bidi = !bidi::is_pure_ltr(&line_text, direction);
+-        let bidi_runs = if has_bidi {
+-            Some(bidi::analyze_bidi(&line_text, direction))
+-        } else {
+-            None
+-        };
+-
+         let mut glyphs = Vec::new();
+-        let mut bidi_levels = Vec::new();
+         let mut i = 0;
+ 
+         while i < chars.len() {
+@@ -5001,32 +5204,21 @@ impl LayoutEngine {
+             let italic = matches!(sc.font_style, FontStyle::Italic | FontStyle::Oblique);
+             let resolved_family = &resolved_families[i];
+ 
+-            // Determine if this char is in an RTL BiDi run
+-            let is_rtl = bidi_runs.as_ref().is_some_and(|runs| {
+-                runs.iter()
+-                    .any(|r| i >= r.char_start && i < r.char_end && r.is_rtl)
+-            });
+-
+             // Check for custom font with shaping (using resolved single family)
+             if let Some(font_data) = font_context.font_data(resolved_family, sc.font_weight, italic)
+             {
+-                // Find contiguous run with same resolved font AND same BiDi direction
++                // Find contiguous run with same resolved font
+                 let run_start = i;
+                 let mut run_end = i + 1;
+                 while run_end < chars.len() {
+                     let next = &chars[run_end];
+                     let next_italic =
+                         matches!(next.font_style, FontStyle::Italic | FontStyle::Oblique);
+-                    let next_is_rtl = bidi_runs.as_ref().is_some_and(|runs| {
+-                        runs.iter()
+-                            .any(|r| run_end >= r.char_start && run_end < r.char_end && r.is_rtl)
+-                    });
+                     // Group by resolved family, not original comma chain
+                     if resolved_families[run_end] == *resolved_family
+                         && next.font_weight == sc.font_weight
+                         && next_italic == italic
+                         && (next.font_size - sc.font_size).abs() < 0.001
+-                        && next_is_rtl == is_rtl
+                     {
+                         run_end += 1;
+                     } else {
+@@ -5035,9 +5227,7 @@ impl LayoutEngine {
+                 }
+ 
+                 let run_text: String = chars[run_start..run_end].iter().map(|c| c.ch).collect();
+-                if let Some(shaped) =
+-                    shaping::shape_text_with_direction(&run_text, font_data, is_rtl)
+-                {
++                if let Some(shaped) = shaping::shape_text(&run_text, font_data) {
+                     let units_per_em =
+                         font_context.units_per_em(resolved_family, sc.font_weight, italic);
+                     let scale = sc.font_size / units_per_em as f64;
+@@ -5062,15 +5252,6 @@ impl LayoutEngine {
+                     for g in &mut run_glyphs {
+                         g.font_family = resolved_family_arc.clone();
+                     }
+-                    // Track BiDi levels for each glyph
+-                    let run_level = if is_rtl {
+-                        unicode_bidi::Level::rtl()
+-                    } else {
+-                        unicode_bidi::Level::ltr()
+-                    };
+-                    for _ in &run_glyphs {
+-                        bidi_levels.push(run_level);
+-                    }
+                     glyphs.extend(run_glyphs);
+                     i = run_end;
+                     continue;
+@@ -5102,20 +5283,9 @@ impl LayoutEngine {
+                 letter_spacing: sc.letter_spacing,
+                 cluster_text: None,
+             });
+-            bidi_levels.push(if is_rtl {
+-                unicode_bidi::Level::rtl()
+-            } else {
+-                unicode_bidi::Level::ltr()
+-            });
+             i += 1;
+         }
+ 
+-        // Apply BiDi visual reordering if needed
+-        if has_bidi && !glyphs.is_empty() {
+-            glyphs = bidi::reorder_line_glyphs(glyphs, &bidi_levels);
+-            bidi::reposition_after_reorder(&mut glyphs, 0.0);
+-        }
+-
+         glyphs
+     }
+ 
+@@ -5888,6 +6058,12 @@ impl LayoutEngine {
+                 // accepts a slightly-overfull line greedy would wrap).
+                 // Divergence here is exactly what FORME_MEASURE_CHECK exists
+                 // to catch.
++                let bidi_runs = if runs.is_empty() {
++                    bidi_content_runs(content, style)
++                } else {
++                    None
++                };
++                let runs = bidi_runs.as_deref().unwrap_or(runs);
+                 if !runs.is_empty() {
+                     let mut styled_chars: Vec<StyledChar> = Vec::new();
+                     for run in runs {
+@@ -5909,9 +6085,11 @@ impl LayoutEngine {
+                                 href: None,
+                                 text_decoration: run_style.text_decoration,
+                                 letter_spacing: run_style.letter_spacing,
++                                bidi: None,
+                             });
+                         }
+                     }
++                    annotate_bidi(&mut styled_chars, style.direction);
+                     let justify = matches!(style.text_align, TextAlign::Justify);
+                     let broken_lines = match style.line_breaking {
+                         LineBreaking::Optimal => self.text_layout.break_runs_into_lines_optimal(
+@@ -6297,12 +6475,74 @@ impl LayoutEngine {
+     }
+ 
+     /// Measure intrinsic width of a node (used for flex row sizing).
++    /// Widest hard-broken line of a bidi paragraph, measured with the same
++    /// shaped runs as layout (contextual forms differ from isolated widths).
++    /// `None` for left-to-right text.
++    fn bidi_intrinsic_width(
++        &self,
++        content: &str,
++        runs: &[TextRun],
++        style: &ResolvedStyle,
++        font_context: &FontContext,
++    ) -> Option<f64> {
++        let content_runs;
++        let runs = if runs.is_empty() {
++            content_runs = bidi_content_runs(content, style)?;
++            &content_runs[..]
++        } else {
++            runs
++        };
++        let mut chars: Vec<StyledChar> = Vec::new();
++        for run in runs {
++            let run_style = run.style.resolve(Some(style), 0.0);
++            let mut prev_is_whitespace = true;
++            for ch in substitute_page_placeholders(&run.content).chars() {
++                chars.push(StyledChar {
++                    ch: apply_char_transform(ch, run_style.text_transform, prev_is_whitespace),
++                    font_family: run_style.font_family.clone(),
++                    font_size: run_style.font_size,
++                    font_weight: run_style.font_weight,
++                    font_style: run_style.font_style,
++                    color: run_style.color,
++                    href: None,
++                    text_decoration: run_style.text_decoration,
++                    letter_spacing: run_style.letter_spacing,
++                    bidi: None,
++                });
++                prev_is_whitespace = ch.is_whitespace();
++            }
++        }
++        annotate_bidi(&mut chars, style.direction);
++        if chars.iter().all(|sc| sc.bidi.is_none()) {
++            return None;
++        }
++        let widths = self.text_layout.measure_styled_chars(font_context, &chars);
++        let mut widest = 0.0_f64;
++        let mut line = 0.0_f64;
++        for (sc, w) in chars.iter().zip(widths) {
++            if matches!(sc.ch, '\n' | '\r' | '\u{2028}' | '\u{2029}') {
++                widest = widest.max(line);
++                line = 0.0;
++            } else {
++                line += w;
++            }
++        }
++        Some(widest.max(line))
++    }
++
+     fn measure_intrinsic_width(
+         &self,
+         node: &Node,
+         style: &ResolvedStyle,
+         font_context: &FontContext,
+     ) -> f64 {
++        if let NodeKind::Text { content, runs, .. } | NodeKind::Heading { content, runs, .. } =
++            &node.kind
++        {
++            if let Some(width) = self.bidi_intrinsic_width(content, runs, style, font_context) {
++                return width + 0.01 + style.padding.horizontal() + style.margin.horizontal();
++            }
++        }
+         match &node.kind {
+             NodeKind::Svg { width, .. } => {
+                 *width + style.padding.horizontal() + style.margin.horizontal()
+@@ -7027,6 +7267,8 @@ impl LayoutEngine {
+                             width: text_width,
+                             height: *font_size,
+                             word_spacing: 0.0,
++                            logical_text: None,
++                            logical_order: None,
+                         };
+ 
+                         watermark_elements.push(LayoutElement {
+@@ -8864,3 +9106,312 @@ mod tests {
+         );
+     }
+ }
++
++#[cfg(test)]
++mod bidi_tests {
++    //! Paragraph-level bidi layout. Standard fonts keep these independent of
++    //! font files: glyph order, alignment, and mirroring do not depend on
++    //! glyph coverage.
++    use super::*;
++    use crate::font::FontContext;
++    use serde_json::{json, Value};
++
++    const LEFT: f64 = 40.0;
++    const WIDTH: f64 = 515.28; // A4 minus 40 pt margins
++
++    fn layout(children: Value) -> (Vec<LayoutPage>, Vec<String>) {
++        let doc: Document = serde_json::from_value(json!({
++            "children": [{
++                "kind": { "type": "Page", "config": {
++                    "size": "A4",
++                    "margin": { "top": 40, "right": 40, "bottom": 40, "left": 40 },
++                    "wrap": true
++                } },
++                "style": {},
++                "children": children
++            }],
++            "metadata": {},
++            "defaultPage": { "size": "A4", "margin": { "top": 40, "right": 40, "bottom": 40, "left": 40 }, "wrap": true }
++        }))
++        .expect("valid document");
++        let engine = LayoutEngine::new();
++        let pages = engine.layout(&doc, &FontContext::new());
++        let warnings = engine.take_warnings();
++        (pages, warnings)
++    }
++
++    fn text(content: &str, style: Value) -> Value {
++        json!({ "kind": { "type": "Text", "content": content }, "style": style, "children": [] })
++    }
++
++    fn text_lines(elements: &[LayoutElement], out: &mut Vec<LayoutElement>) {
++        for el in elements {
++            if el.node_type.as_deref() == Some("TextLine") {
++                out.push(el.clone());
++            }
++            text_lines(&el.children, out);
++        }
++    }
++
++    fn lines(pages: &[LayoutPage]) -> Vec<LayoutElement> {
++        let mut out = Vec::new();
++        for page in pages {
++            text_lines(&page.elements, &mut out);
++        }
++        out
++    }
++
++    fn line(el: &LayoutElement) -> &TextLine {
++        match &el.draw {
++            DrawCommand::Text { lines, .. } => &lines[0],
++            _ => panic!("TextLine without text"),
++        }
++    }
++
++    fn visual(el: &LayoutElement) -> String {
++        line(el).glyphs.iter().map(|g| g.char_value).collect()
++    }
++
++    fn info_texts(pages: &[LayoutPage]) -> Vec<String> {
++        fn walk(e: &[ElementInfo], out: &mut Vec<String>) {
++            for el in e {
++                if el.node_type == "TextLine" {
++                    out.push(el.text_content.clone().unwrap_or_default());
++                }
++                walk(&el.children, out);
++            }
++        }
++        let mut out = Vec::new();
++        for page in LayoutInfo::from_pages(pages).pages {
++            walk(&page.elements, &mut out);
++        }
++        out
++    }
++
++    #[test]
++    fn rtl_paragraph_orders_runs_visually_and_reports_logical_text() {
++        let (pages, _) = layout(json!([text("abc ابج def.", json!({ "direction": "rtl" }))]));
++        let lines = lines(&pages);
++        assert_eq!(lines.len(), 1);
++        // UAX#9: Latin runs stay left to right inside the right-to-left line;
++        // the final period belongs to the paragraph and sits at the far left.
++        assert_eq!(visual(&lines[0]), ".def جبا abc");
++        assert_eq!(info_texts(&pages), vec!["abc ابج def."]);
++        let style = lines[0].resolved_style.as_ref().unwrap();
++        assert_eq!(style.direction, Direction::Rtl);
++        assert!(matches!(style.text_align, TextAlign::Right));
++        let right = lines[0].x + lines[0].width;
++        assert!(
++            (right - (LEFT + WIDTH)).abs() < 0.01,
++            "right aligned, ends at {right}"
++        );
++        // Glyphs are placed left to right without gaps or overlaps.
++        let glyphs = &line(&lines[0]).glyphs;
++        for pair in glyphs.windows(2) {
++            assert!((pair[0].x_offset + pair[0].x_advance - pair[1].x_offset).abs() < 1e-9);
++        }
++    }
++
++    #[test]
++    fn levels_span_styled_runs_of_one_paragraph() {
++        let runs = json!({
++            "kind": { "type": "Text", "content": "", "runs": [
++                { "content": "abc " },
++                { "content": "ابج", "style": { "fontWeight": 700 } },
++                { "content": " def." }
++            ] },
++            "style": { "direction": "rtl" },
++            "children": []
++        });
++        let (pages, _) = layout(json!([runs]));
++        let lines = lines(&pages);
++        assert_eq!(visual(&lines[0]), ".def جبا abc");
++        let bold: String = line(&lines[0])
++            .glyphs
++            .iter()
++            .filter(|g| g.font_weight == 700)
++            .map(|g| g.char_value)
++            .collect();
++        assert_eq!(bold, "جبا");
++    }
++
++    #[test]
++    fn auto_direction_uses_first_strong_character() {
++        let (pages, _) = layout(json!([
++            text("ابج abc", json!({ "direction": "auto" })),
++            text("abc ابج", json!({ "direction": "auto" })),
++        ]));
++        let lines = lines(&pages);
++        assert_eq!(visual(&lines[0]), "abc جبا");
++        assert_eq!(
++            lines[0].resolved_style.as_ref().unwrap().direction,
++            Direction::Rtl
++        );
++        assert!((lines[0].x + lines[0].width - (LEFT + WIDTH)).abs() < 0.01);
++        assert_eq!(visual(&lines[1]), "abc جبا");
++        assert_eq!(
++            lines[1].resolved_style.as_ref().unwrap().direction,
++            Direction::Ltr
++        );
++        assert!((lines[1].x - LEFT).abs() < 0.01);
++    }
++
++    #[test]
++    fn explicit_text_align_is_kept_for_rtl() {
++        let (pages, _) = layout(json!([
++            text(
++                "ابج abc",
++                json!({ "direction": "rtl", "textAlign": "Left" })
++            ),
++            text(
++                "ابج abc",
++                json!({ "direction": "rtl", "textAlign": "Center" })
++            ),
++        ]));
++        let lines = lines(&pages);
++        assert!((lines[0].x - LEFT).abs() < 0.01);
++        let center = lines[1].x + lines[1].width / 2.0;
++        assert!((center - (LEFT + WIDTH / 2.0)).abs() < 0.01);
++    }
++
++    #[test]
++    fn wrapped_lines_are_reordered_independently() {
++        let words = "ابج abc ".repeat(12);
++        let (pages, _) = layout(json!([text(
++            words.trim_end(),
++            json!({ "direction": "rtl", "width": { "Pt": 120 } })
++        )]));
++        let lines = lines(&pages);
++        assert!(
++            lines.len() >= 4,
++            "expected wrapping, got {} lines",
++            lines.len()
++        );
++        let texts = info_texts(&pages);
++        assert_eq!(
++            texts.join(" ").split_whitespace().collect::<Vec<_>>(),
++            words.split_whitespace().collect::<Vec<_>>()
++        );
++        for (el, logical) in lines.iter().zip(&texts) {
++            // Each line on its own: words in reverse order, Arabic letters
++            // reversed, Latin words left to right.
++            let expected: Vec<String> = logical
++                .split(' ')
++                .rev()
++                .map(|w| {
++                    if w.is_ascii() {
++                        w.to_string()
++                    } else {
++                        w.chars().rev().collect()
++                    }
++                })
++                .collect();
++            assert_eq!(visual(el), expected.join(" "));
++            assert!((el.x + el.width - (LEFT + 120.0)).abs() < 0.01);
++        }
++    }
++
++    #[test]
++    fn justified_rtl_paragraph_ends_on_a_right_aligned_line() {
++        let words = "ابج abc ".repeat(12);
++        let (pages, _) = layout(json!([text(
++            words.trim_end(),
++            json!({ "direction": "rtl", "width": { "Pt": 120 }, "textAlign": "Justify" })
++        )]));
++        let lines = lines(&pages);
++        let (last, rest) = lines.split_last().unwrap();
++        for el in rest {
++            assert!((el.x - LEFT).abs() < 0.01 && (el.width - 120.0).abs() < 0.01);
++        }
++        assert!((last.x + last.width - (LEFT + 120.0)).abs() < 0.01);
++    }
++
++    #[test]
++    fn ltr_paragraph_with_rtl_word_keeps_its_direction() {
++        let (pages, _) = layout(json!([text("abc ابج def", json!({}))]));
++        let lines = lines(&pages);
++        assert_eq!(visual(&lines[0]), "abc جبا def");
++        assert!((lines[0].x - LEFT).abs() < 0.01);
++    }
++
++    #[test]
++    fn rtl_brackets_are_mirrored_for_unshaped_fonts() {
++        let (pages, _) = layout(json!([text("ابج (دهو)", json!({ "direction": "rtl" }))]));
++        // Visual: the logical closing bracket is drawn first, mirrored.
++        assert_eq!(visual(&lines(&pages)[0]), "(وهد) جبا");
++    }
++
++    #[test]
++    fn rtl_flex_row_starts_at_the_right() {
++        let row = json!({
++            "kind": { "type": "View" },
++            "style": { "flexDirection": "Row", "direction": "rtl" },
++            "children": [
++                text("first", json!({ "width": { "Pt": 100 } })),
++                text("second", json!({ "width": { "Pt": 50 } })),
++            ]
++        });
++        let (pages, _) = layout(json!([row]));
++        let row = &pages[0].elements[0];
++        assert!((row.children[0].x - (LEFT + WIDTH - 100.0)).abs() < 0.01);
++        assert!((row.children[1].x - (LEFT + WIDTH - 150.0)).abs() < 0.01);
++    }
++
++    #[test]
++    fn rtl_table_starts_with_the_right_column() {
++        let table = json!({
++            "kind": { "type": "Table", "columns": [{ "width": { "Fraction": 0.25 } }, { "width": { "Fraction": 0.75 } }] },
++            "style": { "direction": "rtl" },
++            "children": [{
++                "kind": { "type": "TableRow", "is_header": false },
++                "style": {},
++                "children": [
++                    { "kind": { "type": "TableCell", "col_span": 1, "row_span": 1 }, "style": {}, "children": [text("a", json!({}))] },
++                    { "kind": { "type": "TableCell", "col_span": 1, "row_span": 1 }, "style": {}, "children": [text("b", json!({}))] }
++                ]
++            }]
++        });
++        let (pages, _) = layout(json!([table]));
++        fn cells(e: &[LayoutElement], out: &mut Vec<(f64, f64)>) {
++            for el in e {
++                if el.node_type.as_deref() == Some("TableCell") {
++                    out.push((el.x, el.width));
++                }
++                cells(&el.children, out);
++            }
++        }
++        let mut found = Vec::new();
++        cells(&pages[0].elements, &mut found);
++        assert_eq!(found.len(), 2);
++        assert!(
++            (found[0].0 - (LEFT + WIDTH * 0.75)).abs() < 0.01,
++            "{found:?}"
++        );
++        assert!((found[1].0 - LEFT).abs() < 0.01, "{found:?}");
++    }
++
++    #[test]
++    fn missing_rtl_glyphs_are_reported() {
++        let (_, warnings) = layout(json!([text("abc ابج", json!({ "direction": "auto" }))]));
++        assert!(
++            warnings
++                .iter()
++                .any(|w| w.starts_with("Missing glyphs") && w.contains("U+0627")),
++            "{warnings:?}"
++        );
++    }
++
++    #[test]
++    fn layout_info_reports_direction() {
++        let (pages, _) = layout(json!([
++            text("abc", json!({ "direction": "auto" })),
++            text("ابج", json!({ "direction": "auto" })),
++        ]));
++        let info = serde_json::to_value(LayoutInfo::from_pages(&pages)).unwrap();
++        let elements = &info["pages"][0]["elements"];
++        assert_eq!(elements[0]["style"]["direction"], "auto");
++        assert_eq!(elements[0]["children"][0]["style"]["direction"], "ltr");
++        assert_eq!(elements[1]["children"][0]["style"]["direction"], "rtl");
++        assert_eq!(elements[1]["children"][0]["style"]["textAlign"], "Right");
++    }
++}
+diff --git a/engine/src/pdf/mod.rs b/engine/src/pdf/mod.rs
+index f61857d..3bb6248 100644
+--- a/engine/src/pdf/mod.rs
++++ b/engine/src/pdf/mod.rs
+@@ -84,6 +84,56 @@ pub struct PdfWriter;
+ struct CustomFontEmbedData {
+     glyph_to_cid: HashMap<(u16, String), u16>,
+     char_to_cid: HashMap<char, u16>,
++    /// Filled outlines, in font units, of glyphs drawn without source text.
++    outlines: HashMap<u16, String>,
++    units_per_em: u16,
++}
++
++/// A glyph that carries no source text (for example the separate dot glyph
++/// of a decomposed Arabic letter). Neither ToUnicode nor ActualText can give
++/// it an empty mapping that every extractor honours, so it is painted as a
++/// path after the text object instead of being shown as text.
++struct OutlineGlyph {
++    x: f64,
++    y: f64,
++    scale: f64,
++    color: Color,
++    path: String,
++}
++
++/// PDF path operators for a glyph outline, in font units.
++struct PdfOutline {
++    path: String,
++    x: f32,
++    y: f32,
++}
++
++impl ttf_parser::OutlineBuilder for PdfOutline {
++    fn move_to(&mut self, x: f32, y: f32) {
++        let _ = writeln!(self.path, "{x} {y} m");
++        (self.x, self.y) = (x, y);
++    }
++    fn line_to(&mut self, x: f32, y: f32) {
++        let _ = writeln!(self.path, "{x} {y} l");
++        (self.x, self.y) = (x, y);
++    }
++    fn quad_to(&mut self, x1: f32, y1: f32, x: f32, y: f32) {
++        // Exact cubic form of a quadratic segment.
++        let (c1x, c1y) = (
++            self.x + 2.0 / 3.0 * (x1 - self.x),
++            self.y + 2.0 / 3.0 * (y1 - self.y),
++        );
++        let (c2x, c2y) = (x + 2.0 / 3.0 * (x1 - x), y + 2.0 / 3.0 * (y1 - y));
++        let _ = writeln!(self.path, "{c1x} {c1y} {c2x} {c2y} {x} {y} c");
++        (self.x, self.y) = (x, y);
++    }
++    fn curve_to(&mut self, x1: f32, y1: f32, x2: f32, y2: f32, x: f32, y: f32) {
++        let _ = writeln!(self.path, "{x1} {y1} {x2} {y2} {x} {y} c");
++        (self.x, self.y) = (x, y);
++    }
++    fn close(&mut self) {
++        let _ = writeln!(self.path, "h");
++    }
+ }
+ 
+ struct FontUsage {
+@@ -1683,6 +1733,7 @@ impl PdfWriter {
+                     let _ = writeln!(stream, "{:.4} Tw", line.word_spacing);
+                     let mut x_cursor = line.x;
+                     let mut spaces_before = 0usize;
++                    let mut outline_glyphs: Vec<OutlineGlyph> = Vec::new();
+ 
+                     // Track group spans for per-group text decoration
+                     let mut group_spans: Vec<(f64, f64, TextDecoration, Color)> = Vec::new();
+@@ -1706,69 +1757,73 @@ impl PdfWriter {
+                         };
+                         let font_name = format!("F{}", idx);
+ 
+-                        // Each style run starts at its layout position.
+-                        let _ = writeln!(
+-                            stream,
+-                            "{:.3} {:.3} {:.3} rg\n/{} {:.4} Tf\n{:.4} Tc\n{:.4} Tw\n1 0 0 1 {:.4} {:.4} Tm",
+-                            glyph_color.r,
+-                            glyph_color.g,
+-                            glyph_color.b,
+-                            font_name,
+-                            first.font_size,
+-                            first.letter_spacing,
+-                            line.word_spacing,
+-                            x_cursor,
+-                            pdf_y
+-                        );
++                        // Bidi lines are written below in logical order.
++                        if line.logical_order.is_none() {
++                            // Each style run starts at its layout position.
++                            let _ = writeln!(
++                                stream,
++                                "{:.3} {:.3} {:.3} rg\n/{} {:.4} Tf\n{:.4} Tc\n{:.4} Tw\n1 0 0 1 {:.4} {:.4} Tm",
++                                glyph_color.r,
++                                glyph_color.g,
++                                glyph_color.b,
++                                font_name,
++                                first.font_size,
++                                first.letter_spacing,
++                                line.word_spacing,
++                                x_cursor,
++                                pdf_y
++                            );
+ 
+-                        // Check for page number sentinel characters
+-                        let raw_text: String = group.iter().map(|g| g.char_value).collect();
+-                        let has_placeholder = raw_text.contains(PAGE_NUMBER_SENTINEL)
+-                            || raw_text.contains(TOTAL_PAGES_SENTINEL);
++                            // Check for page number sentinel characters
++                            let raw_text: String = group.iter().map(|g| g.char_value).collect();
++                            let has_placeholder = raw_text.contains(PAGE_NUMBER_SENTINEL)
++                                || raw_text.contains(TOTAL_PAGES_SENTINEL);
+ 
+-                        let is_custom = builder.custom_font_data.contains_key(&font_key);
++                            let is_custom = builder.custom_font_data.contains_key(&font_key);
+ 
+-                        if is_custom {
+-                            if let Some(embed_data) = builder.custom_font_data.get(&font_key) {
+-                                if has_placeholder {
+-                                    let pn = PAGE_NUMBER_SENTINEL.to_string();
+-                                    let tp = TOTAL_PAGES_SENTINEL.to_string();
+-                                    let text_after = raw_text
+-                                        .replace(&pn, &page_number.to_string())
+-                                        .replace(&tp, &total_pages.to_string());
+-                                    let mut hex = String::new();
+-                                    for ch in text_after.chars() {
+-                                        let cid = embed_data.char_to_cid.get(&ch).copied().unwrap_or(0);
+-                                        let _ = write!(hex, "{:04X}", cid);
+-                                    }
+-                                    let _ = writeln!(stream, "<{}> Tj", hex);
+-                                } else {
+-                                    Self::write_positioned_custom_glyphs(
+-                                        stream, group, embed_data, line.x, pdf_y,
+-                                        spaces_before, line.word_spacing,
+-                                    );
+-                                }
+-                            }
+-                        } else {
+-                            let pn = PAGE_NUMBER_SENTINEL.to_string();
+-                            let tp = TOTAL_PAGES_SENTINEL.to_string();
+-                            let text_after = raw_text
+-                                .replace(&pn, &page_number.to_string())
+-                                .replace(&tp, &total_pages.to_string());
+-                            let mut text_str = String::new();
+-                            for ch in text_after.chars() {
+-                                let b = Self::unicode_to_winansi(ch).unwrap_or(b'?');
+-                                match b {
+-                                    b'\\' => text_str.push_str("\\\\"),
+-                                    b'(' => text_str.push_str("\\("),
+-                                    b')' => text_str.push_str("\\)"),
+-                                    0x20..=0x7E => text_str.push(b as char),
+-                                    _ => {
+-                                        let _ = write!(text_str, "\\{:03o}", b);
++                            if is_custom {
++                                if let Some(embed_data) = builder.custom_font_data.get(&font_key) {
++                                    if has_placeholder {
++                                        let pn = PAGE_NUMBER_SENTINEL.to_string();
++                                        let tp = TOTAL_PAGES_SENTINEL.to_string();
++                                        let text_after = raw_text
++                                            .replace(&pn, &page_number.to_string())
++                                            .replace(&tp, &total_pages.to_string());
++                                        let mut hex = String::new();
++                                        for ch in text_after.chars() {
++                                            let cid = embed_data.char_to_cid.get(&ch).copied().unwrap_or(0);
++                                            let _ = write!(hex, "{:04X}", cid);
++                                        }
++                                        let _ = writeln!(stream, "<{}> Tj", hex);
++                                    } else {
++                                        Self::write_positioned_custom_glyphs(
++                                            stream, group, embed_data, line.x, pdf_y,
++                                            spaces_before, line.word_spacing,
++                                            glyph_color, &mut outline_glyphs,
++                                        );
+                                     }
+                                 }
++                            } else {
++                                let pn = PAGE_NUMBER_SENTINEL.to_string();
++                                let tp = TOTAL_PAGES_SENTINEL.to_string();
++                                let text_after = raw_text
++                                    .replace(&pn, &page_number.to_string())
++                                    .replace(&tp, &total_pages.to_string());
++                                let mut text_str = String::new();
++                                for ch in text_after.chars() {
++                                    let b = Self::unicode_to_winansi(ch).unwrap_or(b'?');
++                                    match b {
++                                        b'\\' => text_str.push_str("\\\\"),
++                                        b'(' => text_str.push_str("\\("),
++                                        b')' => text_str.push_str("\\)"),
++                                        0x20..=0x7E => text_str.push(b as char),
++                                        _ => {
++                                            let _ = write!(text_str, "\\{:03o}", b);
++                                        }
++                                    }
++                                }
++                                let _ = writeln!(stream, "({}) Tj", text_str);
+                             }
+-                            let _ = writeln!(stream, "({}) Tj", text_str);
+                         }
+ 
+                         // Record span for per-group text decoration
+@@ -1791,7 +1846,21 @@ impl PdfWriter {
+                         }
+                     }
+ 
++                    if let Some(order) = &line.logical_order {
++                        self.write_logical_line(
++                            stream,
++                            line,
++                            order,
++                            *color,
++                            builder,
++                            pdf_y,
++                            page_number,
++                            total_pages,
++                            &mut outline_glyphs,
++                        );
++                    }
+                     let _ = writeln!(stream, "ET");
++                    Self::write_outline_glyphs(stream, &outline_glyphs);
+ 
+                     // Draw per-group text decorations
+                     for (span_x, span_end_x, dec, dec_color) in &group_spans {
+@@ -2094,6 +2163,7 @@ impl PdfWriter {
+                 // Render text centered on origin
+                 let _ = writeln!(stream, "BT");
+                 let _ = writeln!(stream, "{:.3} {:.3} {:.3} rg", color.r, color.g, color.b);
++                let mut outline_glyphs: Vec<OutlineGlyph> = Vec::new();
+                 if let Some(line) = lines.first() {
+                     let groups = Self::group_glyphs_by_style(&line.glyphs);
+                     let text_width = line.width;
+@@ -2127,6 +2197,7 @@ impl PdfWriter {
+                                 Self::write_positioned_custom_glyphs(
+                                     stream, group, embed_data, -text_width / 2.0,
+                                     -cap_height / 2.0, 0, 0.0,
++                                    *color, &mut outline_glyphs,
+                                 );
+                             }
+                         } else {
+@@ -2139,6 +2210,7 @@ impl PdfWriter {
+                     }
+                 }
+                 let _ = writeln!(stream, "ET");
++                Self::write_outline_glyphs(stream, &outline_glyphs);
+                 let _ = writeln!(stream, "Q");
+                 if tagged_mcid.is_some() {
+                     let _ = writeln!(stream, "EMC");
+@@ -3562,6 +3634,22 @@ impl PdfWriter {
+             }
+         };
+ 
++        // Glyphs without source text are painted from their outlines and need
++        // no character code.
++        let mut outlines = HashMap::new();
++        glyph_texts.retain(|(gid, text)| {
++            if text.is_empty() {
++                let mut outline = PdfOutline {
++                    path: String::new(),
++                    x: 0.0,
++                    y: 0.0,
++                };
++                face.outline_glyph(ttf_parser::GlyphId(*gid), &mut outline);
++                outlines.insert(*gid, outline.path);
++            }
++            !text.is_empty()
++        });
++
+         // Include unshaped placeholder characters, then allocate stable CIDs by
+         // (original GID, source string), not by GID alone. This preserves both
+         // ligature sequences and literal presentation characters in one font.
+@@ -3719,6 +3807,8 @@ impl PdfWriter {
+             CustomFontEmbedData {
+                 glyph_to_cid,
+                 char_to_cid,
++                outlines,
++                units_per_em,
+             },
+         );
+ 
+@@ -3861,6 +3951,9 @@ impl PdfWriter {
+     /// The shaper has already applied kerning, mark offsets, and letter spacing.
+     /// Emit those positions directly; a plain Tj would instead use hmtx advances
+     /// and lose GPOS. Absolute matrices also preserve vertical mark positioning.
++    /// Glyphs without source text are collected in `outlines` for
++    /// [`Self::write_outline_glyphs`] after the text object ends.
++    #[allow(clippy::too_many_arguments)]
+     fn write_positioned_custom_glyphs(
+         stream: &mut String,
+         glyphs: &[&PositionedGlyph],
+@@ -3869,19 +3962,170 @@ impl PdfWriter {
+         baseline_y: f64,
+         mut spaces_before: usize,
+         word_spacing: f64,
++        color: Color,
++        outlines: &mut Vec<OutlineGlyph>,
+     ) {
+         let _ = writeln!(stream, "0 Tc\n0 Tw");
+         for glyph in glyphs {
+-            let cid = embed_data.glyph_to_cid
+-                .get(&(glyph.glyph_id, Self::glyph_text(glyph)))
+-                .copied().unwrap_or(0);
++            let text = Self::glyph_text(glyph);
+             let x = line_x + glyph.x_offset + spaces_before as f64 * word_spacing;
+             let y = baseline_y + glyph.y_offset;
++            if text.is_empty() {
++                if let Some(path) = embed_data.outlines.get(&glyph.glyph_id) {
++                    outlines.push(OutlineGlyph {
++                        x,
++                        y,
++                        scale: glyph.font_size / embed_data.units_per_em.max(1) as f64,
++                        color: glyph.color.unwrap_or(color),
++                        path: path.clone(),
++                    });
++                }
++                continue;
++            }
++            let cid = embed_data.glyph_to_cid
++                .get(&(glyph.glyph_id, text))
++                .copied().unwrap_or(0);
+             let _ = writeln!(stream, "1 0 0 1 {:.4} {:.4} Tm\n<{:04X}> Tj", x, y, cid);
+             if glyph.char_value == ' ' { spaces_before += 1; }
+         }
+     }
+ 
++    /// Write a bidi line in `TextLine::logical_order`: directional runs in
++    /// reading order, each glyph at its visual position. Content-order
++    /// extractors (pdf.js, tagged reading order) then join runs in reading
++    /// order; glyphs inside a run stay left to right, which keeps their word
++    /// spacing detection working.
++    #[allow(clippy::too_many_arguments)]
++    fn write_logical_line(
++        &self,
++        stream: &mut String,
++        line: &TextLine,
++        order: &[usize],
++        default_color: Color,
++        builder: &PdfBuilder,
++        pdf_y: f64,
++        page_number: usize,
++        total_pages: usize,
++        outlines: &mut Vec<OutlineGlyph>,
++    ) {
++        // Justification widens each space; positions follow visual order.
++        let mut xs = Vec::with_capacity(line.glyphs.len());
++        let mut spaces = 0usize;
++        for glyph in &line.glyphs {
++            xs.push(line.x + glyph.x_offset + spaces as f64 * line.word_spacing);
++            if glyph.char_value == ' ' {
++                spaces += 1;
++            }
++        }
++        let _ = writeln!(stream, "0 Tc\n0 Tw");
++        let mut current: Option<(usize, u64, [u64; 3])> = None;
++        for &i in order {
++            let Some(glyph) = line.glyphs.get(i) else {
++                continue;
++            };
++            let color = glyph.color.unwrap_or(default_color);
++            let italic = matches!(glyph.font_style, FontStyle::Italic | FontStyle::Oblique);
++            let key = FontKey {
++                family: glyph.font_family.to_string(),
++                weight: glyph.font_weight,
++                italic,
++            };
++            let text = Self::glyph_text(glyph);
++            let (x, y) = (xs[i], pdf_y + glyph.y_offset);
++            let embed = builder.custom_font_data.get(&key);
++            if let (Some(embed), true) = (embed, text.is_empty()) {
++                if let Some(path) = embed.outlines.get(&glyph.glyph_id) {
++                    outlines.push(OutlineGlyph {
++                        x,
++                        y,
++                        scale: glyph.font_size / embed.units_per_em.max(1) as f64,
++                        color,
++                        path: path.clone(),
++                    });
++                }
++                continue;
++            }
++            let idx = self.font_index(
++                &glyph.font_family,
++                glyph.font_weight,
++                glyph.font_style,
++                &builder.font_objects,
++            );
++            let state = (
++                idx,
++                glyph.font_size.to_bits(),
++                [color.r.to_bits(), color.g.to_bits(), color.b.to_bits()],
++            );
++            if current != Some(state) {
++                let _ = writeln!(
++                    stream,
++                    "{:.3} {:.3} {:.3} rg\n/F{} {:.4} Tf",
++                    color.r, color.g, color.b, idx, glyph.font_size
++                );
++                current = Some(state);
++            }
++            let shown = if glyph.char_value == PAGE_NUMBER_SENTINEL {
++                page_number.to_string()
++            } else if glyph.char_value == TOTAL_PAGES_SENTINEL {
++                total_pages.to_string()
++            } else {
++                String::new()
++            };
++            let _ = writeln!(stream, "1 0 0 1 {:.4} {:.4} Tm", x, y);
++            if let Some(embed) = embed {
++                let mut hex = String::new();
++                if shown.is_empty() {
++                    let cid = embed
++                        .glyph_to_cid
++                        .get(&(glyph.glyph_id, text))
++                        .copied()
++                        .unwrap_or(0);
++                    let _ = write!(hex, "{:04X}", cid);
++                } else {
++                    for ch in shown.chars() {
++                        let cid = embed.char_to_cid.get(&ch).copied().unwrap_or(0);
++                        let _ = write!(hex, "{:04X}", cid);
++                    }
++                }
++                let _ = writeln!(stream, "<{}> Tj", hex);
++            } else {
++                let source = if shown.is_empty() { glyph.char_value.to_string() } else { shown };
++                let mut literal = String::new();
++                for ch in source.chars() {
++                    match Self::unicode_to_winansi(ch).unwrap_or(b'?') {
++                        b'\\' => literal.push_str("\\\\"),
++                        b'(' => literal.push_str("\\("),
++                        b')' => literal.push_str("\\)"),
++                        b @ 0x20..=0x7E => literal.push(b as char),
++                        b => {
++                            let _ = write!(literal, "\\{:03o}", b);
++                        }
++                    }
++                }
++                let _ = writeln!(stream, "({}) Tj", literal);
++            }
++        }
++    }
++
++    /// Paint glyphs collected by `write_positioned_custom_glyphs` as filled
++    /// outlines. Must be called outside a BT/ET text object.
++    fn write_outline_glyphs(stream: &mut String, outlines: &[OutlineGlyph]) {
++        for glyph in outlines {
++            let _ = write!(
++                stream,
++                "q\n{:.3} {:.3} {:.3} rg\n{:.6} 0 0 {:.6} {:.4} {:.4} cm\n{}f\nQ\n",
++                glyph.color.r,
++                glyph.color.g,
++                glyph.color.b,
++                glyph.scale,
++                glyph.scale,
++                glyph.x,
++                glyph.y,
++                glyph.path
++            );
++        }
++    }
++
+     fn group_glyphs_by_style(glyphs: &[PositionedGlyph]) -> Vec<Vec<&PositionedGlyph>> {
+         if glyphs.is_empty() {
+             return vec![];
+@@ -4689,6 +4933,8 @@ mod tests {
+                                 cluster_text: None,
+                             }],
+                             word_spacing: 0.0,
++                            logical_text: None,
++                            logical_order: None,
+                         }],
+                         color: Color::BLACK,
+                         text_decoration: TextDecoration::None,
+@@ -4734,6 +4980,8 @@ mod tests {
+                                 cluster_text: None,
+                             }],
+                             word_spacing: 0.0,
++                            logical_text: None,
++                            logical_order: None,
+                         }],
+                         color: Color::BLACK,
+                         text_decoration: TextDecoration::None,
+@@ -4919,6 +5167,8 @@ mod tests {
+                             cluster_text: None,
+                         }],
+                         word_spacing: 0.0,
++                        logical_text: None,
++                        logical_order: None,
+                     }],
+                     color: Color::BLACK,
+                     text_decoration: TextDecoration::None,
+diff --git a/engine/src/style/mod.rs b/engine/src/style/mod.rs
+index 4ee0ff6..24f2277 100644
+--- a/engine/src/style/mod.rs
++++ b/engine/src/style/mod.rs
+@@ -643,6 +643,9 @@ pub struct ResolvedStyle {
+     pub font_style: FontStyle,
+     pub line_height: f64,
+     pub text_align: TextAlign,
++    /// True when no element in the inheritance chain sets `textAlign`; each
++    /// paragraph then aligns to its resolved direction (CSS `start`).
++    pub text_align_from_direction: bool,
+     pub letter_spacing: f64,
+     pub word_spacing: f64,
+     pub text_decoration: TextDecoration,
+@@ -795,6 +798,8 @@ impl Style {
+                     }
+                 })
+             },
++            text_align_from_direction: self.text_align.is_none()
++                && parent.is_none_or(|p| p.text_align_from_direction),
+             letter_spacing: self.letter_spacing.unwrap_or(0.0),
+             word_spacing: self.word_spacing.unwrap_or(0.0),
+             text_decoration: self
+diff --git a/engine/src/text/bidi.rs b/engine/src/text/bidi.rs
+index 75176cb..a1ece11 100644
+--- a/engine/src/text/bidi.rs
++++ b/engine/src/text/bidi.rs
+@@ -1,17 +1,38 @@
+ //! # BiDi Text Support
+ //!
+ //! Implements UAX#9 (Unicode Bidirectional Algorithm) for mixed LTR/RTL text.
+-//! Uses `unicode-bidi` for analysis and `unicode-script` for script detection.
++//! Uses `unicode-bidi` for analysis.
+ //!
+ //! The pipeline:
+-//! 1. Analyze paragraph direction → split into directional runs
+-//! 2. Each run is shaped independently with the correct direction
+-//! 3. After line breaking, runs on each line are visually reordered
+-//! 4. Glyphs within RTL runs are reversed
++//! 1. Resolve embedding levels once for the whole logical paragraph, across
++//!    every styled run of a Text node (rules P2–I2, see [`paragraph_levels`]).
++//! 2. Break lines in logical order, measuring each directional run with the
++//!    shaping direction it will be drawn with.
++//! 3. Per line, reset trailing whitespace and separators to the paragraph
++//!    level (rule L1, [`line_levels`]) and compute the visual order of the
++//!    characters (rule L2, [`visual_order`]).
++//! 4. Shape each run of equal level and font in its own direction. The shaper
++//!    returns right-to-left runs in visual order and applies mirroring, so
++//!    the runs are placed left to right without reversing glyphs again.
+ 
+-use crate::layout::PositionedGlyph;
+ use crate::style::Direction;
+-use unicode_bidi::{BidiInfo, Level};
++use unicode_bidi::{bidi_class, BidiClass, BidiInfo, Level};
++
++/// Resolved bidi state of one logical character.
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++pub struct CharBidi {
++    /// Resolved embedding level (even = LTR, odd = RTL).
++    pub level: u8,
++    /// Embedding level of the paragraph that contains the character.
++    pub paragraph_level: u8,
++}
++
++impl CharBidi {
++    /// True when the containing paragraph is right-to-left.
++    pub fn paragraph_is_rtl(&self) -> bool {
++        !self.paragraph_level.is_multiple_of(2)
++    }
++}
+ 
+ /// A contiguous run of text with a single BiDi direction.
+ #[derive(Debug, Clone)]
+@@ -136,88 +157,149 @@ fn is_rtl_char(ch: char) -> bool {
+     )
+ }
+ 
+-/// Reorder positioned glyphs on a line for visual display.
++/// True when `text` with this base direction needs the bidi pipeline.
+ ///
+-/// Takes glyphs in logical order with their BiDi levels and produces
+-/// visual order. RTL runs are reversed so they display correctly.
+-pub fn reorder_line_glyphs(
+-    mut glyphs: Vec<PositionedGlyph>,
+-    levels: &[Level],
+-) -> Vec<PositionedGlyph> {
+-    if glyphs.is_empty() || levels.is_empty() {
+-        return glyphs;
+-    }
++/// Left-to-right paragraphs without right-to-left characters keep the
++/// original single-direction layout path untouched.
++pub fn needs_bidi(text: &str, direction: Direction) -> bool {
++    !is_pure_ltr(text, direction)
++}
+ 
+-    // Use the standard BiDi reordering algorithm (L2):
+-    // Find the highest level, then reverse all runs at that level and above,
+-    // working down to the lowest odd level.
+-    let min_level = levels.iter().copied().min().unwrap_or(Level::ltr());
+-    let max_level = levels.iter().copied().max().unwrap_or(Level::ltr());
+-
+-    // Only reorder if there's actually an RTL level
+-    if !max_level.is_rtl() {
+-        return glyphs;
+-    }
+-
+-    // L2: For each level from max down to the lowest odd level,
+-    // reverse any contiguous run of glyphs at that level or higher
+-    let min_odd = if min_level.is_rtl() {
+-        min_level
+-    } else {
+-        Level::rtl() // level 1
++/// Resolve embedding levels for a logical text (UAX#9 P2–I2).
++///
++/// Returns one entry per `char`. `Ltr` and `Rtl` set the paragraph level
++/// explicitly; `Auto` applies rules P2/P3 (first strong character, skipping
++/// isolates), defaulting to left-to-right. Text separated by paragraph
++/// separators (for example `\n`) is resolved as separate paragraphs, each
++/// with its own level under `Auto`.
++pub fn paragraph_levels(text: &str, direction: Direction) -> Vec<CharBidi> {
++    let default_level = match direction {
++        Direction::Ltr => Some(Level::ltr()),
++        Direction::Rtl => Some(Level::rtl()),
++        Direction::Auto => None,
+     };
+-
+-    let mut current_level = max_level;
+-    while current_level >= min_odd {
+-        let mut i = 0;
+-        while i < glyphs.len() {
+-            if levels.get(i).copied().unwrap_or(Level::ltr()) >= current_level {
+-                // Find the end of this run at >= current_level
+-                let start = i;
+-                while i < glyphs.len()
+-                    && levels.get(i).copied().unwrap_or(Level::ltr()) >= current_level
+-                {
+-                    i += 1;
+-                }
+-                // Reverse the run
+-                glyphs[start..i].reverse();
+-            } else {
+-                i += 1;
+-            }
++    let fallback = default_level.unwrap_or_else(Level::ltr).number();
++    let info = BidiInfo::new(text, default_level);
++    let mut paragraphs = info.paragraphs.iter().peekable();
++    let mut out = Vec::with_capacity(text.len());
++    for (byte, _) in text.char_indices() {
++        while paragraphs.peek().is_some_and(|p| byte >= p.range.end) {
++            paragraphs.next();
+         }
+-        // Move to next lower level
+-        if current_level.number() == 0 {
+-            break;
+-        }
+-        current_level = Level::new(current_level.number() - 1).unwrap_or(Level::ltr());
++        let paragraph_level = paragraphs
++            .peek()
++            .filter(|p| p.range.contains(&byte))
++            .map(|p| p.level.number())
++            .unwrap_or(fallback);
++        out.push(CharBidi {
++            level: info
++                .levels
++                .get(byte)
++                .map(|l| l.number())
++                .unwrap_or(fallback),
++            paragraph_level,
++        });
+     }
+-
+-    glyphs
++    out
+ }
+ 
+-/// Reposition glyphs after visual reordering.
++/// Apply rule L1 to the levels of one line.
+ ///
+-/// After `reorder_line_glyphs`, x_offsets still reflect logical order.
+-/// This recalculates x positions from left to right based on advance widths.
+-pub fn reposition_after_reorder(glyphs: &mut [PositionedGlyph], start_x: f64) {
+-    let mut x = start_x;
+-    for g in glyphs.iter_mut() {
+-        g.x_offset = x;
+-        x += g.x_advance;
++/// Segment separators, and whitespace or isolate controls preceding them or
++/// the end of the line, return to the paragraph level. Characters without
++/// bidi state (none are produced by the layout engine) take the level of the
++/// preceding character.
++pub fn line_levels(chars: &[char], bidi: &[Option<CharBidi>]) -> Vec<Level> {
++    let paragraph = bidi
++        .iter()
++        .flatten()
++        .next()
++        .map(|b| b.paragraph_level)
++        .unwrap_or(0);
++    let mut previous = paragraph;
++    let mut levels: Vec<u8> = bidi
++        .iter()
++        .map(|b| {
++            previous = b.map(|b| b.level).unwrap_or(previous);
++            previous
++        })
++        .collect();
++    let mut reset = true;
++    for i in (0..chars.len()).rev() {
++        match bidi_class(chars[i]) {
++            BidiClass::S | BidiClass::B => {
++                levels[i] = paragraph;
++                reset = true;
++            }
++            BidiClass::WS
++            | BidiClass::FSI
++            | BidiClass::LRI
++            | BidiClass::RLI
++            | BidiClass::PDI
++            | BidiClass::BN
++            | BidiClass::LRE
++            | BidiClass::RLE
++            | BidiClass::LRO
++            | BidiClass::RLO
++            | BidiClass::PDF
++                if reset =>
++            {
++                levels[i] = paragraph;
++            }
++            _ => reset = false,
++        }
+     }
++    levels
++        .into_iter()
++        .map(|n| Level::new(n).unwrap_or_else(|_| Level::ltr()))
++        .collect()
+ }
+ 
+-/// Build a byte-offset → char-index map for a string.
+-#[allow(dead_code)]
+-fn build_byte_to_char_map(text: &str) -> Vec<usize> {
+-    let mut map = vec![0usize; text.len() + 1];
+-    let mut char_idx = 0;
+-    for (byte_idx, _) in text.char_indices() {
+-        map[byte_idx] = char_idx;
+-        char_idx += 1;
++/// Visual order of one line (rule L2): `result[visual_index] = logical_index`.
++pub fn visual_order(levels: &[Level]) -> Vec<usize> {
++    BidiInfo::reorder_visual(levels)
++}
++
++/// Characters of cursive (joining) right-to-left scripts: Arabic, Syriac,
++/// NKo, Mandaic, Hanifi Rohingya, and Adlam.
++pub fn is_cursive(ch: char) -> bool {
++    matches!(ch,
++        '\u{0600}'..='\u{077F}'
++            | '\u{07C0}'..='\u{07FF}'
++            | '\u{0840}'..='\u{08FF}'
++            | '\u{FB50}'..='\u{FDFF}'
++            | '\u{FE70}'..='\u{FEFF}'
++            | '\u{10D00}'..='\u{10D3F}'
++            | '\u{1E900}'..='\u{1E95F}')
++}
++
++/// Invisible bidi and joining controls; fonts need no glyph for them.
++pub fn is_format_control(ch: char) -> bool {
++    matches!(ch,
++        '\u{061C}' | '\u{200B}'..='\u{200F}' | '\u{202A}'..='\u{202E}'
++            | '\u{2060}'..='\u{2069}' | '\u{FEFF}')
++}
++
++/// Mirrored form of a paired punctuation character (Bidi_Mirroring_Glyph).
++///
++/// OpenType shaping mirrors right-to-left runs itself; this is only for
++/// unshaped standard-font glyphs drawn at an odd level.
++pub fn mirror_char(ch: char) -> char {
++    match ch {
++        '(' => ')',
++        ')' => '(',
++        '[' => ']',
++        ']' => '[',
++        '{' => '}',
++        '}' => '{',
++        '<' => '>',
++        '>' => '<',
++        '\u{00AB}' => '\u{00BB}',
++        '\u{00BB}' => '\u{00AB}',
++        '\u{2039}' => '\u{203A}',
++        '\u{203A}' => '\u{2039}',
++        other => other,
+     }
+-    map[text.len()] = char_idx;
+-    map
+ }
+ 
+ #[cfg(test)]
+@@ -297,3 +379,84 @@ mod tests {
+         assert!(matches!(resolved.text_align, TextAlign::Left));
+     }
+ }
++
++#[cfg(test)]
++mod paragraph_tests {
++    use super::*;
++
++    fn numbers(levels: &[Level]) -> Vec<u8> {
++        levels.iter().map(|l| l.number()).collect()
++    }
++
++    #[test]
++    fn auto_paragraph_level_follows_first_strong_character() {
++        assert_eq!(
++            paragraph_levels("abc ابج", Direction::Auto)[0].paragraph_level,
++            0
++        );
++        assert_eq!(
++            paragraph_levels("123 ابج abc", Direction::Auto)[0].paragraph_level,
++            1
++        );
++        assert_eq!(
++            paragraph_levels("ابج abc", Direction::Ltr)[0].paragraph_level,
++            0
++        );
++        assert_eq!(paragraph_levels("", Direction::Auto).len(), 0);
++    }
++
++    #[test]
++    fn separate_paragraphs_resolve_their_own_level() {
++        let states = paragraph_levels("abc\nابج", Direction::Auto);
++        assert!(!states[0].paragraph_is_rtl());
++        assert!(states[4].paragraph_is_rtl());
++    }
++
++    #[test]
++    fn numbers_inside_rtl_text_form_ltr_runs() {
++        let text = "ابج 250 دهو";
++        let states: Vec<Option<CharBidi>> = paragraph_levels(text, Direction::Rtl)
++            .into_iter()
++            .map(Some)
++            .collect();
++        let chars: Vec<char> = text.chars().collect();
++        let levels = line_levels(&chars, &states);
++        assert_eq!(numbers(&levels), vec![1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1]);
++        let visual: String = visual_order(&levels)
++            .into_iter()
++            .map(|i| chars[i])
++            .collect();
++        assert_eq!(visual, "وهد 250 جبا");
++    }
++
++    #[test]
++    fn trailing_whitespace_returns_to_the_paragraph_level() {
++        let chars: Vec<char> = "abc \t x  ".chars().collect();
++        let state = |level| {
++            Some(CharBidi {
++                level,
++                paragraph_level: 1,
++            })
++        };
++        let states = vec![state(2); chars.len()];
++        let levels = line_levels(&chars, &states);
++        // The tab, the whitespace before it, and the trailing whitespace;
++        // whitespace after the tab keeps its level.
++        assert_eq!(numbers(&levels), vec![2, 2, 2, 1, 1, 2, 2, 1, 1]);
++    }
++
++    #[test]
++    fn cursive_scripts_are_not_letter_spaced() {
++        assert!(is_cursive('\u{0628}'));
++        assert!(!is_cursive('\u{05D0}'));
++        assert!(!is_cursive('\u{0780}'));
++        assert!(!is_cursive('a'));
++    }
++
++    #[test]
++    fn mirroring_swaps_paired_brackets_only() {
++        assert_eq!(mirror_char('('), ')');
++        assert_eq!(mirror_char('\u{00AB}'), '\u{00BB}');
++        assert_eq!(mirror_char('a'), 'a');
++    }
++}
+diff --git a/engine/src/text/mod.rs b/engine/src/text/mod.rs
+index 4fc5156..b24446d 100644
+--- a/engine/src/text/mod.rs
++++ b/engine/src/text/mod.rs
+@@ -38,6 +38,114 @@ pub struct StyledChar {
+     pub href: Option<String>,
+     pub text_decoration: TextDecoration,
+     pub letter_spacing: f64,
++    /// Resolved bidi state when the paragraph uses the bidi pipeline.
++    /// `None` for left-to-right paragraphs, which keep the original path.
++    pub bidi: Option<bidi::CharBidi>,
++}
++
++/// The single font family that draws `sc`.
++///
++/// Mirrors `font::fallback::segment_by_font`: a single family is used when it
++/// covers the character (whitespace and page-number sentinels always count as
++/// covered); otherwise, and for comma-separated chains, the first family with
++/// a glyph wins, then the builtin Noto Sans, then Helvetica.
++pub(crate) fn resolve_char_family(font_context: &FontContext, sc: &StyledChar) -> String {
++    let italic = matches!(sc.font_style, FontStyle::Italic | FontStyle::Oblique);
++    if !sc.font_family.contains(',') {
++        let family = sc.font_family.trim().trim_matches('"').trim_matches('\'');
++        let font = font_context
++            .registry()
++            .resolve(family, sc.font_weight, italic);
++        if sc.ch.is_whitespace()
++            || sc.ch == PAGE_NUMBER_SENTINEL
++            || sc.ch == TOTAL_PAGES_SENTINEL
++            || font.has_char(sc.ch)
++        {
++            return family.to_string();
++        }
++    }
++    font_context
++        .registry()
++        .resolve_for_char(&sc.font_family, sc.ch, sc.font_weight, italic)
++        .1
++}
++
++/// A contiguous logical range of a bidi line that is shaped as one unit:
++/// equal embedding level, resolved font family, weight, style, and size.
++pub(crate) struct ShapingRun {
++    pub start: usize,
++    pub end: usize,
++    pub family: String,
++    pub rtl: bool,
++    /// False for right-to-left runs of a cursive script such as Arabic:
++    /// letter spacing would break the joins, so it is not applied (CSS Text
++    /// recommends against tracking cursive scripts).
++    pub tracking: bool,
++}
++
++/// Split `chars[..end]` into shaping runs using per-char `levels`.
++pub(crate) fn shaping_runs(
++    font_context: &FontContext,
++    chars: &[StyledChar],
++    levels: &[unicode_bidi::Level],
++) -> Vec<ShapingRun> {
++    // Neutral and weak characters (spaces, punctuation, digits, marks) stay
++    // in the preceding character's font when it has them, so a fallback
++    // chain does not split an Arabic phrase at every space or comma.
++    let mut families: Vec<String> = Vec::with_capacity(chars.len());
++    for (i, sc) in chars.iter().enumerate() {
++        let sticky = i > 0
++            && !matches!(
++                unicode_bidi::bidi_class(sc.ch),
++                unicode_bidi::BidiClass::L
++                    | unicode_bidi::BidiClass::R
++                    | unicode_bidi::BidiClass::AL
++            )
++            && (sc.ch.is_whitespace() || {
++                let italic = matches!(sc.font_style, FontStyle::Italic | FontStyle::Oblique);
++                font_context
++                    .registry()
++                    .resolve(&families[i - 1], sc.font_weight, italic)
++                    .has_char(sc.ch)
++            });
++        let family = if sticky {
++            families[i - 1].clone()
++        } else {
++            resolve_char_family(font_context, sc)
++        };
++        families.push(family);
++    }
++    let mut runs: Vec<ShapingRun> = Vec::new();
++    for (i, sc) in chars.iter().enumerate() {
++        let italic = matches!(sc.font_style, FontStyle::Italic | FontStyle::Oblique);
++        if let Some(run) = runs.last_mut() {
++            let first = &chars[run.start];
++            let first_italic = matches!(first.font_style, FontStyle::Italic | FontStyle::Oblique);
++            if levels[i] == levels[run.start]
++                && families[i] == run.family
++                && sc.font_weight == first.font_weight
++                && italic == first_italic
++                && (sc.font_size - first.font_size).abs() < 0.001
++            {
++                run.end = i + 1;
++                continue;
++            }
++        }
++        runs.push(ShapingRun {
++            start: i,
++            end: i + 1,
++            family: families[i].clone(),
++            rtl: levels[i].is_rtl(),
++            tracking: true,
++        });
++    }
++    for run in &mut runs {
++        run.tracking = !(run.rtl
++            && chars[run.start..run.end]
++                .iter()
++                .any(|sc| bidi::is_cursive(sc.ch)));
++    }
++    runs
+ }
+ 
+ /// A line of text from multi-style (runs) line breaking.
+@@ -653,10 +761,17 @@ impl TextLayout {
+     /// Measure widths for styled chars, using shaping for contiguous runs
+     /// that share the same custom font. Falls back to per-char measurement
+     /// for standard fonts or when shaping fails.
+-    fn measure_styled_chars(&self, font_context: &FontContext, chars: &[StyledChar]) -> Vec<f64> {
++    pub(crate) fn measure_styled_chars(
++        &self,
++        font_context: &FontContext,
++        chars: &[StyledChar],
++    ) -> Vec<f64> {
+         if chars.is_empty() {
+             return vec![];
+         }
++        if chars.iter().any(|sc| sc.bidi.is_some()) {
++            return self.measure_bidi_chars(font_context, chars);
++        }
+ 
+         let mut widths = vec![0.0_f64; chars.len()];
+         let mut i = 0;
+@@ -734,6 +849,78 @@ impl TextLayout {
+         widths
+     }
+ 
++    /// Measure a bidi paragraph with the same runs and directions that the
++    /// glyph builder will shape, so contextual Arabic forms are measured as
++    /// drawn. Each run is shaped in isolation, exactly like a line, which keeps
++    /// the breaker from underestimating a line's width.
++    fn measure_bidi_chars(&self, font_context: &FontContext, chars: &[StyledChar]) -> Vec<f64> {
++        let plain: Vec<char> = chars.iter().map(|sc| sc.ch).collect();
++        let bidi_state: Vec<Option<bidi::CharBidi>> = chars.iter().map(|sc| sc.bidi).collect();
++        // Embedding levels only; L1 depends on the final line ends and does
++        // not change shaping inside a run.
++        let mut previous = 0u8;
++        let levels: Vec<unicode_bidi::Level> = bidi_state
++            .iter()
++            .map(|b| {
++                previous = b.map(|b| b.level).unwrap_or(previous);
++                unicode_bidi::Level::new(previous).unwrap_or_else(|_| unicode_bidi::Level::ltr())
++            })
++            .collect();
++        let mut widths = vec![0.0_f64; chars.len()];
++        for run in shaping_runs(font_context, chars, &levels) {
++            let sc = &chars[run.start];
++            let italic = matches!(sc.font_style, FontStyle::Italic | FontStyle::Oblique);
++            let shaped = font_context
++                .font_data(&run.family, sc.font_weight, italic)
++                .and_then(|data| {
++                    let text: String = plain[run.start..run.end].iter().collect();
++                    shaping::shape_run(&text, data, run.rtl)
++                });
++            if let Some(shaped) = shaped {
++                let units_per_em = font_context.units_per_em(&run.family, sc.font_weight, italic);
++                let scale = sc.font_size / units_per_em as f64;
++                for glyph in &shaped {
++                    let i = run.start + glyph.cluster as usize;
++                    if i < run.end {
++                        widths[i] += glyph.x_advance as f64 * scale;
++                    }
++                }
++                if run.tracking {
++                    for i in run.start..run.end {
++                        widths[i] += chars[i].letter_spacing;
++                    }
++                }
++            } else {
++                for i in run.start..run.end {
++                    widths[i] = font_context.char_width(
++                        plain[i],
++                        &run.family,
++                        chars[i].font_weight,
++                        italic,
++                        chars[i].font_size,
++                    ) + if run.tracking {
++                        chars[i].letter_spacing
++                    } else {
++                        0.0
++                    };
++                }
++            }
++            for i in run.start..run.end {
++                let ch = plain[i];
++                if ch == PAGE_NUMBER_SENTINEL || ch == TOTAL_PAGES_SENTINEL {
++                    widths[i] = font_context.char_width(
++                        ch,
++                        &run.family,
++                        chars[i].font_weight,
++                        italic,
++                        chars[i].font_size,
++                    ) + chars[i].letter_spacing;
++                }
++            }
++        }
++        widths
++    }
++
+     /// Break multi-style text (runs) into lines that fit within `max_width`.
+     pub fn break_runs_into_lines(
+         &self,
+diff --git a/engine/src/text/shaping.rs b/engine/src/text/shaping.rs
+index ed1d4a7..16daf62 100644
+--- a/engine/src/text/shaping.rs
++++ b/engine/src/text/shaping.rs
+@@ -85,6 +85,95 @@ pub fn shape_text_with_direction(
+     Some(glyphs)
+ }
+ 
++/// Shape one directional run with an explicit direction.
++///
++/// The script is still guessed from the text. Right-to-left runs come back in
++/// visual (left-to-right) order with contextual forms and mirrored glyphs;
++/// left-to-right runs keep logical order even when they contain only
++/// neutral characters such as digits inside a right-to-left paragraph.
++pub fn shape_run(text: &str, font_data: &[u8], rtl: bool) -> Option<Vec<ShapedGlyph>> {
++    let face = rustybuzz::Face::from_slice(font_data, 0)?;
++    let mut buffer = rustybuzz::UnicodeBuffer::new();
++    buffer.push_str(text);
++    buffer.set_direction(if rtl {
++        rustybuzz::Direction::RightToLeft
++    } else {
++        rustybuzz::Direction::LeftToRight
++    });
++    let output = rustybuzz::shape(&face, &[], buffer);
++    let mut char_index = std::collections::HashMap::new();
++    for (ci, (bi, _)) in text.char_indices().enumerate() {
++        char_index.insert(bi, ci);
++    }
++    Some(
++        output
++            .glyph_infos()
++            .iter()
++            .zip(output.glyph_positions())
++            .map(|(info, pos)| ShapedGlyph {
++                glyph_id: info.glyph_id as u16,
++                cluster: char_index
++                    .get(&(info.cluster as usize))
++                    .copied()
++                    .unwrap_or(0) as u32,
++                x_advance: pos.x_advance,
++                y_advance: pos.y_advance,
++                x_offset: pos.x_offset,
++                y_offset: pos.y_offset,
++            })
++            .collect(),
++    )
++}
++
++/// Source text for each shaped glyph of one run.
++///
++/// The glyphs of a cluster are contiguous; HarfBuzz reverses right-to-left
++/// output as a whole, so within a cluster they are in logical order only for
++/// left-to-right runs. A single glyph receives the whole cluster (ligatures
++/// such as lam-alef). Otherwise the first spacing glyph in logical order (the
++/// base) receives the first character plus any surplus, and the remaining
++/// characters (marks) go to the remaining glyphs in logical order. Extra
++/// glyphs of a decomposed character, such as the separate dot glyphs of
++/// some Arabic fonts, receive no text.
++pub fn glyph_texts(glyphs: &[ShapedGlyph], chars: &[char], rtl: bool) -> Vec<String> {
++    let mut texts = vec![String::new(); glyphs.len()];
++    let mut i = 0;
++    while i < glyphs.len() {
++        let cluster = glyphs[i].cluster as usize;
++        let mut j = i + 1;
++        while j < glyphs.len() && glyphs[j].cluster as usize == cluster {
++            j += 1;
++        }
++        let end = glyphs
++            .iter()
++            .map(|g| g.cluster as usize)
++            .filter(|&c| c > cluster)
++            .min()
++            .unwrap_or(chars.len())
++            .min(chars.len());
++        let source = &chars[cluster.min(end)..end];
++        let mut logical: Vec<usize> = (i..j).collect();
++        if rtl {
++            logical.reverse();
++        }
++        let base = logical
++            .iter()
++            .position(|&g| glyphs[g].x_advance != 0)
++            .unwrap_or(0);
++        let surplus = source.len().saturating_sub(logical.len());
++        let mut rest = source.iter().skip(1 + surplus);
++        for (k, &g) in logical.iter().enumerate() {
++            texts[g] = if k == base {
++                source.iter().take(1 + surplus).collect()
++            } else {
++                rest.next().map(|ch| ch.to_string()).unwrap_or_default()
++            };
++        }
++        i = j;
++    }
++    texts
++}
++
+ /// Shape a segment of text for a specific font, returning shaped glyphs
+ /// and a mapping from glyph index to character range.
+ ///
+@@ -233,6 +322,37 @@ mod tests {
+         assert!((widths[2] - 5.0).abs() < 0.001);
+     }
+ 
++    fn glyph(cluster: u32, x_advance: i32) -> ShapedGlyph {
++        ShapedGlyph {
++            glyph_id: 1,
++            cluster,
++            x_advance,
++            y_advance: 0,
++            x_offset: 0,
++            y_offset: 0,
++        }
++    }
++
++    #[test]
++    fn test_glyph_texts_rtl_ligature_and_mark() {
++        // Right-to-left output is reversed as a whole: cluster 2 ("cd") is a
++        // one-glyph ligature; cluster 0 ("ab") is a base with a mark, which
++        // HarfBuzz emits mark first.
++        let chars: Vec<char> = "abcd".chars().collect();
++        let glyphs = vec![glyph(2, 500), glyph(0, 0), glyph(0, 500)];
++        assert_eq!(glyph_texts(&glyphs, &chars, true), vec!["cd", "b", "a"]);
++    }
++
++    #[test]
++    fn test_glyph_texts_decomposition_keeps_text_on_base_once() {
++        // One character drawn as a spacing skeleton plus a zero-width dot.
++        let chars: Vec<char> = "xy".chars().collect();
++        let ltr = vec![glyph(0, 500), glyph(0, 0), glyph(1, 500)];
++        assert_eq!(glyph_texts(&ltr, &chars, false), vec!["x", "", "y"]);
++        let rtl = vec![glyph(1, 500), glyph(0, 0), glyph(0, 500)];
++        assert_eq!(glyph_texts(&rtl, &chars, true), vec!["y", "", "x"]);
++    }
++
+     #[test]
+     fn test_cluster_widths_ligature() {
+         // Simulate a ligature: 1 glyph for 2 chars (cluster 0 covers chars 0 and 1)
+diff --git a/engine/tests/glyph_clone_allocs.rs b/engine/tests/glyph_clone_allocs.rs
+index 732304c..86ef600 100644
+--- a/engine/tests/glyph_clone_allocs.rs
++++ b/engine/tests/glyph_clone_allocs.rs
+@@ -72,6 +72,8 @@ fn cloning_glyphs_shares_font_family() {
+         width: 500.0,
+         height: 14.0,
+         word_spacing: 0.0,
++        logical_text: None,
++        logical_order: None,
+     };
+ 
+     ARMED.store(true, Relaxed);
+diff --git a/packages/core/src/index.ts b/packages/core/src/index.ts
+index 18ec7a4..e017455 100644
+--- a/packages/core/src/index.ts
++++ b/packages/core/src/index.ts
+@@ -63,6 +63,12 @@ export type ElementFontStyle = 'Normal' | 'Italic' | 'Oblique';
+ export type ElementTextAlign = 'Left' | 'Right' | 'Center' | 'Justify';
+ export type ElementTextDecoration = 'None' | 'Underline' | 'LineThrough';
+ export type ElementTextTransform = 'None' | 'Uppercase' | 'Lowercase' | 'Capitalize';
++/**
++ * Base direction. Text containers report the authored value (`'auto'`
++ * included); their `TextLine` children report the resolved paragraph
++ * direction and the alignment actually applied.
++ */
++export type ElementDirection = 'ltr' | 'rtl' | 'auto';
+ export type ElementOverflow = 'Visible' | 'Hidden';
+ export type ElementPosition = 'Relative' | 'Absolute';
+ 
+@@ -198,6 +204,7 @@ export interface ElementStyleInfo {
+   textAlign: ElementTextAlign;
+   textDecoration: ElementTextDecoration;
+   textTransform: ElementTextTransform;
++  direction: ElementDirection;
+ 
+   // Colors + visibility
+   color: Color;

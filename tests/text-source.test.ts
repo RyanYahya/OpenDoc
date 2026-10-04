@@ -162,3 +162,257 @@ test('a JSON source snapshot resolves reordered rows consistently through one re
     assert.equal(title.digest, note.digest);
   }
 });
+
+/** Resolve within explicit component instances, as the renderer reports them. */
+function scoped(source: string) {
+  const parsed = createTextSourceResolver('documents/proof/index.tsx', source);
+  const at = (needle: string) => {
+    const index = source.indexOf(needle);
+    assert.ok(index >= 0 && source.indexOf(needle, index + 1) < 0, `unique needle ${needle}`);
+    const before = source.slice(0, index);
+    return { line: before.split('\n').length, column: before.length - before.lastIndexOf('\n') };
+  };
+  return (needle: string, owners: string[], text?: string, slot = 'children') => {
+    const { line, column } = at(needle);
+    return parsed.resolveAt(line, column, slot, 0, { owners: owners.map(at), text });
+  };
+}
+
+const helperDocument = `function Title({ id, children }: { id: string; children: string }) {
+  return <View><Heading id={id} level={2}>{children}</Heading></View>;
+}
+function Item({ id, title, when, heading, children }: { id: string; title: string; when?: string; heading?: [string, string]; children?: any }) {
+  return <Block id={id}>
+    {heading && <Title id={heading[0]}>{heading[1]}</Title>}
+    <Paragraph id={\`\${id}-title\`}>{title}</Paragraph>
+    {when && <Paragraph id={\`\${id}-when\`}>{when}</Paragraph>}
+    {children}
+  </Block>;
+}
+function Points({ id, items }: { id: string; items: string[] }) {
+  const row = (text: string, i: number) => <Paragraph key={i} id={\`\${id}-\${i + 1}\`}>{text}</Paragraph>;
+  return <View>{items.length > 0 && row(items[0], 0)}{items.slice(1).map((text, i) => row(text, i + 1))}</View>;
+}
+export default () => <Document>
+  <Title id="section">First section</Title>
+  <Item id="alpha" heading={['history-title', 'History']} title="Alpha role" when="2020 to 2022">
+    <Points id="alpha-points" items={['First point.', 'Second point.', 'Third point.']} />
+  </Item>
+  <Item id="beta" title="Beta role" when="2020 to 2022" />
+  <Points id="repeated" items={['Same point.', 'Same point.']} />
+</Document>;`;
+
+test('local component props resolve through the exact instance that rendered them', () => {
+  const value = scoped(helperDocument);
+  const title = '<Paragraph id={`${id}-title`}', when = '<Paragraph id={`${id}-when`}';
+  assert.deepEqual([value(title, ['<Item id="alpha"'])?.value, value(title, ['<Item id="alpha"'])?.kind], ['Alpha role', 'jsx-attribute']);
+  assert.equal(value(title, ['<Item id="beta"'])?.value, 'Beta role');
+  const alpha = value(when, ['<Item id="alpha"'])!, beta = value(when, ['<Item id="beta"'])!;
+  assert.equal(alpha.value, beta.value);
+  assert.notEqual(alpha.start, beta.start, 'Equal wording in two instances keeps two separate sources.');
+  assert.equal(value(title, []), undefined, 'A prop without its rendering instance is not a proof.');
+  assert.equal(value(title, ['<Points id="repeated"']), undefined, 'An owner that is not an instance of this component is rejected.');
+  assert.deepEqual([value('<Heading id={id}', ['<Title id="section"'])?.value, value('<Heading id={id}', ['<Title id="section"'])?.kind], ['First section', 'jsx-text']);
+  const nested = value('<Heading id={id}', ['<Title id={heading[0]}', '<Item id="alpha"'])!;
+  assert.deepEqual([nested.value, nested.kind], ['History', 'string']);
+  const updated = replaceSourceValue(helperDocument, value(title, ['<Item id="beta"'])!, 'Revised “beta” role');
+  validateTextSyntax('index.tsx', updated);
+  assert.equal(scoped(updated)(title, ['<Item id="beta"'])?.value, 'Revised “beta” role');
+  assert.equal(scoped(updated)(title, ['<Item id="alpha"'])?.value, 'Alpha role');
+});
+
+test('mapped and helper-passed array literals bind only when the rendered text identifies one element', () => {
+  const value = scoped(helperDocument);
+  const row = '<Paragraph key={i}';
+  for (const text of ['First point.', 'Second point.', 'Third point.']) assert.equal(value(row, ['<Points id="alpha-points"'], text)?.value, text);
+  assert.notEqual(value(row, ['<Points id="alpha-points"'], 'First point.')!.start, value(row, ['<Points id="alpha-points"'], 'Second point.')!.start);
+  assert.equal(value(row, ['<Points id="alpha-points"']), undefined, 'Several possible elements need the rendered text.');
+  assert.equal(value(row, ['<Points id="alpha-points"'], 'Missing point.'), undefined);
+  assert.equal(value(row, ['<Points id="repeated"'], 'Same point.'), undefined, 'Duplicate wording is ambiguous and stays read-only.');
+  const objects = `function List({ rows }) { return <>{rows.map(row => <Paragraph key={row.id}>{row.label}</Paragraph>)}</>; }
+export default () => <List rows={[{ id: 'one', label: 'Readable' }, { id: 'two', label: 'Other' }]}/>;`;
+  assert.equal(scoped(objects)('<Paragraph', ['<List'], 'Readable')?.value, 'Readable');
+  assert.equal(scoped(objects)('<Paragraph', ['<List'], 'one'), undefined);
+});
+
+test('supported prop forms include props objects, defaults, children, destructuring and presence checks', () => {
+  for (const [component, call, kind] of [
+    ['function Card(props) { return <Paragraph>{props.name}</Paragraph>; }', '<Card name="Readable"/>', 'jsx-attribute'],
+    ["function Card({ name = 'Readable' }) { return <Paragraph>{name}</Paragraph>; }", '<Card/>', 'string'],
+    ['function Card({ children }) { return <Paragraph>{children}</Paragraph>; }', '<Card>Readable</Card>', 'jsx-text'],
+    ['const Card = (props) => { const { name } = props; return <Paragraph>{name}</Paragraph>; };', "<Card name={'Readable'}/>", 'string'],
+    ['function Card({ name }) { return <>{name && <Paragraph>{name}</Paragraph>}</>; }', '<Card name="Readable"/>', 'jsx-attribute'],
+    ["const label = 'Readable'; function Card({ name }) { return <Paragraph>{name}</Paragraph>; }", '<Card name={label}/>', 'string'],
+  ]) {
+    const source = `${component}\nexport default () => <Document>${call}</Document>;`;
+    const value = scoped(source)('<Paragraph', ['<Card']);
+    assert.deepEqual([value?.value, value?.kind], ['Readable', kind], component);
+  }
+});
+
+test('props shared with identity or logic, escaped components, spreads and mutations stay read-only', () => {
+  for (const [component, call, owner] of [
+    ['function Card({ name }) { return <Block id={name}><Paragraph>{name}</Paragraph></Block>; }', '<Card name="Readable"/>'],
+    ['function Card({ name }) { return <Paragraph key={name}>{name}</Paragraph>; }', '<Card name="Readable"/>'],
+    ['function Card({ name }) { return <Paragraph id={`card-${name}`}>{name}</Paragraph>; }', '<Card name="Readable"/>'],
+    ["function Card({ name }) { return name === 'Readable' ? <Paragraph>{name}</Paragraph> : null; }", '<Card name="Readable"/>'],
+    ['function Card({ children }) { return <Paragraph id={children}>{children}</Paragraph>; }', '<Card>Readable</Card>'],
+    ['function Card(props) { return <><Inner {...props}/><Paragraph>{props.name}</Paragraph></>; }', '<Card name="Readable"/>'],
+    ["function Card(props) { props.name = 'Readable'; return <Paragraph>{props.name}</Paragraph>; }", '<Card name="Readable"/>'],
+    ['function Card({ name }) { return <Paragraph>{name}</Paragraph>; } const alias = Card;', '<Card name="Readable"/>'],
+    ['function Card({ name }) { return <Paragraph>{name}</Paragraph>; }', "<><Card name=\"Readable\"/>{Card({ name: 'Other' })}</>"],
+    ['function Card({ name, depth }) { return depth ? <Card name={name}/> : <Paragraph>{name}</Paragraph>; }', '<Card name="Readable" depth={1}/>', '<Card name="Readable"'],
+    ['function Card({ name }) { return <Paragraph>{name}</Paragraph>; }', '<Card {...other} name="Readable"/>'],
+    ["function Card({ name }) { return <Paragraph>{name}</Paragraph>; } const label = 'readable';", '<Card name={label.toUpperCase()}/>'],
+    ['function Card({ name }) { return <Paragraph>{name}</Paragraph>; }', "<Card name={pick('Readable')}/>"],
+    ['function Card({ items }) { items.reverse(); return <>{items.map(text => <Paragraph>{text}</Paragraph>)}</>; }', "<Card items={['Readable']}/>"],
+    ['function Card({ items }) { return <>{items.map(text => <Paragraph key={text}>{text}</Paragraph>)}</>; }', "<Card items={['Readable']}/>"],
+    ['function Card({ items }) { return <>{items.map(text => <Paragraph>{text}</Paragraph>)}</>; }', "<Card items={[...more, 'Readable']}/>"],
+  ]) {
+    const source = `${component}\nexport default () => <Document>${call}</Document>;`;
+    assert.equal(scoped(source)('<Paragraph', [owner ?? '<Card'], 'Readable'), undefined, `${component} ${call}`);
+  }
+  const exported = `export function line(text) { return <Paragraph>{text}</Paragraph>; }\nexport default () => <Document>{line('Readable')}</Document>;`;
+  assert.equal(scoped(exported)('<Paragraph', [], 'Readable'), undefined, 'An exported helper can receive values from other files.');
+});
+
+test('List records resolve by record ID, and mapped records only when their wording identifies one value', () => {
+  const head = `import { List, Strong } from 'opendoc';\n`;
+  const record = (body: string) => {
+    const source = head + body, parsed = createTextSourceResolver('documents/proof/index.tsx', source);
+    return (id: string, text: string, childIndex = 0, needle = '<List') => {
+      const before = source.slice(0, source.indexOf(needle));
+      return parsed.resolveAt(before.split('\n').length, before.length - before.lastIndexOf('\n'), 'items', childIndex, { text, path: [{ id }, 'children'] });
+    };
+  };
+  const literal = record(`export default () => <List id="steps" items={[{ id: 'one', children: 'Same' }, { id: 'two', children: 'Same' }, { id: 'three', children: <>Mixed <Strong>bold</Strong> end</> }]}/>;`);
+  const one = literal('one', 'Same')!, two = literal('two', 'Same')!;
+  assert.deepEqual([one.value, one.kind, two.value], ['Same', 'string', 'Same']);
+  assert.notEqual(one.start, two.start, 'Literal record IDs separate equal wording.');
+  assert.equal(literal('three', 'Mixed ', 0)?.value, 'Mixed ');
+  assert.equal(literal('three', ' end', 2)?.value, ' end');
+  assert.equal(literal('three', 'bold', 1), undefined, 'A formatted child is bound through its own component.');
+  assert.equal(literal('four', 'Same'), undefined);
+  assert.equal(literal('one', 'Other'), undefined, 'The rendered text must match the authored value.');
+  assert.equal(record(`const steps = [{ id: 'a', children: 'Alpha' }];\nexport default () => <List id="steps" items={steps}/>;`)('a', 'Alpha')?.value, 'Alpha');
+
+  const mapped = record(`const rows = [{ id: 'a', text: 'Alpha' }, { id: 'b', text: 'Twice' }, { id: 'c', text: 'Twice' }];
+export default () => <List id="rows" items={rows.map(row => ({ id: row.id, children: row.text }))}/>;`);
+  assert.deepEqual([mapped('a', 'Alpha')?.value, mapped('a', 'Alpha')?.kind], ['Alpha', 'string']);
+  assert.equal(mapped('b', 'Twice'), undefined, 'Equal mapped wording is ambiguous and stays read-only.');
+  const updated = replaceSourceValue(head + `const rows = [{ id: 'a', text: 'Alpha' }, { id: 'b', text: 'Twice' }, { id: 'c', text: 'Twice' }];
+export default () => <List id="rows" items={rows.map(row => ({ id: row.id, children: row.text }))}/>;`, mapped('a', 'Alpha')!, 'Revised');
+  assert.match(updated, /\{ id: 'a', text: "Revised" \}/, 'A mapped record saves to its own literal.');
+
+  for (const body of [
+    `export default () => <List id="steps" {...rest} items={[{ id: 'a', children: 'Alpha' }]}/>;`,
+    `const label = 'alpha';\nexport default () => <List id="steps" items={[{ id: 'a', children: label.toUpperCase() }]}/>;`,
+    `const steps = [{ id: 'a', children: 'Alpha' }]; const first = steps.find(step => step.children === 'Alpha');\nexport default () => <List id="steps" items={steps}/>;`,
+    `const rows = [{ text: 'Alpha' }];\nexport default () => <List id="rows" items={rows.map(row => ({ id: row.text, children: row.text }))}/>;`,
+    `const rows = [{ id: 'a', text: 'Alpha' }];\nexport default () => <List id="rows" items={rows.map(row => { if (row.id) return { id: row.id, children: row.text }; })}/>;`,
+  ]) assert.equal(record(body)('a', 'Alpha'), undefined, body);
+  const foreign = `import { List } from './mine';\nconst steps = [{ id: 'a', children: 'Alpha' }];\nexport default () => <List id="steps" items={steps}/>;`;
+  const before = foreign.slice(0, foreign.indexOf('<List'));
+  assert.equal(createTextSourceResolver('documents/proof/index.tsx', foreign).resolveAt(before.split('\n').length, before.length - before.lastIndexOf('\n'), 'items', 0, { text: 'Alpha', path: [{ id: 'a' }, 'children'] }), undefined,
+    "Another component's items may be used as logic, so its records stay read-only.");
+});
+
+test('DataTable column labels resolve by column ID, else only when their wording identifies one column', () => {
+  const head = `import { DataTable } from 'opendoc';\n`;
+  const table = (body: string) => {
+    const source = head + body, parsed = createTextSourceResolver('documents/proof/index.tsx', source);
+    return (id: string | undefined, text: string) => {
+      const before = source.slice(0, source.indexOf('<DataTable'));
+      return parsed.resolveAt(before.split('\n').length, before.length - before.lastIndexOf('\n'), 'columns', 0, { text, path: [{ id }, 'label'] });
+    };
+  };
+  const rows = `rows={[['a', 'b']]}`;
+  const plain = table(`export default () => <DataTable id="t" columns={[{ label: 'Item', width: 2 }, { label: 'Value', align: 'right' }]} ${rows}/>;`);
+  assert.deepEqual([plain(undefined, 'Item')?.value, plain(undefined, 'Value')?.value], ['Item', 'Value']);
+  assert.equal(plain(undefined, 'Other'), undefined, 'The rendered text must match the authored value.');
+  const keyed = table(`export default () => <DataTable id="t" columns={[{ id: 'low', label: 'Same' }, { id: 'high', label: 'Same' }]} ${rows}/>;`);
+  assert.notEqual(keyed('low', 'Same')!.start, keyed('high', 'Same')!.start, 'Column IDs separate equal wording.');
+  assert.equal(table(`export default () => <DataTable id="t" columns={[{ label: 'Same' }, { label: 'Same' }]} ${rows}/>;`)(undefined, 'Same'), undefined,
+    'Equal wording without column IDs is ambiguous and stays read-only.');
+  assert.equal(table(`const columns = [{ label: 'Item' }, { label: 'Value' }];\nexport default () => <DataTable id="t" columns={columns} ${rows}/>;`)(undefined, 'Value')?.value, 'Value');
+  const mapped = table(`const fields = [{ key: 'item', title: 'Item' }, { key: 'value', title: 'Value' }];\nexport default () => <DataTable id="t" columns={fields.map(field => ({ id: field.key, label: field.title }))} ${rows}/>;`);
+  assert.equal(mapped('value', 'Value')?.value, 'Value', 'Mapped columns save to their own literal.');
+  assert.match(replaceSourceValue(head + `const fields = [{ key: 'item', title: 'Item' }, { key: 'value', title: 'Value' }];\nexport default () => <DataTable id="t" columns={fields.map(field => ({ id: field.key, label: field.title }))} ${rows}/>;`, mapped('value', 'Value')!, 'Amount'),
+    /\{ key: 'value', title: "Amount" \}/);
+
+  for (const body of [
+    `const code = 'USD';\nexport default () => <DataTable id="t" columns={[{ label: \`Amount (\${code})\` }]} ${rows}/>;`,
+    `const columns = [{ label: 'Item' }];\nexport default () => <DataTable id="t" columns={columns} ${rows}/>;\nexport const first = columns[0].label.toUpperCase();`,
+    `export default () => <DataTable id="t" {...rest} columns={[{ label: 'Item' }]} ${rows}/>;`,
+    `const fields = [{ title: 'Item' }];\nexport default () => <DataTable id="t" columns={fields.map(field => ({ id: field.title, label: field.title }))} ${rows}/>;`,
+  ]) assert.equal(table(body)(undefined, 'Item'), undefined, body);
+  const foreign = `import { DataTable } from './mine';\nconst columns = [{ label: 'Item' }];\nexport default () => <DataTable id="t" columns={columns} ${rows}/>;`;
+  const before = foreign.slice(0, foreign.indexOf('<DataTable'));
+  assert.equal(createTextSourceResolver('documents/proof/index.tsx', foreign).resolveAt(before.split('\n').length, before.length - before.lastIndexOf('\n'), 'columns', 0, { text: 'Item', path: [{}, 'label'] }), undefined,
+    "Another component's columns may be used as logic, so their labels stay read-only.");
+});
+
+test('DataTable cells resolve at their row, by row ID position or a row whose wording is unique, then by column position', () => {
+  const head = `import { DataTable } from 'opendoc';\n`;
+  const table = (body: string) => {
+    const source = head + body, parsed = createTextSourceResolver('documents/proof/index.tsx', source);
+    const resolve = (row: { id?: string; ids?: string; values?: (string | undefined)[] }, column: number) => {
+      const before = source.slice(0, source.indexOf('<DataTable'));
+      return parsed.resolveAt(before.split('\n').length, before.length - before.lastIndexOf('\n'), 'rows', 0, { text: row.values?.[column], path: [row, String(column)] });
+    };
+    return Object.assign(resolve, { source });
+  };
+  const columns = `columns={[{ label: 'Item' }, { label: 'Hours' }]}`;
+  const keyed = table(`export default () => <DataTable id="t" ${columns} rows={[['Same', 4], ['Same', 4], ['Other', -2.5]]} rowIds={['a', 'b', 'c']}/>;`);
+  const [first, second] = [keyed({ id: 'a', ids: 'rowIds', values: ['Same', '4'] }, 0)!, keyed({ id: 'b', ids: 'rowIds', values: ['Same', '4'] }, 0)!];
+  assert.deepEqual([first.value, second.value], ['Same', 'Same']);
+  assert.notEqual(first.start, second.start, 'Row IDs separate rows with equal wording.');
+  assert.equal(keyed({ id: 'a', ids: 'rowIds', values: ['Same', '4'] }, 1)?.kind, 'number');
+  assert.equal(keyed({ id: 'c', ids: 'rowIds', values: ['Other', '-2.5'] }, 1)?.value, '-2.5', 'A negative number keeps its sign.');
+  assert.equal(replaceSourceValue(keyed.source, keyed({ id: 'b', ids: 'rowIds', values: ['Same', '4'] }, 1)!, '12.5'), keyed.source.replace(`['Same', 4], ['Other'`, `['Same', 12.5], ['Other'`),
+    'A number saves as a number literal at its own row.');
+  for (const next of ['1,250', '12 h', '12.50', '', 'NaN']) assert.throws(() => replaceSourceValue(keyed.source, keyed({ id: 'a', ids: 'rowIds', values: ['Same', '4'] }, 1)!, next), /holds a number/, next);
+  assert.equal(keyed({ values: ['Same', '4'] }, 0), undefined, 'Without row IDs, rows with equal wording are ambiguous.');
+  assert.equal(keyed({ values: ['Other', '-2.5'] }, 0)?.value, 'Other', 'A row with unique wording is found without its ID.');
+
+  const unique = table(`const rows = [['Draft', 'Done'], ['Review', 'Done']];\nexport default () => <DataTable id="t" ${columns} rows={rows}/>;`);
+  assert.notEqual(unique({ values: ['Draft', 'Done'] }, 1)!.start, unique({ values: ['Review', 'Done'] }, 1)!.start, 'Equal cells in distinct rows stay separate.');
+  assert.equal(unique({ values: ['Draft', 'Other'] }, 1), undefined, 'The rendered text must match the authored value.');
+  const ordered = table(`const ids = ['one', 'two'] as const;\nexport default () => <DataTable id="t" ${columns} rows={[['A', 'x'], ['A', 'x']]} rowIds={[...ids]}/>;`);
+  assert.equal(ordered({ id: 'two', ids: 'rowIds', values: ['A', 'x'] }, 1)?.start, ordered.source.lastIndexOf(`'x'`), 'Spread constant IDs keep their positions.');
+  const mapped = table(`const stages = [{ key: 'draft', name: 'Draft', hours: 3 }, { key: 'review', name: 'Review', hours: 3 }];\nexport default () => <DataTable id="t" ${columns} rows={stages.map(stage => [stage.name, stage.hours])} rowIds={stages.map(stage => stage.key)}/>;`);
+  assert.equal(mapped({ id: 'review', ids: 'rowIds', values: ['Review', '3'] }, 0)?.value, 'Review', 'Mapped rows bind when their wording identifies one value.');
+  assert.equal(mapped({ id: 'review', ids: 'rowIds', values: ['Review', '3'] }, 1), undefined, 'Mapped values that repeat stay read-only.');
+
+  for (const body of [
+    `const total = 7;\nexport default () => <DataTable id="t" ${columns} rows={[['Total', total * 2]]}/>;`,
+    `const hours = 14;\nexport default () => <DataTable id="t" ${columns} rows={[['Total', hours]]}/>;\nexport const doubled = hours * 2;`,
+    `const rows = [['Total', 14]];\nexport const sum = rows.reduce((value, row) => value + Number(row[1]), 0);\nexport default () => <DataTable id="t" ${columns} rows={rows}/>;`,
+    `export default () => <DataTable id="t" ${columns} rows={[['Total', \`\${14}\`]]}/>;`,
+    `export default () => <DataTable id="t" {...rest} ${columns} rows={[['Total', 14]]}/>;`,
+  ]) assert.equal(table(body)({ values: ['Total', '14'] }, 1), undefined, body);
+  const mutated = table(`const ids = ['a', 'b'];\nids.reverse();\nexport default () => <DataTable id="t" ${columns} rows={[['A', 'x'], ['A', 'x']]} rowIds={ids}/>;`);
+  assert.equal(mutated({ id: 'a', ids: 'rowIds', values: ['A', 'x'] }, 1), undefined, 'Reordered IDs cannot locate a row by position.');
+});
+
+test('a correction keeps a plain JSX attribute or text plain when it can hold the new value exactly', () => {
+  const edit = (source: string, needle: string, slot: string, next: string) => {
+    const updated = replaceSourceValue(source, resolver(source)(needle, slot)!, next);
+    validateTextSyntax('index.tsx', updated);
+    assert.equal(resolver(updated)(needle, slot)?.value, next, `${source} -> ${next}`);
+    return updated;
+  };
+  const attribute = `export default () => <Card title="Programme lead" when='2020'/>;`;
+  assert.equal(edit(attribute, '<Card', 'title', 'Project “lead” 🎉'), `export default () => <Card title="Project “lead” 🎉" when='2020'/>;`);
+  assert.equal(edit(attribute, '<Card', 'when', 'It\'s 2021'), `export default () => <Card title="Programme lead" when={"It's 2021"}/>;`, 'A quote of its own kind needs an expression');
+  assert.equal(edit(attribute, '<Card', 'when', 'Say "now"'), `export default () => <Card title="Programme lead" when='Say "now"'/>;`, 'The other quote fits');
+  assert.equal(edit(attribute, '<Card', 'title', 'Back\\slash'), `export default () => <Card title="Back\\slash" when='2020'/>;`);
+  for (const next of ['Say "hi"', 'Line\nbreak', 'Braces { }', 'A & B', '<tag>'])
+    assert.match(edit(attribute, '<Card', 'title', next), /title=\{"/, `${JSON.stringify(next)} uses an expression`);
+
+  const text = `export default () => <Paragraph>\n      Original text\n    </Paragraph>;`;
+  assert.equal(edit(text, '<Paragraph', 'children', `Revised "text" it's`), `export default () => <Paragraph>\n      Revised "text" it's\n    </Paragraph>;`, 'Line breaks around the text are kept');
+  assert.equal(edit(`export default () => <Paragraph>Before <Em>it</Em></Paragraph>;`, '<Paragraph', 'children', 'After '), `export default () => <Paragraph>After <Em>it</Em></Paragraph>;`);
+  for (const next of ['Braces { }', 'A & B', 'Two\nlines', ' leading space', '<tag>', 'a > b'])
+    assert.match(edit(text, '<Paragraph', 'children', next), /<Paragraph>\{"/, `${JSON.stringify(next)} uses an expression`);
+});

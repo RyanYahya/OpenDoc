@@ -9,7 +9,8 @@ const themeId = "__OPENDOC_THEME__";
 const pricing = parseProposalPricing(data);
 export const meta = { title, description: 'A business proposal, ready for your content.', kind: 'proposal' as const, theme: themeId };
 export const provenance = { template: 'templates/business-proposal/index.tsx', dataFile: `documents/${documentId}/data.json` };
-// Bind a shared logo, pass <Logo slot="primary" /> through the logo option, or pass null to omit it.
+// To show a logo, bind one with `npx opendoc assets bind`, import Logo from 'opendoc', and pass
+// logo={<Logo width={88} height={28} />} to BusinessProposal; pass logo={null} to omit the placeholder.
 export default function Proposal() {
   return <BusinessProposal title={title} theme={theme} preparedFor="Client name" preparedBy="Your team">
     <Paragraph id="proposal-opening">Your proposal begins here. Explain the work in the order that serves the reader, and add the scope, deliverables, schedule, and evidence it needs.</Paragraph>

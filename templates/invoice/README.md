@@ -2,7 +2,7 @@
 
 A native Forme invoice with a prominent amount due, invoice references and dates, paired seller/customer details, line items, calculated totals, and optional payment instructions. Defaults are A4 portrait, 48-point top/side and 52-point bottom margins, 10.5/14.7-point body text, a 28-point title, and a larger opening balance. The caller's theme supplies appearance. Treat the composition as an adaptable starting point; no page count is enforced.
 
-`invoiceTemplate(theme)` uses the existing `parse`, `meta`, and `render` contract. Bind it to the instance's `data.json` with `bindTemplate`. The catalog creates a separate data file for each invoice and records template/data provenance. Editing that file updates content, metadata, and calculations. `Invoice` accepts parsed `data`, `theme`, and optional native `titleStyle` for a local design variation. The catalog preview uses Neutral.
+`invoiceTemplate(theme)` uses the existing `parse`, `meta`, and `render` contract. Bind it to the instance's `data.json` with `bindTemplate`. The catalog creates a separate data file for each invoice and records template/data provenance. Editing that file updates content, metadata, and calculations. Corrections made in the reader to supplied text (the title, number, reference, dates, party names and details, introduction, payment text, notes, item descriptions and units, and the tax label) save to `data.json` after the parser accepts them. Quantities, the tax rate, prices, amounts, and the balance are calculated, and the `INVOICE` label, `From` and `Bill to`, prefixes such as `No.`, `Due`, and `Payment reference.`, the `Amount due` and totals labels, and the sample notice belong to the template; these stay read-only and say why. `Invoice` accepts parsed `data`, `theme`, and optional native `titleStyle` for a local design variation. The catalog preview uses Neutral.
 
 ## Data contract
 
@@ -10,7 +10,7 @@ Required fields are `schemaVersion: 1`, `title`, `number`, `issuedOn`, `seller`,
 
 Each party has a required single-line `name` of up to 180 characters and optional `details` of up to 700 characters and eight supplied lines. Names and address/contact details wrap naturally in the paired columns. Supplied registration or tax identifiers can appear in these details when appropriate. This generic format does not certify regulatory or electronic-invoicing compliance.
 
-Optional `introduction`, `paymentInstructions`, and `paymentReference` provide supplied prose and remittance details. No bank account is invented. Optional `notes` is an array of `{ id, title, text }` with unique stable IDs. Notes have stable length-prefixed comment targets, while the item table remains one target through pagination. Unknown fields and unsupported amounts fail clearly.
+Optional `introduction`, `paymentInstructions`, and `paymentReference` provide supplied prose and remittance details. No bank account is invented. Optional `notes` is an array of `{ id, title, text }` with unique stable IDs. Notes have stable length-prefixed comment targets. The item table remains one block through pagination; its rows take their IDs from item `id`s, so phrase comments on a cell follow its item. Unknown fields and unsupported amounts fail clearly.
 
 `synthetic` must be explicit. All bundled examples mark their parties, prices, dates, payment details, and recorded payments as illustrative. Set it to false only after replacing the samples with real supplied material. The template does not send invoices or execute payments.
 
@@ -26,13 +26,13 @@ Credits, overpayments, multiple tax rates, inclusive tax, additional charges, an
 
 ## Logo
 
-The opening has a quiet, outlined **YOUR LOGO** placeholder at the upper right. It appears once, on the cover when present or at the start of the body. Replace it with supplied artwork through the optional `logo` prop, or pass `logo={null}` to omit it. The placeholder follows the selected theme; actual artwork retains its own colors. Keep logo dimensions bounded and preserve its aspect ratio; 88 × 28 points is a starting size, not a brand requirement.
+The opening has a quiet, outlined **YOUR LOGO** placeholder at the upper right. It appears once, at the top of the first page. Replace it with supplied artwork through the optional `logo` prop, or pass `logo={null}` to omit it. The placeholder follows the selected theme; actual artwork retains its own colors. Keep logo dimensions bounded and preserve its aspect ratio; 88 × 28 points is a starting size, not a brand requirement.
 
 Import reusable artwork into the shared [asset library](../../docs/ASSETS.md), inspect its variation guidance, and bind an exact version to the intended document:
 
 ```sh
-pnpm assets -- inspect logo acme
-pnpm assets -- bind my-document logo acme --variation default
+npx opendoc assets inspect logo acme
+npx opendoc assets bind my-document logo acme --variation default
 ```
 
 Import `Logo` from `opendoc` and supply `<Logo width={88} height={28} />` through the `logo` prop. Choose a variation for the actual page background, preserve its proportions, and review the PDF. The existing logo block provides the feedback target; a decorative mark needs no figure caption. Artwork belongs in the layout, separately from commercial JSON.

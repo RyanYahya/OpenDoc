@@ -3,7 +3,7 @@ import { resolve, dirname, relative, sep } from 'node:path';
 import { readFileSync, realpathSync } from 'node:fs';
 import { createTextSourceResolver, createJsonTextSourceResolver, type TextSourceResolver } from './text-source';
 import { attachTextLines } from './text-layout';
-import type { TextGlobals } from '../document/text-targets';
+import type { TextFileOwner, TextGlobals } from '../document/text-targets';
 import type { TextTarget } from '../shared/selection';
 import { createHash } from 'node:crypto';
 import { renderDocumentSource } from './render-source';
@@ -13,7 +13,7 @@ import { readDocumentAssetsAt, resolveThemeAssets } from '../assets/files';
 import type { LayoutInfo, ElementInfo } from '@formepdf/core';
 import type { BlockInfo, DocumentMeta, DocumentProvenance, RenderArtifact, Fragment, DocumentFormat, SlideInfo } from '../shared/types';
 import { RenderFailure } from './render-error';
-import { inspectLayout, assertLayoutSafe, assertSlideLayout } from './preflight';
+import { inspectLayout, assertLayoutSafe, assertSlideLayout, missingGlyphIssues } from './preflight';
 import { inspectPresentationCompatibility } from './pptx-compatibility';
 import { containedFile } from './files';
 import { readProjects } from './projects';
@@ -37,12 +37,32 @@ function documentFile(file: string) {
     return absolute.startsWith(documentDirectory + sep) ? absolute : undefined;
   } catch { return undefined; }
 }
-globalState.__opendocResolveTextSource = (location, slot, childIndex) => {
-  const absolute = documentFile(location.file);
+globalState.__opendocResolveTextSource = ([location, ...callers], slot, childIndex, text, path) => {
+  const absolute = location && documentFile(location.file);
   if (!absolute || !/\.[cm]?[jt]sx?$/.test(absolute)) return undefined;
   let resolver = resolvers.get(absolute);
   if (!resolver) { resolver = createTextSourceResolver(relative(root, absolute), overrides.get(absolute)?.contents ?? readFileSync(absolute, 'utf8')); resolvers.set(absolute, resolver); }
-  return originalBinding(resolver.resolveAt(location.line, location.column, slot, childIndex), overrides.get(absolute));
+  // Props are followed only through component instances in the same file.
+  const foreign = callers.findIndex(frame => frame.file !== location.file);
+  const owners = foreign < 0 ? callers : callers.slice(0, foreign);
+  return originalBinding(resolver.resolveAt(location.line, location.column, slot, childIndex, { owners, text, path }), overrides.get(absolute));
+};
+// Text placed by themes, templates, and other workspace files outside the document is never
+// resolved; name that file so its read-only reason is specific. OpenDoc's own runtime is neither.
+const runtimeDirectory = realpathSync(runtimeSource('.')), workspaceRoot = realpathSync(root);
+const textFiles = new Map<string, TextFileOwner | undefined>();
+globalState.__opendocTextFileOwner = ([location]) => {
+  if (!location) return undefined;
+  if (!textFiles.has(location.file)) {
+    let owner: TextFileOwner | undefined;
+    try {
+      const absolute = realpathSync(resolve(root, location.file)), path = relative(workspaceRoot, absolute);
+      if (absolute.startsWith(documentDirectory + sep)) owner = { kind: 'document' };
+      else if (!path.startsWith('..') && !absolute.startsWith(runtimeDirectory + sep) && !path.split(sep).includes('node_modules')) owner = { kind: 'shared', file: path.split(sep).join('/') };
+    } catch { owner = undefined; }
+    textFiles.set(location.file, owner);
+  }
+  return textFiles.get(location.file);
 };
 globalState.__opendocResolveTextField = field => {
   const absolute = globalState.__opendocDataFile && documentFile(globalState.__opendocDataFile);
@@ -106,7 +126,7 @@ try {
       return prepared.element;
     }
   `;
-  const result = await renderDocumentSource(source, entry, overrides);
+  const result = await renderDocumentSource(source, entry, overrides, root);
   if (sourceOverrides.some(override => override.file.endsWith('.json')) && !globalState.__opendocTemplateValidated) throw new Error('The document does not declare a data parser for these corrections. Ask your agent to change it.');
   const capture = globalState.__opendocCapture;
   if (!capture?.meta || typeof capture.meta.title !== 'string' || !capture.meta.title.trim()) throw new Error('Export meta with a nonempty title.');
@@ -132,6 +152,10 @@ try {
     const format = manifest.formats && Object.hasOwn(manifest.formats, ownerId) ? manifest.formats[ownerId] : 'document';
     if (capture.format !== format) throw new Error(`This ${format} must use the ${format === 'presentation' ? 'Presentation' : 'Document'} root. Create presentations with --format presentation.`);
   }
+  // The built-in Arabic fallback is real font usage: list it with the document's
+  // assets and re-render when its files change.
+  const assets = [...(capture.assets ?? []), ...(result.scriptFallback?.uses ?? [])];
+  const assetDependencies = [...new Set([...(capture.assetDependencies ?? []), ...(result.scriptFallback?.dependencies ?? [])])].sort();
   const textTargets = capture.textTargets ?? [];
   attachTextLines(result.layout, textTargets);
   const pages = pagesFromLayout(result.layout, capture.blocks);
@@ -142,6 +166,7 @@ try {
   }
   if (capture.format === 'presentation') assertSlideLayout(result.layout, capture.slides, capture.blocks);
   const { issues, outline } = inspectLayout(result.layout, capture.blocks);
+  issues.push(...missingGlyphIssues(result.warnings.filter(message => message.startsWith('Missing glyphs:')), result.layout, capture.blocks));
   if (capture.format === 'presentation') {
     // Standalone titles and low captions are intentional slide compositions.
     for (let index = issues.length - 1; index >= 0; index--) if (issues[index].code === 'stranded-heading') issues.splice(index, 1);
@@ -150,15 +175,15 @@ try {
       issue.message = `Slide ${slide?.id ?? issue.page}: ${issue.message.replace(/page (\d+)/g, 'slide $1').replace('or allow the content to flow onto another page', 'or split it into explicit slides')}`;
     }
   }
-  for (const message of result.warnings) issues.push({ code: 'renderer-warning', severity: 'warning', message });
+  for (const message of result.warnings) if (!message.startsWith('Missing glyphs:')) issues.push({ code: 'renderer-warning', severity: 'warning', message });
   assertLayoutSafe(issues);
   if (capture.format === 'presentation') issues.push(...inspectPresentationCompatibility(result.doc, result.layout, capture.slides, capture.blocks));
-  const artifact: RenderArtifact = { meta: capture.meta, format: capture.format, ...(capture.format === 'presentation' ? { slides: capture.slides } : {}), media: capture.media ?? [], assets: capture.assets ?? [], assetBindings: capture.assetBindings, assetDependencies: capture.assetDependencies ?? [], textTargets, blocks: capture.blocks, pages, provenance, issues, outline, hash: createHash('sha256').update(result.pdf).digest('hex'), renderedAt: new Date().toISOString() };
+  const artifact: RenderArtifact = { meta: capture.meta, format: capture.format, ...(capture.format === 'presentation' ? { slides: capture.slides } : {}), media: capture.media ?? [], assets, assetBindings: capture.assetBindings, assetDependencies, textTargets, blocks: capture.blocks, pages, provenance, issues, outline, hash: createHash('sha256').update(result.pdf).digest('hex'), renderedAt: new Date().toISOString() };
   await mkdir(destination, { recursive: true });
   await writeFile(resolve(destination, 'document.pdf'), result.pdf);
   await writeFile(resolve(destination, 'artifact.json'), JSON.stringify(artifact, null, 2));
   await writeFile(resolve(destination, 'layout.json'), JSON.stringify(result.layout));
-  if (capture.format === 'presentation') await writeFile(resolve(destination, 'presentation.json'), JSON.stringify({ version: 1, hash: artifact.hash, meta: capture.meta, slides: capture.slides, doc: result.doc, layout: result.layout }));
+  if (capture.format === 'presentation') await writeFile(resolve(destination, 'presentation.json'), JSON.stringify({ version: 1, hash: artifact.hash, meta: capture.meta, slides: capture.slides, doc: result.doc, layout: result.layout, textSlots: textTargets.map(target => target.slot) }));
   process.send?.({ ok: true });
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);

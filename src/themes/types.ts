@@ -1,6 +1,8 @@
 import type { DocumentProps, PageProps, Style } from '@formepdf/react';
 
 export type ThemeTypeRole = 'h1' | 'h2' | 'h3' | 'label' | 'lead' | 'small' | 'caption' | 'code';
+/** Base text direction. `auto` picks each paragraph's direction from its first strong character. */
+export type TextDirection = 'ltr' | 'rtl' | 'auto';
 /** Local TTF/OTF files live under themes/<id>/ or assets/, with their license alongside. */
 export type ThemeFont = Omit<NonNullable<DocumentProps['fonts']>[number], 'src' | 'fontWeight'> & { src: string; fontWeight?: number };
 
@@ -24,8 +26,28 @@ export interface DocTheme {
   fontSize: number; lineHeight: number; margin: number; paragraphGap: number;
   pageSize: 'A4' | 'Letter'; runningHeader: boolean; runningFooter: boolean; footerLabel: string;
   useFor?: string[]; principles?: string[]; fonts?: ThemeFont[]; design?: ThemeDesign;
+  /** Base direction for documents using this theme; `rtl` for Arabic. Defaults to `ltr`. */
+  direction?: TextDirection;
+  /** BCP 47 language tag for the PDF, such as `ar` or `en`. Defaults to `en`. */
+  lang?: string;
+  /** Registered families tried, in order, for characters the role's own family lacks (for example Arabic in a Latin theme). */
+  fontFallbacks?: string[];
   palette?: { name: string; value: string; role: string }[];
   geometry?: string[];
+}
+
+export const languageTag = /^[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})*$/;
+
+/** Families of a CSS-style list, such as `"OpenDoc Sans, Noto Naskh Arabic"`. */
+export function fontFamilies(value: string): string[] {
+  return value.split(',').map(family => family.trim().replace(/^(['"])(.*)\1$/, '$2')).filter(Boolean);
+}
+
+/** Append the theme's fallback families to a family or family list; unchanged without fallbacks. */
+export function withFontFallbacks(theme: Pick<DocTheme, 'fontFallbacks'>, family: string): string {
+  if (!theme.fontFallbacks?.length) return family;
+  const families = fontFamilies(family);
+  return [...families, ...theme.fontFallbacks.filter(fallback => !families.includes(fallback))].join(', ');
 }
 
 /** Validate data at both catalog loading and render time; errors should identify the theme. */
@@ -56,6 +78,9 @@ export function validateTheme(theme: DocTheme): void {
       names.add(name);
     }
   }
+  if (theme.direction !== undefined && !['ltr', 'rtl', 'auto'].includes(theme.direction)) fail('direction must be ltr, rtl, or auto.');
+  if (theme.lang !== undefined && (typeof theme.lang !== 'string' || !languageTag.test(theme.lang))) fail('lang must be a BCP 47 language tag such as ar or en-GB.');
+  if (theme.fontFallbacks !== undefined && (!Array.isArray(theme.fontFallbacks) || theme.fontFallbacks.length > 8 || theme.fontFallbacks.some(family => typeof family !== 'string' || !family.trim() || family.includes(',')))) fail('fontFallbacks must list up to eight registered family names.');
   if (theme.fonts !== undefined) {
     if (!Array.isArray(theme.fonts) || theme.fonts.length > 24) fail('fonts must be an array of up to 24 local faces.');
     const faces = new Set<string>();
@@ -91,16 +116,17 @@ export function validateTheme(theme: DocTheme): void {
 
 /** Template geometry is a starting point; the theme's explicit semantic role comes after it. */
 export function themeType(theme: DocTheme, role: ThemeTypeRole, base: Style = {}): Style {
-  const heading: Style = { fontFamily: theme.heading, fontWeight: 600, color: theme.ink, lineHeight: 1.2, marginBottom: 10 };
+  const family = (name: string) => withFontFallbacks(theme, name);
+  const heading: Style = { fontFamily: family(theme.heading), fontWeight: 600, color: theme.ink, lineHeight: 1.2, marginBottom: 10 };
   const defaults: Record<ThemeTypeRole, Style> = {
     h1: { ...heading, fontSize: 30, marginTop: 0 },
     h2: { ...heading, fontSize: 21, marginTop: 18 },
     h3: { ...heading, fontSize: 14, marginTop: 18 },
-    label: { fontFamily: 'OpenDoc Sans', fontSize: 9, color: theme.accent, letterSpacing: 1.25 },
+    label: { fontFamily: family('OpenDoc Sans'), fontSize: 9, color: theme.accent, letterSpacing: 1.25 },
     lead: { fontSize: 13, color: theme.muted, lineHeight: 1.45 },
-    small: { fontFamily: 'OpenDoc Sans', fontSize: 8.5, color: theme.muted },
-    caption: { fontFamily: 'OpenDoc Sans', fontSize: 9, color: theme.muted },
-    code: { fontFamily: 'OpenDoc Mono', fontSize: 9, lineHeight: 1.5, color: theme.ink },
+    small: { fontFamily: family('OpenDoc Sans'), fontSize: 8.5, color: theme.muted },
+    caption: { fontFamily: family('OpenDoc Sans'), fontSize: 9, color: theme.muted },
+    code: { fontFamily: family('OpenDoc Mono'), fontSize: 9, lineHeight: 1.5, color: theme.ink },
   };
   return { ...defaults[role], ...base, ...theme.design?.typography?.[role] };
 }

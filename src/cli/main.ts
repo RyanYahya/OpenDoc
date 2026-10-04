@@ -13,11 +13,14 @@ ${edition === 'headless'
     : `  npx --yes ${packageNames.normal} init [folder]\n                                   Create a workspace and open OpenDoc\n  npx opendoc start [folder]         Start its installed runtime`}
   npx opendoc create <id>            Create a document or presentation
   npx opendoc projects              Manage projects and membership
+  npx opendoc documents             Rename, duplicate, delete, and restore documents
   npx opendoc templates             Inspect, check, and preview templates
   npx opendoc themes                Inspect, check, and preview themes
+  npx opendoc tags                  Set types, status, and tags; find work
   npx opendoc assets                Manage fonts, logos, and bindings
   npx opendoc media                 Manage document-owned media
-  npx opendoc comments              Read and resolve feedback
+  npx opendoc comments              Add, resolve, delete, and restore feedback
+  npx opendoc history               Review and restore earlier versions
   npx opendoc export <id...>         Export PDF or editable PowerPoint
   npx opendoc review <id>            Generate page images, text, and review issues
   npx opendoc check                 Typecheck workspace authoring
@@ -90,11 +93,14 @@ export async function main(rawArgs = process.argv.slice(2)) {
         case 'start': await (await import('./start')).runStart(flags, root); break;
         case 'create': await (await import('../server/create-cli')).runCreateCli(flags, root); break;
         case 'projects': await (await import('../server/projects-cli')).runProjectsCli(flags, root); break;
+        case 'documents': await (await import('../server/documents-cli')).runDocumentsCli(flags, root); break;
         case 'templates': await (await import('../server/templates-cli')).runTemplatesCli(flags, root); break;
         case 'themes': await (await import('../server/themes-cli')).runThemesCli(flags, root); break;
+        case 'tags': await (await import('../server/tags-cli')).runTagsCli(flags, root); break;
         case 'assets': await (await import('../server/assets-cli')).runAssetsCli(flags, root); break;
         case 'media': await (await import('../server/media-cli')).runMediaCli(flags, root); break;
         case 'comments': await (await import('../server/comments-cli')).runCommentsCli(flags, root, { mode: identity.edition === 'headless' ? 'direct' : 'auto' }); break;
+        case 'history': await (await import('../server/history-cli')).runHistoryCli(flags, root); break;
         case 'export': await (await import('../server/export')).runExportCli(flags, root, { mode: identity.edition === 'headless' ? 'direct' : 'preview' }); break;
         case 'review': await (await import('../server/review-cli')).runReviewCli(flags, root); break;
         case 'update': await (await import('./update')).runUpdate(flags, root); break;
@@ -102,7 +108,12 @@ export async function main(rawArgs = process.argv.slice(2)) {
           if (args.includes('--help') || args.includes('-h')) { const help = 'Usage: npx opendoc check [--json]\nTypechecks workspace documents, themes, and templates.'; console.log(json ? JSON.stringify({ usage: help }) : help); break; }
           if (args.length) throw new Error('Usage: npx opendoc check [--json]');
           const { checkWorkspace, validateInstallation } = await import('./check');
-          await validateInstallation(); await checkWorkspace(root, json); break;
+          await validateInstallation();
+          // Agents check after editing; without a running service this is where their edits are versioned.
+          const { recordAgentChanges } = await import('../server/history-capture');
+          const { discoverDocumentIds } = await import('../server/export-batch');
+          await recordAgentChanges(root, await discoverDocumentIds(root));
+          await checkWorkspace(root, json); break;
         }
         default: throw new Error(`Unknown command: ${command}. Use npx opendoc --help.`);
       }

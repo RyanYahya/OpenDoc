@@ -9,14 +9,19 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type RefObject,
+  type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask, TextLayer } from "pdfjs-dist";
 import worker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-import { getBlock, type Fragment, type ArtifactSummary, type RenderArtifact } from "../shared/types";
-import type { DocumentSelection } from "../shared/selection";
+import { getBlock, type Fragment, type RenderArtifact } from "../shared/types";
+import type { DocumentSelection, TextTarget } from "../shared/selection";
+import { nearestBox, phraseSelection, wordRange, type TextRange } from './phraseSelection';
 import { mapPdfTextSpans, pdfSpanRangeForSelection, type PdfSpanMapping } from "./pdfSelection";
 import { loadPdfWithDeadline } from './pdfLoading';
+import { componentName, componentNavigation, isWithin, moveComponentFocus, navigationMove } from './componentNavigation';
+import { useNearViewport } from './nearViewport';
+import { textLang, type Language } from '../shared/language';
 
 let pdfJs: Promise<typeof import('pdfjs-dist')> | undefined;
 function loadPdfJs() {
@@ -48,6 +53,12 @@ function rangeWithinSpan(element: HTMLElement, start: number, end: number): Rang
   return null;
 }
 
+type Rect = { left: number; top: number; width: number; height: number };
+
+function rangeKey(range: DocumentSelection | null | undefined) {
+  return range ? `${range.renderHash ?? ''}:${range.blockId}:${range.targetId ?? ''}:${range.start ?? ''}:${range.end ?? ''}` : '';
+}
+
 type CachedPdf = {
   loading: Promise<PDFDocumentLoadingTask>;
   ready: Promise<PDFDocumentProxy>;
@@ -71,7 +82,7 @@ function acquirePdf(key: string) {
 function releasePdf(key: string, entry: CachedPdf) {
   entry.readers -= 1;
   if (entry.readers) return;
-  // Keep the worker alive briefly when moving between a cover and its reader.
+  // Keep the worker alive briefly when moving between a thumbnail and its full preview.
   entry.release = setTimeout(() => {
     if (entry.readers || pdfs.get(key) !== entry) return;
     pdfs.delete(key);
@@ -80,6 +91,10 @@ function releasePdf(key: string, entry: CachedPdf) {
 }
 
 function errorMessage(error: unknown) {
+  // PDF.js passes the browser's own network failure through, sometimes renamed by its worker.
+  if (error instanceof Error && /failed to fetch|networkerror|load failed/i.test(error.message)) {
+    return 'OpenDoc can’t reach the local server to load this PDF. Try again once it reconnects.';
+  }
   return error instanceof Error ? error.message : String(error);
 }
 
@@ -125,53 +140,6 @@ export function usePdf(id: string, hash?: string, enabled = true, collection: 'd
     : { pdf: null, error: "", retry };
 }
 
-function useNearViewport(
-  ref: RefObject<HTMLDivElement | null>,
-  key: unknown,
-  rootMargin: string,
-  { once = true, enabled = true }: { once?: boolean; enabled?: boolean } = {},
-) {
-  const [visibility, setVisibility] = useState<{
-    key: unknown;
-    nearby: boolean;
-  } | null>(null);
-  const nearby =
-    !enabled || (visibility !== null && visibility.key === key && visibility.nearby);
-  useEffect(() => {
-    const element = ref.current;
-    if (!enabled || !element) return;
-    if (!("IntersectionObserver" in window)) {
-      setVisibility({ key, nearby: true });
-      return;
-    }
-    let active = true;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (!active) return;
-        const intersects = entries.some((entry) => entry.isIntersecting);
-        if (intersects || !once) {
-          setVisibility((current) =>
-            current !== null && current.key === key && current.nearby === intersects
-              ? current
-              : { key, nearby: intersects },
-          );
-          if (once) observer.disconnect();
-        }
-      },
-      {
-        root: element.closest(".reader-scroll, .page-rail"),
-        rootMargin,
-      },
-    );
-    observer.observe(element);
-    return () => {
-      active = false;
-      observer.disconnect();
-    };
-  }, [enabled, key, once, ref, rootMargin]);
-  return nearby;
-}
-
 type PdfPageProps = {
   pdf: PDFDocumentProxy;
   number: number;
@@ -180,11 +148,23 @@ type PdfPageProps = {
   artifact?: RenderArtifact;
   selected?: string | null;
   selection?: DocumentSelection | null;
-  commented?: Set<string>;
+  commented?: ReadonlySet<string>;
+  /** Open phrase comments, highlighted where their text appears on this page. */
+  commentPhrases?: DocumentSelection[];
   onSelect?: (id: string, page: number) => void;
   onComment?: (id: string, page: number) => void;
   onTextClick?: (selection: DocumentSelection, rect: { left: number; top: number; width: number; height: number }) => void;
+  /** A mouse or pen drag across words selects that phrase within one text component. */
+  onPhraseSelect?: (selection: DocumentSelection) => void;
+  /** Double-click opens the text editor, with the clicked word when it can be located. */
+  onTextEdit?: (selection: DocumentSelection, caret?: TextRange) => void;
   onNavigate?: (page: number) => void;
+  /** Names the page for assistive technology, such as "Page 2 of 8". */
+  label?: string;
+  /** Identifies the element that explains keyboard navigation between components. */
+  keyboardHelp?: string;
+  /** The document's derived language, for page text without letters of its own. */
+  language?: Language;
 };
 export const PdfPage = memo(function PdfPage({
   pdf,
@@ -195,10 +175,16 @@ export const PdfPage = memo(function PdfPage({
   selected,
   selection,
   commented,
+  commentPhrases,
   onSelect,
   onComment,
   onTextClick,
+  onPhraseSelect,
+  onTextEdit,
   onNavigate,
+  label,
+  keyboardHelp,
+  language,
 }: PdfPageProps) {
   const container = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -229,17 +215,21 @@ export const PdfPage = memo(function PdfPage({
   const [error, setError] = useState("");
   const [rendered, setRendered] = useState(false);
   const [textReady, setTextReady] = useState(false);
-  const [highlightState, setHighlightState] = useState<{ key: string; rects: { left: number; top: number; width: number; height: number }[] }>({ key: '', rects: [] });
+  const [highlightState, setHighlightState] = useState<{ key: string; rects: Rect[]; comments: Rect[] }>({ key: '', rects: [], comments: [] });
   const geometry =
     artifact?.pages[number - 1] ??
     (pageSize?.pdf === pdf && pageSize.number === number ? pageSize : null);
   const scale = width / (geometry?.width ?? 595.28);
   const height = scale * (geometry?.height ?? 841.89);
-  const highlightKey = JSON.stringify([artifact?.hash, selection?.renderHash, selection?.blockId, selection?.targetId, selection?.start, selection?.end, width, number]);
+  // Identifies the highlighted ranges; rebuilt only when the selection or comments for this page change.
+  const highlightKey = useMemo(() => [artifact?.hash, width, number, rangeKey(selection), ...(commentPhrases ?? []).map(rangeKey)].join('|'),
+    [artifact?.hash, width, number, selection, commentPhrases]);
   const preciseTarget = selection?.targetId && Number.isInteger(selection.start) && Number.isInteger(selection.end) && selection.end! > selection.start!
     ? artifact?.textTargets?.find(target => target.id === selection.targetId && target.blockId === selection.blockId) : undefined;
   const fullTargetSelection = !!preciseTarget && selection?.start === 0 && selection?.end === preciseTarget.text.length;
-  const phraseHighlights = !fullTargetSelection && textReady && highlightState.key === highlightKey ? highlightState.rects : [];
+  const highlightsCurrent = textReady && highlightState.key === highlightKey;
+  const phraseHighlights = !fullTargetSelection && highlightsCurrent ? highlightState.rects : [];
+  const commentHighlights = highlightsCurrent ? highlightState.comments : [];
   const phraseOnPage = preciseTarget?.lines.some(line => line.page === number && line.end > selection!.start! && line.start < selection!.end!);
   const showBlockSelection = !preciseTarget || (!fullTargetSelection && phraseOnPage && !phraseHighlights.length);
   useEffect(() => {
@@ -249,7 +239,7 @@ export const PdfPage = memo(function PdfPage({
     setError("");
     setRendered(false);
     setTextReady(false);
-    setLinks([]);
+    setLinks(current => current.length ? [] : current);
     text.current?.replaceChildren();
     if (!renderPage || width <= 0) {
       if (canvas.current) {
@@ -334,6 +324,16 @@ export const PdfPage = memo(function PdfPage({
     };
   }, [pdf, number, width, thumbnail, renderPage]);
 
+  // Screen readers voice each line in its own language; lines without letters follow the document.
+  useEffect(() => {
+    if (!textReady || !text.current) return;
+    for (const span of text.current.querySelectorAll<HTMLElement>('[data-pdf-text]')) {
+      const lang = textLang(span.textContent ?? '', language);
+      if (lang) span.lang = lang;
+      else span.removeAttribute('lang');
+    }
+  }, [language, textReady]);
+
   useEffect(() => {
     if (!textReady || !text.current || !container.current) return;
     const pageRect = container.current.getBoundingClientRect();
@@ -350,22 +350,85 @@ export const PdfPage = memo(function PdfPage({
   }, [artifact, number, scale, textReady]);
 
   useEffect(() => {
-    const rects: { left: number; top: number; width: number; height: number }[] = [];
-    if (textReady && text.current && container.current && selection?.targetId
-      && (!selection.renderHash || selection.renderHash === artifact?.hash)) {
-      const pageRect = container.current.getBoundingClientRect();
-      for (const span of text.current.querySelectorAll<HTMLElement>('[data-pdf-text]')) {
-        const offsets = pdfSpanRangeForSelection(spanMappings.get(span), selection);
-        const range = offsets && rangeWithinSpan(span, offsets.start, offsets.end);
-        if (!range) continue;
-        for (const rect of range.getClientRects()) {
-          if (rect.width <= 0 || rect.height <= 0) continue;
-          rects.push({ left: rect.left - pageRect.left, top: rect.top - pageRect.top, width: rect.width, height: rect.height });
-        }
-      }
-    }
-    setHighlightState({ key: highlightKey, rects });
-  }, [artifact, highlightKey, selection, textReady]);
+    const layer = text.current, page = container.current;
+    // Without a text layer nothing is highlighted; the ranges are measured once it is ready.
+    if (!textReady || !layer || !page) return;
+    const pageRect = page.getBoundingClientRect();
+    const spans = Array.from(layer.querySelectorAll<HTMLElement>('[data-pdf-text]'));
+    const rectsFor = (range: DocumentSelection) => spans.flatMap(span => {
+      const offsets = pdfSpanRangeForSelection(spanMappings.get(span), range);
+      const selected = offsets && rangeWithinSpan(span, offsets.start, offsets.end);
+      return selected ? Array.from(selected.getClientRects()).flatMap(rect => rect.width > 0 && rect.height > 0
+        ? [{ left: rect.left - pageRect.left, top: rect.top - pageRect.top, width: rect.width, height: rect.height }] : []) : [];
+    });
+    const current = selection?.targetId && (!selection.renderHash || selection.renderHash === artifact?.hash);
+    setHighlightState({ key: highlightKey, rects: current ? rectsFor(selection) : [], comments: (commentPhrases ?? []).flatMap(rectsFor) });
+  }, [artifact, highlightKey, selection, commentPhrases, textReady]);
+
+  /** The logical text range of the character nearest a point, within one text component. */
+  function textAt(targetId: string, x: number, y: number): TextRange | undefined {
+    const spans = Array.from(text.current?.querySelectorAll<HTMLElement>('[data-pdf-text]') ?? []).flatMap(span => {
+      const mapping = spanMappings.get(span);
+      return mapping?.targetId === targetId ? [{ span, mapping }] : [];
+    });
+    const nearest = spans[nearestBox(spans.map(({ span }) => span.getBoundingClientRect()), x, y)];
+    if (!nearest) return undefined;
+    const { span, mapping } = nearest;
+    const index = nearestBox(mapping.starts.map((start, offset) => mapping.synthetic?.[offset] || mapping.ends[offset] <= start
+      ? null : rangeWithinSpan(span, offset, offset + 1)?.getBoundingClientRect()), x, y);
+    return index < 0 ? undefined : { start: mapping.starts[index], end: mapping.ends[index] };
+  }
+
+  function wholeText(target: TextTarget): DocumentSelection {
+    return { blockId: target.blockId, targetId: target.id, start: 0, end: target.text.length, quote: target.text, page: number, renderHash: artifact?.hash };
+  }
+
+  // Native selection stays off on the page, where it would fight component
+  // clicks. A drag instead chooses whole words within the pressed component.
+  function startPhrase(event: ReactPointerEvent<HTMLElement>, target: TextTarget) {
+    if (!onPhraseSelect || event.button !== 0 || event.pointerType === 'touch') return;
+    const element = event.currentTarget;
+    const origin = { x: event.clientX, y: event.clientY };
+    let anchor: TextRange | undefined, chosen = '', frame = 0, point = origin, dragging = false;
+    const selectWhole = () => {
+      const { left, top, width, height } = element.getBoundingClientRect();
+      onTextClick?.(wholeText(target), { left, top, width, height });
+    };
+    const update = () => {
+      frame = 0;
+      anchor ??= textAt(target.id, origin.x, origin.y);
+      const focus = anchor && textAt(target.id, point.x, point.y);
+      if (!anchor || !focus) return;
+      const range = wordRange(target.text, Math.min(anchor.start, focus.start), Math.max(anchor.end, focus.end));
+      const phrase = phraseSelection(target, range, number, artifact?.hash);
+      const key = phrase ? `${phrase.start}:${phrase.end}` : range ? 'whole' : '';
+      if (!key || key === chosen) return;
+      chosen = key;
+      if (phrase) onPhraseSelect(phrase);
+      else selectWhole();
+    };
+    const move = (next: PointerEvent) => {
+      if (next.pointerId !== event.pointerId) return;
+      // Matches the page's click threshold, which suppresses the click after a drag.
+      if (!dragging && Math.hypot(next.clientX - origin.x, next.clientY - origin.y) <= 4) return;
+      dragging = true;
+      point = { x: next.clientX, y: next.clientY };
+      frame ||= requestAnimationFrame(update);
+    };
+    const finish = (next: PointerEvent) => {
+      if (next.pointerId !== event.pointerId) return;
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', finish);
+      if (!dragging) return;
+      if (frame) { cancelAnimationFrame(frame); update(); }
+      // A drag over text the page cannot map still selects its component.
+      if (!chosen && next.type === 'pointerup') selectWhole();
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', finish);
+  }
 
   async function followDestination(dest: unknown) {
     try {
@@ -403,6 +466,59 @@ export const PdfPage = memo(function PdfPage({
     return [{ target, x, y, width: Math.max(...lines.map(line => line.x + line.width)) - x,
       height: Math.max(...lines.map(line => line.y + line.height)) - y }];
   }) : [], [artifact, number, renderPage, thumbnail]);
+  // Each page is one tab stop. Arrow keys move through its components in
+  // visual reading order without changing their stacking or click targets.
+  const navigation = useMemo(() => {
+    const textBlocks = new Set(textComponents.map(item => item.target.blockId));
+    return componentNavigation([
+      ...(renderPage && !thumbnail ? artifact?.pages[number - 1]?.fragments ?? [] : []).map(fragment => ({
+        key: `block:${fragment.id}`, x: fragment.x, y: fragment.y, width: fragment.width, height: fragment.height,
+        linear: !textBlocks.has(fragment.id), rowsFirst: getBlock(artifact, fragment.id)?.kind === 'table',
+      })),
+      ...textComponents.map(item => ({ key: `text:${item.target.id}`, owner: `block:${item.target.blockId}`,
+        x: item.x, y: item.y, width: item.width, height: item.height })),
+    ]);
+  }, [artifact, number, renderPage, textComponents, thumbnail]);
+  const names = useMemo(() => {
+    const result = new Map<string, string>();
+    const textBlocks = new Set(textComponents.map(item => item.target.blockId));
+    const texts = new Map(textComponents.map(item => [`text:${item.target.id}`, item.target.text]));
+    for (const item of textComponents) {
+      result.set(`text:${item.target.id}`, componentName({ kind: getBlock(artifact, item.target.blockId)?.kind, text: item.target.text }));
+    }
+    for (const key of navigation.order) {
+      if (!key.startsWith('block:')) continue;
+      const id = key.slice(6);
+      const block = getBlock(artifact, id);
+      const depicts = block?.kind !== 'block' ? undefined
+        : artifact?.assets?.some(use => use.blockId === id && use.kind === 'logo') ? 'Logo'
+        : artifact?.media?.some(use => use.blockId === id) ? 'Image' : undefined;
+      // A container without text of its own is named by its first contents.
+      const contents = navigation.order.find(other => texts.has(other) && isWithin(navigation, other, key));
+      result.set(key, componentName({ kind: block?.kind, depicts, whole: textBlocks.has(id),
+        text: block?.text.trim() || (depicts ? '' : texts.get(contents ?? '')) }));
+    }
+    return result;
+  }, [artifact, navigation, textComponents]);
+  const [activeComponent, setActiveComponent] = useState<string | null>(null);
+  const tabStop = activeComponent && navigation.order.includes(activeComponent)
+    ? activeComponent : navigation.order.find(key => navigation.linear.has(key));
+  function componentFocus(key: string) {
+    return {
+      tabIndex: key === tabStop ? 0 : -1,
+      onFocus: () => setActiveComponent(key),
+      onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+        const move = navigationMove(event);
+        if (!move) return;
+        event.preventDefault();
+        const next = moveComponentFocus(navigation, key, move);
+        if (!next) return;
+        container.current?.querySelector<HTMLElement>(next.startsWith('text:')
+          ? `[data-text-target="${CSS.escape(next.slice(5))}"]`
+          : `.component-target[data-block-id="${CSS.escape(next.slice(6))}"]`)?.focus();
+      },
+    };
+  }
   function rectStyle(f: Pick<Fragment, 'x' | 'y' | 'width' | 'height'>): CSSProperties {
     return {
       left: f.x * scale,
@@ -418,6 +534,9 @@ export const PdfPage = memo(function PdfPage({
       data-page={number}
       data-render-hash={artifact?.hash}
       data-rendered={rendered}
+      role={label ? 'group' : undefined}
+      aria-label={label}
+      aria-describedby={label ? keyboardHelp : undefined}
       onPointerDownCapture={event => { pointerStart.current = { x: event.clientX, y: event.clientY }; }}
       onClickCapture={event => {
         if (event.detail > 0 && Math.hypot(event.clientX - pointerStart.current.x, event.clientY - pointerStart.current.y) > 4) {
@@ -473,13 +592,13 @@ export const PdfPage = memo(function PdfPage({
             })}
           </div>
           <InspectionLayer key={`${artifact?.hash}:${width}`}>
+            {commentHighlights.map((rect, index) => <div key={`comment-${index}`} className="comment-phrase-highlight" aria-hidden="true" style={rect} />)}
             {phraseHighlights.map((rect, index) => <div key={index} className="text-selection-highlight" aria-hidden="true" style={{ ...rect, pointerEvents: 'none' }} />)}
             {fragments.map(fragment => {
               const block = getBlock(artifact, fragment.id);
-              const hasText = textComponents.some(item => item.target.blockId === fragment.id);
               return <Button static key={fragment.id} className={`block-target component-target ${selected === fragment.id && showBlockSelection ? 'selected' : ''}`}
-                data-block-id={fragment.id} style={rectStyle(fragment)} tabIndex={hasText ? -1 : 0}
-                aria-label={`Select ${block?.kind ?? 'document'} component: ${block?.text.slice(0, 90) || fragment.id}`}
+                data-block-id={fragment.id} style={rectStyle(fragment)} {...componentFocus(`block:${fragment.id}`)}
+                aria-label={names.get(`block:${fragment.id}`)}
                 onClick={() => onSelect?.(fragment.id, number)}>
                 <span className="block-label" aria-hidden="true">{block?.kind ?? 'Component'}</span>
               </Button>;
@@ -488,21 +607,24 @@ export const PdfPage = memo(function PdfPage({
               const block = getBlock(artifact, item.target.blockId);
               const fullSelected = selection?.targetId === item.target.id && selection.start === 0 && selection.end === item.target.text.length;
               return <Button static key={item.target.id} className={`block-target component-target text-component ${fullSelected ? 'selected' : ''}`}
-                data-text-target={item.target.id} style={rectStyle(item)}
-                aria-label={`Select ${block?.kind ?? 'text'}: ${item.target.text.slice(0, 90)}`}
+                data-text-target={item.target.id} style={rectStyle(item)} {...componentFocus(`text:${item.target.id}`)}
+                aria-label={names.get(`text:${item.target.id}`)}
+                onPointerDown={event => startPhrase(event, item.target)}
                 onClick={event => {
                   const rect = event.currentTarget.getBoundingClientRect();
-                  onTextClick?.({ blockId: item.target.blockId, targetId: item.target.id, start: 0, end: item.target.text.length,
-                    quote: item.target.text, page: number, renderHash: artifact?.hash },
-                    { left: rect.left, top: rect.top, width: rect.width, height: rect.height });
+                  onTextClick?.(wholeText(item.target), { left: rect.left, top: rect.top, width: rect.width, height: rect.height });
+                }}
+                onDoubleClick={event => {
+                  const hit = onTextEdit && textAt(item.target.id, event.clientX, event.clientY);
+                  onTextEdit?.(wholeText(item.target), hit ? wordRange(item.target.text, hit.start, hit.end) ?? { start: hit.start, end: hit.start } : undefined);
                 }}>
                 <span className="block-label" aria-hidden="true">{block?.kind ?? 'Text'}</span>
               </Button>;
             })}
+            {/* A page is one Tab stop: markers are pointer shortcuts to comments the Comments tab also lists. */}
             {fragments.filter(fragment => commented?.has(fragment.id)).map(fragment => {
-              const block = getBlock(artifact, fragment.id);
-              return <Button static key={fragment.id} className="comment-marker"
-                aria-label={`View comments on ${block?.kind ?? 'block'}: ${block?.text.slice(0, 90) || fragment.id}`}
+              return <Button static key={fragment.id} className="comment-marker" tabIndex={-1}
+                aria-label={`View comments on ${(names.get(`block:${fragment.id}`) ?? 'Component').replace(/^./, letter => letter.toLowerCase())}`}
                 style={{ left: (fragment.x + fragment.width) * scale + 4, top: fragment.y * scale - 6, pointerEvents: 'auto' }}
                 onClick={() => (onComment ?? onSelect)?.(fragment.id, number)}><Icon name="comment" size={12} /></Button>;
             })}
@@ -517,45 +639,3 @@ export const PdfPage = memo(function PdfPage({
     </div>
   );
 });
-
-export function CoverPreview({
-  format = 'document',
-  id,
-  artifact,
-  compact = false,
-}: {
-  id: string;
-  artifact?: ArtifactSummary;
-  format?: 'document' | 'presentation';
-  compact?: boolean;
-}) {
-  const cover = useRef<HTMLDivElement>(null);
-  const nearby = useNearViewport(cover, `${id}:${artifact?.hash}`, "320px 0px");
-  const { pdf, error } = usePdf(id, artifact?.hash, nearby);
-  const page = artifact?.pages[0] ?? (format === 'presentation' ? {width:960,height:540} : undefined);
-  const [width, setWidth] = useState(compact ? 40 : 238);
-  useEffect(() => {
-    if (!cover.current) return;
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry.contentRect.width > 0) setWidth(entry.contentRect.width);
-    });
-    observer.observe(cover.current);
-    return () => observer.disconnect();
-  }, []);
-  return (
-    <div
-      ref={cover}
-      className="cover-preview"
-      aria-hidden="true"
-      style={{ '--cover-ratio': (page?.width ?? 595.28) / (page?.height ?? 841.89), aspectRatio: `${page?.width ?? 595.28} / ${page?.height ?? 841.89}`, width: compact ? Math.min(40, 56 * (page?.width ?? 595.28) / (page?.height ?? 841.89)) : undefined } as CSSProperties}
-    >
-      {pdf ? (
-        <PdfPage pdf={pdf} number={1} width={width} thumbnail />
-      ) : (
-        <div className="cover-placeholder">
-          {compact ? <Icon name="document" size={18} /> : error ? "Preview unavailable" : "Preparing preview…"}
-        </div>
-      )}
-    </div>
-  );
-}

@@ -1,0 +1,6 @@
+interface:
+  display_name: "OpenDoc: Revise document"
+  short_description: "Update, shorten, translate, convert, or retheme existing work."
+  default_prompt: "Use $opendoc-revise-document in this OpenDoc workspace."
+policy:
+  allow_implicit_invocation: true

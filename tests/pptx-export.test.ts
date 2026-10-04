@@ -3,11 +3,14 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { readFile, writeFile, readdir } from 'node:fs/promises';
+import type { ElementInfo } from '@formepdf/core';
+import type { FormeNode } from '@formepdf/react';
 import { resolve } from 'node:path';
 import { readZip } from '@shbernal/ts-pptx/zip';
+import { setDiagnosticHandler } from '@shbernal/ts-pptx';
 import { fixture, projectRoot, until } from './helpers';
 import { renderOnce } from '../src/server/render';
-import { presentationBytes, readPresentationBytes, presentationTextRuns, type PresentationCapture } from '../src/server/pptx';
+import { presentationBytes, readPresentationBytes, presentationTextRuns, firstStrongCharacter, paragraphDirection, rtlParagraphAlignment, slideObjectNames, type PresentationCapture } from '../src/server/pptx';
 import { ExportStore } from '../src/server/exports';
 import { exportDocuments, parseExportArgs } from '../src/server/export-batch';
 import type { SavedExport } from '../src/shared/export';
@@ -53,6 +56,40 @@ test('PowerPoint uses the exact captured preview, native rich text, images, and 
       assert.ok(capture.doc.fonts!.some(font => typeof font.src === 'string' && Buffer.from(font.src, 'base64').equals(eot.subarray(-length))));
     }
     await assert.rejects(readPresentationBytes(render.directory, 'stale'), /preview changed/);
+    // Right-to-left paragraphs: reuse this render, with Arabic text in the title's source and line.
+    const rtl = structuredClone(capture), arabic = 'عرض Microsoft Office التجريبي';
+    const sourceNode = (node: FormeNode, content: string): FormeNode | undefined => 'content' in node.kind && node.kind.content === content ? node : node.children.map(child => sourceNode(child, content)).find(Boolean);
+    const layoutNode = (node: ElementInfo, text: string): ElementInfo | undefined => node.children.some(line => line.textContent === text) ? node : node.children.map(child => layoutNode(child, text)).find(Boolean);
+    const title = sourceNode(rtl.doc.children[0], 'Editable proof')!, titleBox = layoutNode(rtl.layout.pages[0].elements[0], 'Editable proof')!, titleLine = titleBox.children[0];
+    if (title.kind.type !== 'Heading') throw new Error('Expected the title heading.');
+    title.kind.content = arabic; titleLine.textContent = arabic;
+    sourceNode(rtl.doc.children[1], 'The final slide.')!.style = { ...sourceNode(rtl.doc.children[1], 'The final slide.')!.style, direction: 'rtl' } as never;
+    const withDirection = (node: ElementInfo, direction?: string) => { const style = { ...node.style } as Record<string, unknown>; if (direction) style.direction = direction; else delete style.direction; node.style = style as never; };
+    // The engine reports each line's resolved direction; the deck follows it so it matches the PDF.
+    withDirection(titleLine, 'ltr');
+    assert.doesNotMatch(xml(await readZip(await presentationBytes(rtl)), 'ppt/slides/slide1.xml').split('<a:p>').find(paragraph => paragraph.includes('التجريبي'))!, /rtl="1"/, 'A line resolved left to right stays left to right.');
+    withDirection(titleLine, 'rtl');
+    // Without a resolved line direction (older layouts), the authored style decides.
+    const finalBox = layoutNode(rtl.layout.pages[1].elements[0], 'The final slide.')!;
+    finalBox.children.filter(child => child.nodeType === 'TextLine').forEach(line => withDirection(line));
+    const rtlParts = await readZip(await presentationBytes(rtl)), rtlSlide = xml(rtlParts, 'ppt/slides/slide1.xml');
+    const paragraphOf = (slideXml: string, text: string) => slideXml.split('<a:p>').find(paragraph => paragraph.includes(text))!;
+    // The PDF line is flush left, so the export keeps that alignment while marking the paragraph RTL.
+    assert.match(paragraphOf(rtlSlide, 'التجريبي'), /<a:pPr rtl="1"\s+algn="l"/);
+    assert.match(paragraphOf(rtlSlide, 'Microsoft Office'), /<a:rPr lang="ar-SA" altLang="en-US"/);
+    assert.match(paragraphOf(rtlSlide, 'التجريبي'), /<a:latin typeface="[^"]+"[^>]*\/><a:cs typeface="[^"]+"\/>/);
+    assert.doesNotMatch(paragraphOf(rtlSlide, 'italic'), /rtl="1"|ar-SA/, 'LTR paragraphs keep their existing output');
+    // The engine reports the alignment it applied to each line; the deck follows it.
+    (titleLine.style as { textAlign: string }).textAlign = 'Right';
+    assert.match(paragraphOf(xml(await readZip(await presentationBytes(rtl)), 'ppt/slides/slide1.xml'), 'التجريبي'), /<a:pPr rtl="1"\s+algn="r"/, 'A line aligned right maps to right alignment.');
+    // Without a resolved line direction (older layouts), the reviewed geometry decides.
+    (titleLine.style as { textAlign: string }).textAlign = 'Left';
+    withDirection(titleLine); withDirection(titleBox);
+    titleLine.x = titleBox.x + titleBox.width - titleLine.width;
+    assert.match(paragraphOf(xml(await readZip(await presentationBytes(rtl)), 'ppt/slides/slide1.xml'), 'التجريبي'), /<a:pPr rtl="1"\s+algn="r"/, 'Flush-right RTL lines map to right alignment.');
+    const declared = paragraphOf(xml(rtlParts, 'ppt/slides/slide2.xml'), 'The final slide.');
+    assert.match(declared, /<a:pPr rtl="1"/);
+    assert.match(declared, /<a:rPr lang="en-US"/, 'A declared direction without RTL letters keeps the English language tag.');
     const unsafe = structuredClone(capture);
     for (const face of unsafe.doc.fonts!) {
       const font = Buffer.from(face.src as string, 'base64');
@@ -142,6 +179,130 @@ test('rich links survive line boundaries and unexpected text fails rather than d
   assert.equal(runs.map(run => run.text).join(''), 'Read the \nevidence today.');
   assert.deepEqual(runs.filter(run => run.href).map(run => run.text), ['the ', 'evidence']);
   assert.equal(presentationTextRuns(source, [{ textContent: 'Unexpected text' }]), null);
+});
+
+test('paragraph direction follows an explicit style, then the first strong character (UAX #9 P2/P3)', () => {
+  assert.equal(firstStrongCharacter('2026 قمنا بتحديث Microsoft Office')?.direction, 'rtl', 'digits and spaces are weak');
+  assert.equal(firstStrongCharacter('Microsoft Office في المكتب')?.direction, 'ltr');
+  assert.equal(firstStrongCharacter('\u2067English inside an isolate\u2069 ثم نص عربي')?.direction, 'rtl', 'isolated text is skipped');
+  assert.equal(firstStrongCharacter('\u200F2026')?.direction, 'rtl');
+  assert.equal(firstStrongCharacter('١٢٣ — 456 …'), undefined, 'Arabic-Indic digits and punctuation are not strong');
+  assert.deepEqual(paragraphDirection(undefined, '١٢٣'), { rtl: false });
+  assert.deepEqual(paragraphDirection(undefined, 'قمنا بتحديث نظام Microsoft Office'), { rtl: true, lang: 'ar-SA' });
+  assert.deepEqual(paragraphDirection('auto', 'שלום world'), { rtl: true, lang: 'he-IL' });
+  assert.deepEqual(paragraphDirection('Rtl', 'Microsoft Office'), { rtl: true, lang: undefined });
+  assert.deepEqual(paragraphDirection('ltr', 'قمنا بتحديث'), { rtl: false });
+  const box = { x: 40, width: 200, style: { padding: { top: 0, right: 10, bottom: 0, left: 10 }, borderWidth: { top: 0, right: 0, bottom: 0, left: 0 } } } as unknown as ElementInfo;
+  assert.equal(rtlParagraphAlignment('Left', box, [{ x: 130, width: 100 }]), 'right');
+  assert.equal(rtlParagraphAlignment('Left', box, [{ x: 50, width: 100 }]), 'left');
+  assert.equal(rtlParagraphAlignment('Left', box, [{ x: 50, width: 180 }]), 'right', 'a full line is aligned to the start edge');
+  assert.equal(rtlParagraphAlignment('Center', box, [{ x: 90, width: 100 }]), 'center');
+  assert.equal(rtlParagraphAlignment('Right', box, [{ x: 130, width: 100 }]), 'right');
+});
+
+test('PowerPoint paragraph alignment matches the PDF for either direction in either deck direction', async () => {
+  const f = await presentationFixture();
+  // Each paragraph's expected PowerPoint direction and physical alignment, as the PDF draws it.
+  const cases: Record<'rtl' | 'ltr', [id: string, style: string, text: string, rtl: boolean, align: 'l' | 'r' | 'ctr'][]> = {
+    rtl: [
+      ['arabic', '', 'مرحبا بكم في العرض', true, 'r'],
+      ['english-ltr', "direction:'ltr'", 'An English paragraph inside.', false, 'l'],
+      ['english-auto', "direction:'auto'", 'An automatic English paragraph.', false, 'l'],
+      ['english-inherited', '', 'English inheriting the deck direction.', true, 'r'],
+      ['english-left', "direction:'ltr',textAlign:'left'", 'Explicitly left.', false, 'l'],
+      ['english-right', "direction:'ltr',textAlign:'right'", 'Explicitly right.', false, 'r'],
+      ['english-center', "direction:'ltr',textAlign:'center'", 'Explicitly centered.', false, 'ctr'],
+      ['arabic-left', "textAlign:'left'", 'فقرة إلى اليسار', true, 'l'],
+      ['arabic-center', "textAlign:'center'", 'فقرة في الوسط', true, 'ctr'],
+    ],
+    ltr: [
+      ['english', '', 'An English paragraph.', false, 'l'],
+      ['arabic-rtl', "direction:'rtl'", 'فقرة عربية من اليمين', true, 'r'],
+      ['arabic-auto', "direction:'auto'", 'فقرة عربية تلقائية', true, 'r'],
+      ['arabic-left', "direction:'rtl',textAlign:'left'", 'فقرة إلى اليسار', true, 'l'],
+      ['arabic-center', "direction:'rtl',textAlign:'center'", 'فقرة في الوسط', true, 'ctr'],
+      ['english-right', "textAlign:'right'", 'Explicitly right.', false, 'r'],
+    ],
+  };
+  try {
+    for (const [direction, paragraphs] of Object.entries(cases)) {
+      await writeFile(f.entry, `import {Presentation,Slide,Paragraph} from '../../src/document';
+export const meta={title:'Alignment',description:'Synthetic alignment test',theme:'neutral'};
+export default function Proof(){return <Presentation title={meta.title} direction="${direction}"><Slide id="only">
+${paragraphs.map(([id, style, text]) => `<Paragraph id="${id}" style={{${style}}}>${text}</Paragraph>`).join('\n')}
+</Slide></Presentation>}`);
+      const render = await renderOnce(f.root, 'proof');
+      const capture: PresentationCapture = JSON.parse(await readFile(resolve(render.directory, 'presentation.json'), 'utf8'));
+      const slide = xml(await readZip(await readPresentationBytes(render.directory, render.artifact.hash)), 'ppt/slides/slide1.xml');
+      const lineOf = (node: ElementInfo, text: string): [ElementInfo, ElementInfo] | undefined => {
+        const line = node.children.find(child => child.nodeType === 'TextLine' && child.textContent === text);
+        return line ? [node, line] : node.children.map(child => lineOf(child, text)).find(Boolean);
+      };
+      for (const [id, , text, rtl, align] of paragraphs) {
+        const label = `${direction} deck, ${id}`;
+        const shape = slide.split('<p:sp>').find(part => part.includes(`name="${id}"`));
+        assert.ok(shape, `${label}: exported as its own text box`);
+        assert.match(shape, new RegExp(`<a:pPr ${rtl ? 'rtl="1"\\s+' : ''}algn="${align}"`), `${label}: PowerPoint direction and alignment`);
+        // The expectation is the PDF's own geometry: the reviewed line sits at that edge.
+        const [box, line] = capture.layout.pages[0].elements.map(element => lineOf(element, text)).find(Boolean)!;
+        const offset = { l: line.x - box.x, r: box.x + box.width - line.x - line.width, ctr: Math.abs(line.x - box.x - (box.x + box.width - line.x - line.width)) }[align];
+        assert.ok(offset < 0.5, `${label}: the PDF line is drawn ${align}`);
+      }
+    }
+  } finally { await f.cleanup(); }
+});
+
+test('every exported object has a unique, stable name built from its component', async () => {
+  const f = await fixture();
+  const manifest = JSON.parse(await readFile(resolve(f.root, 'projects.json'), 'utf8'));
+  await writeFile(resolve(f.root, 'projects.json'), JSON.stringify({ ...manifest, formats: { proof: 'presentation' } }));
+  await writeFile(f.entry, `import {Presentation,Slide,Heading,Paragraph,Block,List,DataTable,Callout} from '../../src/document';
+export const meta={title:'Names',description:'Synthetic naming test',theme:'neutral'};
+function Card({ id, title, body }: { id: string; title: string; body: string }) { return <Block id={id} style={{backgroundColor:'#eef2ff',borderTopWidth:2,borderColor:'#123456',padding:8,marginBottom:6}}><Paragraph id={\`\${id}-title\`}>{title}</Paragraph><Paragraph id={\`\${id}-body\`}>{body}</Paragraph></Block>; }
+export default function Proof(){return <Presentation title={meta.title}>
+<Slide id="lists"><Heading id="lists-title">Lists</Heading>
+<List id="steps" items={[{ id: 'call', children: 'Call the vendor' }, { id: 'sign', children: 'Sign both copies' }]}/>
+<List id="order" ordered items={[{ id: 'first', children: 'First' }, { id: 'second', children: 'Second' }]}/>
+<Callout id="note" title="Note">Read twice.</Callout></Slide>
+<Slide id="tables"><DataTable id="costs" caption="Costs" columns={[{ id: 'item', label: 'Item' }, { label: 'Cost' }]} rows={[['Paper', '2'], ['Ink', '3']]} rowIds={['paper', 'ink']}/></Slide>
+<Slide id="cards"><Card id="alpha" title="Same title" body="Same body"/><Card id="beta" title="Same title" body="Same body"/></Slide>
+</Presentation>}`);
+  const diagnostics: string[] = [];
+  setDiagnosticHandler(diagnostic => { diagnostics.push(`${diagnostic.code}: ${diagnostic.message}`); });
+  try {
+    const render = await renderOnce(f.root, 'proof');
+    const bytes = await readPresentationBytes(render.directory, render.artifact.hash);
+    assert.deepEqual(diagnostics.filter(message => message.startsWith('object-name/')), [], 'ts-pptx reports no duplicate or invalid object names');
+    const parts = await readZip(bytes);
+    const names = (slide: number) => [...xml(parts, `ppt/slides/slide${slide}.xml`).matchAll(/<p:cNvPr id="\d+" name="([^"]*)"/g)].map(match => match[1]).slice(1);
+    for (const slide of [1, 2, 3]) {
+      const list = names(slide);
+      assert.ok(list.length && list.every(Boolean), `slide ${slide}: every object is named`);
+      assert.equal(new Set(list).size, list.length, `slide ${slide}: names are unique (${list.join(', ')})`);
+    }
+    const lists = names(1);
+    for (const name of ['lists-title', 'steps-call', 'steps-call marker', 'steps-sign', 'steps-sign marker', 'order-first marker', 'note title', 'note', 'note left border'])
+      assert.ok(lists.includes(name), `${name} in ${lists.join(', ')}`);
+    assert.ok(lists.indexOf('steps-call marker') < lists.indexOf('steps-call'), 'Names follow drawing order; the marker is drawn first');
+    const tables = names(2);
+    for (const name of ['costs caption', 'costs column-item', 'costs column-1', 'costs row-paper-column-item', 'costs row-ink-column-1', 'costs background'])
+      assert.ok(tables.includes(name), `${name} in ${tables.join(', ')}`);
+    const cards = names(3);
+    for (const name of ['alpha background', 'alpha top border', 'alpha-title', 'alpha-body', 'beta background', 'beta-title', 'beta-body'])
+      assert.ok(cards.includes(name), `${name} in ${cards.join(', ')}`);
+    const again = await readZip(await readPresentationBytes(render.directory, render.artifact.hash));
+    for (const slide of [1, 2, 3]) assert.equal(xml(again, `ppt/slides/slide${slide}.xml`), xml(parts, `ppt/slides/slide${slide}.xml`), 'Names are deterministic');
+  } finally { setDiagnosticHandler(null); await f.cleanup(); }
+});
+
+test('object names keep the block ID and add a qualifier or number only when needed', () => {
+  assert.deepEqual(slideObjectNames([
+    { block: 'slide', part: 'background' }, { block: 'body', part: 'children', text: true },
+    { block: 'item', part: 'marker', text: true }, { block: 'item', part: 'children', text: true },
+    { block: 'table', part: 'column-0', text: true }, { block: 'table', part: 'column-0', text: true },
+    { block: 'card', part: 'top border' }, { block: 'card', part: 'top border' }, { block: 'card', part: 'top border 2' },
+    { block: 'only', part: 'title', text: true },
+  ]), ['slide background', 'body', 'item marker', 'item', 'table column-0', 'table column-0 2', 'card top border', 'card top border 2', 'card top border 2 2', 'only']);
 });
 
 test('PPTX receipts preserve recovery, format identity, collisions, delete/Undo, and stale publication', async () => {

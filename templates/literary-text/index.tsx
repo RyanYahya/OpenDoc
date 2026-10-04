@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import * as F from '@formepdf/react';
-import { TextSlot, Document, Heading, Paragraph, References, Page } from 'opendoc';
+import { TextSlot, Decoration, Document, Heading, Paragraph, References, Page } from 'opendoc';
 import { themePage, type DocTheme } from 'opendoc/themes';
 
 export function LiteraryText({ title, theme, author, epigraph, titleStyle, children, references }: {
@@ -25,7 +25,7 @@ export function LiteraryText({ title, theme, author, epigraph, titleStyle, child
 export function SceneBreak({ id, lead }: { id: string; lead: string }) {
   if (!lead.trim() || lead.length > 700) throw new Error('SceneBreak needs a short opening paragraph of 1–700 characters. Put the rest in following Paragraph blocks.');
   return <F.View wrap={false}>
-    <Paragraph id={`${id}-marker`} role="small" baseStyle={{ textAlign: 'center', fontSize: 10, marginTop: 18, marginBottom: 18 }}>* * *</Paragraph>
+    <Paragraph id={`${id}-marker`} role="small" baseStyle={{ textAlign: 'center', fontSize: 10, marginTop: 18, marginBottom: 18 }}><Decoration>* * *</Decoration></Paragraph>
     <Paragraph id={`${id}-lead`}><TextSlot slot="lead" from="lead">{lead}</TextSlot></Paragraph>
   </F.View>;
 }

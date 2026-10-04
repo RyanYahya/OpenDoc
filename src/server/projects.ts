@@ -1,10 +1,8 @@
-import { constants, lstatSync, readFileSync, unlinkSync } from 'node:fs';
-import { lstat, mkdir, open, readFile, realpath, unlink } from 'node:fs/promises';
+import { lstat, readFile, realpath } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { setTimeout } from 'node:timers/promises';
 import { readTheme } from './themes';
-import { emptyProjects, type Project, type ProjectsManifest } from '../shared/projects';
-import { atomicWrite } from './files';
+import { emptyProjects, projectThemeDefaults, type Project, type ProjectsManifest, type ProjectThemeDefaults } from '../shared/projects';
+import { atomicWrite, withLocalLock } from './files';
 import { documentEntry, validId } from './render';
 
 export class ProjectError extends Error {
@@ -15,24 +13,6 @@ function record(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }
 
-/** A terminated CLI must not leave all later project changes permanently busy. */
-function releaseDeadProjectLock(lock: string) {
-  try {
-    const before = lstatSync(lock);
-    if (!before.isFile() || before.isSymbolicLink() || before.size > 128) return;
-    let pid: number | undefined;
-    try { pid = (JSON.parse(readFileSync(lock, 'utf8')) as { pid?: number } | null)?.pid; }
-    catch (error) { if (!(error instanceof SyntaxError)) throw error; }
-    if (Number.isSafeInteger(pid) && pid! > 0) {
-      try { process.kill(pid!, 0); return; }
-      catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') return; }
-    } else if (Date.now() - before.mtimeMs < 30_000) return;
-    const current = lstatSync(lock);
-    if (current.dev === before.dev && current.ino === before.ino && current.mtimeMs === before.mtimeMs) unlinkSync(lock);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-  }
-}
 function projectName(value: unknown) {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > 120 || /[\u0000-\u001f\u007f\u2028\u2029]/u.test(value)) throw new ProjectError('Give the project a name of 120 characters or fewer, on one line.');
   return value.trim();
@@ -49,11 +29,12 @@ function parseManifest(value: unknown): ProjectsManifest {
   if (!record(value) || value.version !== 1 || !Array.isArray(value.projects) || !record(value.assignments) || Object.keys(value).some(key => !['version', 'projects', 'assignments', 'names', 'formats'].includes(key))) throw invalid();
   const ids = new Set<string>();
   const projects = value.projects.map((entry): Project => {
-    if (!record(entry) || typeof entry.id !== 'string' || !validId(entry.id) || entry.id.length > 80 || ids.has(entry.id) || Object.keys(entry).some(key => !['id', 'name', 'defaultTheme'].includes(key))) throw invalid();
+    if (!record(entry) || typeof entry.id !== 'string' || !validId(entry.id) || entry.id.length > 80 || ids.has(entry.id) || Object.keys(entry).some(key => !['id', 'name', 'defaultTheme', 'defaultPresentationTheme'].includes(key))) throw invalid();
     ids.add(entry.id);
     // Keep a removed custom theme readable. Creation will ask for an available replacement.
-    if (entry.defaultTheme !== null && (typeof entry.defaultTheme !== 'string' || !entry.defaultTheme.trim())) throw invalid();
-    return { id: entry.id, name: projectName(entry.name), defaultTheme: entry.defaultTheme as string | null };
+    const storedTheme = (value: unknown) => { if (value !== null && (typeof value !== 'string' || !value.trim())) throw invalid(); return value as string | null; };
+    return { id: entry.id, name: projectName(entry.name), defaultTheme: storedTheme(entry.defaultTheme),
+      ...(Object.hasOwn(entry, 'defaultPresentationTheme') ? { defaultPresentationTheme: storedTheme(entry.defaultPresentationTheme) } : {}) };
   });
   const assignments: Record<string, string> = {};
   for (const [id, projectId] of Object.entries(value.assignments)) {
@@ -104,28 +85,13 @@ export async function readProjects(root: string): Promise<ProjectsManifest> {
 /** Serialize browser and CLI changes, including document publication and its assignment. */
 export async function withProjects<T>(root: string, change: (manifest: ProjectsManifest, save: () => Promise<void>) => Promise<T>): Promise<T> {
   const workspace = await realpath(root);
-  const runtime = resolve(workspace, '.opendoc');
-  await mkdir(runtime, { recursive: true });
-  const lock = resolve(runtime, 'projects.lock');
-  let handle;
-  const started = Date.now();
-  while (!handle) {
-    try { handle = await open(lock, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600); }
-    catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
-      releaseDeadProjectLock(lock);
-      if (Date.now() - started > 5000) throw new ProjectError('Project files are busy. Try again when the other operation finishes.', 409);
-      await setTimeout(25);
-    }
-  }
-  try {
-    await handle.writeFile(JSON.stringify({ pid: process.pid }));
+  return withLocalLock(workspace, 'projects.lock', () => new ProjectError('Project files are busy. Try again when the other operation finishes.', 409), async () => {
     const manifest = await readProjects(workspace);
-    return await change(manifest, async () => {
+    return change(manifest, async () => {
       const { file } = await manifestFile(workspace);
       await atomicWrite(file, `${JSON.stringify(parseManifest(manifest), null, 2)}\n`);
     });
-  } finally { await handle.close(); await unlink(lock); }
+  });
 }
 
 export function requireProject(manifest: ProjectsManifest, id: unknown): Project {
@@ -135,22 +101,47 @@ export function requireProject(manifest: ProjectsManifest, id: unknown): Project
   return project;
 }
 
+const themeKeys = ['defaultTheme', 'defaultDocumentTheme', 'defaultPresentationTheme'];
+
+/**
+ * `defaultTheme` sets both formats; the format-specific keys then override one each.
+ * Unchanged formats keep their current default, even a removed theme awaiting repair.
+ */
+async function changedThemeDefaults(root: string, current: ProjectThemeDefaults, input: Record<string, unknown>): Promise<ProjectThemeDefaults> {
+  const next = { ...current };
+  if (Object.hasOwn(input, 'defaultTheme')) next.document = next.presentation = await selectedTheme(root, input.defaultTheme);
+  if (Object.hasOwn(input, 'defaultDocumentTheme')) next.document = await selectedTheme(root, input.defaultDocumentTheme);
+  if (Object.hasOwn(input, 'defaultPresentationTheme')) next.presentation = await selectedTheme(root, input.defaultPresentationTheme);
+  return next;
+}
+
+/**
+ * The document default stays in `defaultTheme`, which older versions read for every format.
+ * A presentation default is written only when it differs, so a shared default keeps the older file shape.
+ */
+function storeThemeDefaults(project: Project, defaults: ProjectThemeDefaults) {
+  project.defaultTheme = defaults.document;
+  if (defaults.presentation === defaults.document) delete project.defaultPresentationTheme;
+  else project.defaultPresentationTheme = defaults.presentation;
+}
+
 export async function createProject(root: string, input: unknown): Promise<Project> {
-  if (!record(input) || Object.keys(input).some(key => !['name', 'id', 'defaultTheme'].includes(key))) throw new ProjectError('Provide a project name and an optional default theme.');
+  if (!record(input) || Object.keys(input).some(key => !['name', 'id', ...themeKeys].includes(key))) throw new ProjectError('Provide a project name and optional default themes.');
   const name = projectName(input.name);
-  const defaultTheme = await selectedTheme(root, input.defaultTheme);
+  const defaults = await changedThemeDefaults(root, { document: null, presentation: null }, input);
   const derived = name.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80).replace(/-$/, '') || 'new-project';
   const id = input.id ?? derived;
   if (typeof id !== 'string' || !validId(id) || id.length > 80) throw new ProjectError('Use a project ID with lowercase letters, numbers, and single hyphens, up to 80 characters.');
   return withProjects(root, async (manifest, save) => {
     if (manifest.projects.some(project => project.id === id || project.name.toLowerCase() === name.toLowerCase())) throw new ProjectError('A project with this name or ID already exists. Choose another name.', 409);
-    const project = { id, name, defaultTheme };
+    const project: Project = { id, name, defaultTheme: null };
+    storeThemeDefaults(project, defaults);
     manifest.projects.push(project); await save(); return project;
   });
 }
 
 export async function updateProject(root: string, id: string, input: unknown): Promise<Project> {
-  if (!record(input) || !Object.keys(input).length || Object.keys(input).some(key => !['name', 'defaultTheme'].includes(key))) throw new ProjectError('Provide a project name or default theme.');
+  if (!record(input) || !Object.keys(input).length || Object.keys(input).some(key => !['name', ...themeKeys].includes(key))) throw new ProjectError('Provide a project name or default themes.');
   return withProjects(root, async (manifest, save) => {
     const project = requireProject(manifest, id);
     if (input.name !== undefined) {
@@ -158,7 +149,7 @@ export async function updateProject(root: string, id: string, input: unknown): P
       if (manifest.projects.some(other => other.id !== id && other.name.toLowerCase() === name.toLowerCase())) throw new ProjectError('A project with this name already exists.', 409);
       project.name = name;
     }
-    if (Object.hasOwn(input, 'defaultTheme')) project.defaultTheme = await selectedTheme(root, input.defaultTheme);
+    if (themeKeys.some(key => Object.hasOwn(input, key))) storeThemeDefaults(project, await changedThemeDefaults(root, projectThemeDefaults(project), input));
     await save(); return project;
   });
 }

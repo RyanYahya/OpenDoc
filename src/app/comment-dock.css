@@ -1,53 +1,74 @@
-.ui-button.comment-dock-trigger {
-  position: fixed;
-  z-index: 34;
-  right: 20px;
-  bottom: max(20px, env(safe-area-inset-bottom));
-  min-width: 62px;
-  min-height: var(--control-hit-size);
-  gap: 8px;
-  padding: 7px 10px;
-  border: 1px solid var(--line);
-  border-radius: var(--control-radius);
-  background: var(--popup-surface);
+/*
+ * Where the comment is, then its status and age at the end of the line. When a narrow panel cannot fit both,
+ * status and age move together to the next line instead of cutting the location short; only a location wider
+ * than the whole line truncates.
+ */
+.comment-dock-panel .comment-location { flex-wrap: wrap; min-width: 0; row-gap: 2px; }
+.comment-where { display: flex; flex: 1 1 auto; align-items: center; gap: 5px; min-width: 0; overflow: hidden; white-space: nowrap; }
+.comment-where > .comment-kind { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.comment-where > svg { flex-shrink: 0; }
+.comment-state { display: inline-flex; flex-shrink: 0; align-items: center; gap: 5px; white-space: nowrap; }
+.comment-dock-panel .comment-time { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* The Comments tab of the reader's side panel: a scrolling list with the agent hand-off pinned below it. */
+.comment-dock-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.comment-dock-panel textarea {
+  display: block;
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 10px 11px;
+  background: var(--background);
   color: var(--ink);
-  box-shadow: var(--shadow-popup);
+  font: inherit;
+  font-size: var(--body-size);
+  line-height: 1.65;
 }
-.ui-button.comment-dock-trigger:hover { background: var(--control-hover); }
-.ui-button.comment-dock-trigger[aria-expanded="true"] { color: var(--accent-ink); }
-.comment-dock-count { font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; line-height: 1; }
-
-.correction-editor.comment-dock-panel {
-  top: auto;
-  right: 20px;
-  bottom: max(76px, calc(env(safe-area-inset-bottom) + 56px));
-  left: auto;
-  width: 344px;
-  max-width: calc(100vw - 40px);
-  max-height: min(60dvh, 560px);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border-radius: 12px;
-  background: var(--popup-surface);
-  box-shadow: var(--shadow-popup);
-}
-.comment-dock-panel .correction-heading { flex-shrink: 0; }
-.comment-dock-content { min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.comment-dock-panel textarea:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -1px; }
+.comment-dock-content { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 8px 10px 14px; }
 .comment-dock-content .comment-error { margin: 2px 2px 12px; }
-.comment-dock-content .no-comments { margin: 0; padding: 10px 8px; }
+.comment-dock-content .no-comments { margin: 0; padding: 6px 8px 10px; }
+.no-comments p { margin: 0; line-height: 1.6; }
+.no-comments p + p { margin-top: 4px; }
+.no-comments strong { color: var(--ink); font-weight: 500; font-size: 13px; }
 
+.comment-quote {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  padding-inline-start: 8px;
+  border-inline-start: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  color: var(--muted);
+  font-size: var(--caption-size);
+  line-height: var(--caption-leading);
+  overflow-wrap: anywhere;
+}
+.comment-anchor-changed { color: var(--ink); font-weight: 500; }
+.comment-anchor-changed > span { margin-inline: 4px; color: var(--muted); font-weight: 400; }
+@media (prefers-contrast: more) { .comment-quote { border-inline-start-color: var(--accent-ink); } }
+
+/* A neutral badge, not an accent link: Open reads in ink, Resolved stays muted with its check. */
+.comment-status { display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0; min-height: 18px; padding: 0 6px; border-radius: var(--badge-radius); background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); font-size: var(--tag-size); line-height: var(--tag-leading); font-weight: 500; white-space: nowrap; }
+.comment-card.resolved .comment-status { padding-inline: 0; background: transparent; color: var(--muted); }
+@media (forced-colors: active) { .comment-status { border: 1px solid CanvasText; } }
+.comment-card.resolved .comment-text { color: var(--muted); }
+[dir="rtl"] .comment-location .comment-status svg { transform: none; }
+
+.comment-handoff { flex-shrink: 0; padding: 8px 8px 8px 14px; border-top: 1px solid var(--line); }
+.comment-handoff-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; }
+.comment-handoff-status { color: var(--muted); font-size: 12px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.ui-button.comment-handoff-copy { min-height: 30px; padding: 5px 8px; gap: 6px; font-size: 12px; color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 12%, transparent); border: 0; border-radius: 6px; }
+.ui-button.comment-handoff-copy:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.comment-handoff .comment-error { margin: 8px 2px 0; }
+.comment-handoff-prompt { width: 100%; margin: 8px 0 4px; padding: 10px; font-size: 12px; line-height: 1.6; resize: none; }
+
+@media (pointer: coarse) {
+  .ui-button.comment-handoff-copy { min-height: 40px; }
+}
 @media (max-width: 620px) {
-  .ui-button.comment-dock-trigger { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); }
-  .correction-editor.comment-dock-panel {
-    top: auto !important;
-    right: 12px;
-    bottom: max(68px, calc(env(safe-area-inset-bottom) + 56px)) !important;
-    left: auto !important;
-    width: calc(100% - 24px);
-    max-width: none;
-    max-height: 60dvh !important;
-    border-radius: 14px;
-  }
   .comment-dock-panel textarea { font-size: 16px; }
+  .ui-button.comment-handoff-copy { min-height: 40px; }
 }

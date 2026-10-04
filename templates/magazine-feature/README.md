@@ -2,7 +2,7 @@
 
 A native Forme layout for illustrated features, profiles, and interviews. A4 pages have 48-point top and side margins and a 58-point bottom margin. The opening uses the full 499-point content width; body text is inset 96 points from the left, leaving a 403-point reading column. The headline is 52 points. Body text is 11/16.5 points with 10-point paragraph gaps and no indents. Fonts and colors come from the caller's theme.
 
-`MagazineFeature` takes `title`, `theme`, and ordinary OpenDoc blocks as `children`. Optional `kicker`, `standfirst`, `author`, and `hero` supply opening material. Omit them when they are not needed; there are no empty reserved panels or mandatory content sections. Pass verified `references` and use `Cite` in the body for the usual reference list.
+`MagazineFeature` takes `title`, `theme`, and ordinary OpenDoc blocks as `children`. Optional `kicker`, `standfirst`, `author`, and `hero` supply opening material. When the theme sets eyebrows in capitals, the kicker is read-only in the reader and says so; other opening text edits at the document's call site. Omit them when they are not needed; there are no empty reserved panels or mandatory content sections. Pass verified `references` and use `Cite` in the body for the usual reference list.
 
 For `hero`, supply an existing `Figure` containing local `Media` or a native Forme image. Its available width is approximately 499 points; body visuals have approximately 403 points. Preserve the image's aspect ratio and leave enough height for its caption. `Figure` keeps the image and caption together, so the complete group must fit on a page. See [the media guidance](../../docs/MEDIA.md).
 

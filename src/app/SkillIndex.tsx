@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Tooltip } from '@base-ui/react/tooltip';
+import type { RefObject } from 'react';
+import { Popover } from '@base-ui/react/popover';
 import { skillIndex } from '../shared/skill-index';
 import { Button } from './ui';
 import { Icon } from './ui/Icon';
@@ -9,22 +9,25 @@ const skills = skillIndex(import.meta.glob<string>('../../.agents/skills/opendoc
   query: '?raw', import: 'default', eager: true,
 }));
 
+/** The skill list as a non-modal reference panel. The reader opens it from its app menu, anchored to that menu's button. */
+export function SkillIndexPopup({ anchor, finalFocus }: { anchor?: RefObject<HTMLElement | null>; finalFocus?: RefObject<HTMLElement | null> }) {
+  return <Popover.Portal>
+    <Popover.Positioner className="ui-positioner" anchor={anchor} side={anchor ? 'bottom' : 'top'} align="end" sideOffset={8} collisionPadding={8}>
+      <Popover.Popup className="ui-popover-popup skill-index" finalFocus={finalFocus}>
+        <Popover.Title className="skill-index-title">Agent skills</Popover.Title>
+        <Popover.Description className="skill-index-intro">Describe what you need; your agent follows the matching workflow. To pick one yourself, give your agent its skill name.</Popover.Description>
+        <dl>{skills.map(skill => <div key={skill.name}>
+          <dt>{skill.title} <code className="skill-index-name">{skill.name}</code></dt><dd>{skill.description}</dd>
+        </div>)}</dl>
+      </Popover.Popup>
+    </Popover.Positioner>
+  </Popover.Portal>;
+}
+
+/** The sidebar's labelled entry to the same reference. */
 export function SkillIndex() {
-  const [open, setOpen] = useState(false);
-  return <Tooltip.Root open={open} onOpenChange={setOpen}>
-    <Tooltip.Trigger render={<Button className="icon-button" aria-label="OpenDoc skills" onClick={() => setOpen(true)} />}>
-      <Icon name="book" size={17} />
-    </Tooltip.Trigger>
-    <Tooltip.Portal>
-      <Tooltip.Positioner className="ui-positioner" side="top" align="end" sideOffset={8}>
-        <Tooltip.Popup className="ui-menu-popup skill-index">
-          <p className="skill-index-title">OpenDoc skills</p>
-          <p className="skill-index-intro">Describe what you need; your agent follows the matching workflow. You can also name a skill.</p>
-          <dl>{skills.map(skill => <div key={skill.name}>
-            <dt>{skill.name}</dt><dd>{skill.description}</dd>
-          </div>)}</dl>
-        </Tooltip.Popup>
-      </Tooltip.Positioner>
-    </Tooltip.Portal>
-  </Tooltip.Root>;
+  return <Popover.Root>
+    <Popover.Trigger render={<Button className="tool-button skill-index-trigger" />}><Icon name="book" size={16} /><span>Skills</span></Popover.Trigger>
+    <SkillIndexPopup />
+  </Popover.Root>;
 }

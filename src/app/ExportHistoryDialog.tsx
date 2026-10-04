@@ -60,7 +60,7 @@ export function ExportHistoryDialog({ document, connected, onClose }: { document
   return <Dialog.Root open={!!document} onOpenChange={open => { if (!open && !working.current) onClose(); }}>
     <Dialog.Portal><Dialog.Backdrop className="ui-dialog-backdrop" /><Dialog.Popup className="help-dialog export-history-dialog">
       <Dialog.Close render={<Button className="icon-button modal-close" aria-label="Close export history" disabled={!!busy} />}><Icon name="close" /></Dialog.Close>
-      <div className="export-history-heading"><span className="export-history-symbol"><Icon name="history" size={22} /></span><div><Dialog.Title>Previous exports</Dialog.Title><Dialog.Description>{document ? documentName(document) : ''}</Dialog.Description></div></div>
+      <div className="export-history-heading"><span className="export-history-symbol"><Icon name="archive" size={22} /></span><div><Dialog.Title>Previous exports</Dialog.Title><Dialog.Description>{document ? documentName(document) : ''}</Dialog.Description></div></div>
       <div className="export-history-summary"><span>{loading ? 'Checking saved files…' : `${entries.length} ${entries.length === 1 ? 'export' : 'exports'} · Newest first`}</span><Button className="text-button" disabled={loading || !!busy || !connected} onClick={() => void refresh()}>Refresh</Button></div>
       {!connected && <p className="field-error" role="status">Reconnect to view and manage exports.</p>}
       {error && <p className="field-error" role="alert">{error}</p>}
@@ -70,7 +70,8 @@ export function ExportHistoryDialog({ document, connected, onClose }: { document
           <span className="export-history-paper" aria-hidden="true"><Icon name="document" size={24} /><span>{(entry.format ?? 'pdf').toUpperCase()}</span></span>
           <div className="export-history-details">
             {entry.available ? <a href={`/api/exports/${entry.id}/open`} target="_blank" rel="noreferrer" title={`Open ${entry.filename}`}>{entry.filename}</a> : <strong>{entry.filename}</strong>}
-            <span><time dateTime={entry.createdAt}>{date.format(new Date(entry.createdAt))}</time><span aria-hidden="true"> · </span>{fileSize(entry.bytes)}</span>
+            {/* Each row names the file as saved. Exports from `npx opendoc export` are named by the document's ID; say so, since Export suggests its title. */}
+            <span><time dateTime={entry.createdAt}>{date.format(new Date(entry.createdAt))}</time><span aria-hidden="true"> · </span>{fileSize(entry.bytes)}{!entry.hash && <><span aria-hidden="true"> · </span>Saved from the command line</>}</span>
             {!entry.available && <span className="export-history-unavailable">File moved, removed, or changed</span>}
           </div>
           <div className="export-history-actions" aria-label={`Actions for ${entry.filename}`}>

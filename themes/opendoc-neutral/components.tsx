@@ -48,7 +48,7 @@ export function NeutralColumns({ left, right, ratio = 'equal', style }: { left: 
 export function NeutralQuote({ id, children, attribution, surface = 'paper' }: { id: string; children: ReactNode; attribution: string; surface?: Surface }) {
   const c = surfaceColors(surface);
   return <Block id={id} style={{ borderTopWidth: 2, borderColor: surface === 'dark' ? colors.inverse : colors.blue, paddingTop: 18, marginTop: 18, marginBottom: 24 }}>
-    <Paragraph id={`${id}-text`} style={{ fontFamily: 'OpenDoc Serif', fontStyle: 'italic', fontSize: 28, lineHeight: 1.2, color: c.ink, marginBottom: 16 }}>{children}</Paragraph>
+    <Paragraph id={`${id}-text`} style={{ fontFamily: 'OpenDoc Serif', fontStyle: 'italic', fontSize: 28, lineHeight: 1.2, color: c.ink, marginBottom: 16 }}><TextSlot slot="children" from="children">{children}</TextSlot></Paragraph>
     <Paragraph id={`${id}-attribution`} role="label" style={{ color: c.muted, marginBottom: 0 }}><TextSlot slot="attribution" from="attribution">{attribution}</TextSlot></Paragraph>
   </Block>;
 }

@@ -11,6 +11,8 @@ import { renderEntry, validId } from './render';
 import { bindingDependencies, readAssetRevision, readThemeAssetDefaults, resolveThemeAssets } from '../assets/files';
 import { documentDependencies, includesDependency, type DocumentDependencies, isRenderRuntimePath, isManagedAssetPath } from './dependencies';
 import { authoringResolutionPlugin } from './source-overrides';
+import { themeLanguage } from './language';
+import { sourceFiles, sourceUpdatedAt } from './source-files';
 
 export async function themeFile(root: string, id: string, name: 'index.ts' | 'design.md' | 'preview.tsx' | 'components.tsx') {
   if (typeof id !== 'string' || !validId(id)) throw new Error('Invalid theme ID.');
@@ -54,7 +56,7 @@ export async function readThemePaths(root: string, id: string): Promise<ReturnTy
   return { ...themePaths(id), components: `themes/${id}/components.tsx` };
 }
 function summarize(theme: DocTheme): ThemeSummary {
-  return { id: theme.id, name: theme.name, description: theme.description, body: theme.body, heading: theme.heading, pageSize: theme.pageSize, useFor: theme.useFor ?? [], principles: theme.principles ?? [], palette: theme.palette ?? [], geometry: theme.geometry ?? [] };
+  return { id: theme.id, name: theme.name, description: theme.description, body: theme.body, heading: theme.heading, pageSize: theme.pageSize, useFor: theme.useFor ?? [], principles: theme.principles ?? [], palette: theme.palette ?? [], geometry: theme.geometry ?? [], language: themeLanguage(theme) };
 }
 async function summarizeWithAssets(root: string, theme: DocTheme): Promise<ThemeSummary> {
   const summary = summarize(theme);
@@ -146,7 +148,8 @@ export class ThemeCatalog {
           }
           catch (error) { items.push({ id: folder.name, name: folder.name, description: 'This theme needs attention.', body: '', heading: '', pageSize: '', useFor: [], principles: [], error: error instanceof Error ? error.message : String(error) }); }
         }
-        return items.map(item => ({ ...item, revision: this.revision(item.id) }));
+        // The newest theme file gives its last-edited time for sorting the gallery.
+        return Promise.all(items.map(async item => ({ ...item, revision: this.revision(item.id), updatedAt: sourceUpdatedAt(await sourceFiles(this.root, 'themes', item.id).catch(() => [])) })));
       })();
       this.summaries = { version, result };
     }

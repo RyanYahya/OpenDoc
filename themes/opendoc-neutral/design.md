@@ -1,6 +1,6 @@
 # OpenDoc Neutral
 
-The OpenDoc house style makes room for writing, evidence, and imagery. Warm paper and charcoal establish its character; scale, a flexible grid, fine rules, and one blue signal give it visual taste. It is a reusable everyday system, with expressive openings and dark surfaces available when the content benefits.
+The OpenDoc house style makes room for writing, evidence, and imagery. Warm paper and charcoal set its character; scale, a flexible grid, fine rules, and one blue signal organize the page. It is a reusable everyday system, with expressive openings and dark surfaces available when the content benefits.
 
 ## Palette
 
@@ -49,7 +49,7 @@ Use `NeutralPages` for flowing reading, white evidence, or charcoal pages. Its h
 
 ## Reusable compositions
 
-See [components.tsx](components.tsx) for the executable implementations.
+See [components.tsx](components.tsx) for the executable implementations. Text a document passes to `NeutralOpening` and `NeutralQuote` edits in the reader and saves at the document's call site.
 
 - `NeutralPages`: title, optional label, surface (`paper`, `white`, `dark`), optional header, and children. On dark surfaces, explicitly give standard headings, paragraphs, and captions the corresponding inverse color; their semantic theme colors otherwise remain dark ink.
 - `NeutralOpening`: stable id, eyebrow, title, optional subtitle, surface, and optional display scale. Keeps the same title/subtitle identities when its text changes.
@@ -63,7 +63,7 @@ Tables have charcoal column headers, white labels, 8 pt cell padding, restrained
 
 Images keep their aspect ratio. Favor a substantial image and an explanatory caption over a collage of tiny decorations. A dark gallery page can let a photograph carry the composition. Generated artwork must be labeled as such and retain its prompt/provenance; it is not documentary evidence.
 
-The shared OpenDoc logo is the existing wordmark, imported from `assets/brand/wordmark.png`. Its dark variation belongs on light surfaces. Preserve the original proportions and transparency. Place it explicitly through a saved `Logo` binding; no mark is inserted automatically. The theme's specimen stays self-contained and does not rely on a document's private media.
+The shared `opendoc` logo in the asset library is the existing wordmark, imported from `assets/brand/wordmark.png`. Its one variation, `default`, is dark artwork for light surfaces. Preserve the original proportions and transparency. Place it explicitly through a saved `Logo` binding; no mark is inserted automatically. The theme's specimen stays self-contained and does not rely on a document's private media.
 
 ## Basis
 

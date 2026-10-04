@@ -287,7 +287,7 @@ try {
   const engines = [];
   const visit = tree => { for (const [name, dependency] of Object.entries(tree.dependencies ?? {})) { if (name === '@formepdf/core') engines.push(dependency.version); visit(dependency); } };
   visit(dependencyTree);
-  assert.ok(engines.length && engines.every(version => version === '0.20.1-opendoc.3'), 'Every installed renderer uses the repaired engine.');
+  assert.ok(engines.length && engines.every(version => version === '0.20.1-opendoc.4'), 'Every installed renderer uses the repaired engine.');
   manifest.engineVersions = [...new Set(engines)];
   await run('npm', ['exec', '--offline', '--', 'opendoc', '--help'], launcher);
   const first = resolve(directory, 'first workspace'), second = resolve(directory, 'second workspace — 文档');

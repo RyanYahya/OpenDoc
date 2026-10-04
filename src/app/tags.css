@@ -1,0 +1,47 @@
+/* Workspace tags: the type label and status badge on cards, and the Details editor. Filters live in filter-bar.css. */
+:root { --status-review: var(--accent); --status-final: #1c7c37; }
+:root[data-appearance="dark"] { --status-final: #7ccf91; }
+
+.item-tags { display: block; min-width: 0; color: var(--muted); font-size: 12px; line-height: 1.5; font-weight: 400; overflow-wrap: anywhere; }
+
+/* Wording carries the status; the dot only reinforces it. */
+.status-badge { --status-color: var(--muted); display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; min-height: 20px; padding: 0 7px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink); font-size: var(--caption-size); line-height: 1; font-weight: 500; white-space: nowrap; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--status-color); }
+.status-draft, .status-archived { color: var(--muted); }
+.status-in-review { --status-color: var(--status-review); }
+.status-final { --status-color: var(--status-final); }
+.status-archived .status-dot { background: transparent; box-shadow: inset 0 0 0 1px var(--muted); }
+/* The badge follows the format and type without a separator dot. */
+.card-meta > .status-badge::before { content: none; }
+.card-meta { flex-wrap: wrap; row-gap: 4px; }
+.card-meta > .card-type { white-space: nowrap; }
+.reader-status { margin-inline-start: -2px; }
+.status-menu-value { color: var(--muted); font-size: inherit; }
+
+.tag-dialog .field-hint { margin-top: 0; }
+.tag-dialog .create-field:first-of-type { margin-top: 20px; }
+.tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.tag-list li { display: inline-flex; align-items: center; gap: 2px; min-height: 28px; padding: 0 2px 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: 12.5px; font-weight: 400; }
+.tag-list .ui-button.icon-button { min-width: 24px; min-height: 24px; padding: 5px; border: 0; border-radius: 999px; background: transparent; box-shadow: none; color: var(--muted); }
+.tag-list .ui-button.icon-button:hover { color: var(--ink); background: var(--control-hover); }
+.tag-entry { display: flex; gap: 8px; }
+.tag-entry > input { flex: 1; min-width: 0; min-height: var(--control-hit-size); padding: 5px 10px; border: 1px solid var(--control-line); border-radius: var(--control-radius); background: var(--surface-raised); font-size: var(--body-size); line-height: var(--body-leading); font-weight: 400; }
+
+.tag-suggestions { margin-top: 16px; }
+.help-dialog .tag-suggestions h3 { margin: 0; color: var(--muted); font-size: var(--caption-size); line-height: var(--caption-leading); font-weight: 500; }
+.tag-suggestions ul { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; padding: 0; list-style: none; }
+.tag-suggestions .ui-button.tag-choice { gap: 4px; min-height: 28px; padding: 3px 10px 3px 8px; border-radius: 999px; font-size: 12.5px; font-weight: 400; }
+.tag-suggestions .ui-button.tag-choice > svg { color: var(--muted); }
+
+.tag-details > p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.tag-details dl { margin: 0; font-size: 12px; }
+.tag-details dl div { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 12px; }
+.tag-details dl div + div { margin-top: 8px; }
+.tag-details dt { color: var(--muted); }
+.tag-details dd { margin: 0; overflow-wrap: anywhere; }
+.tag-details .tag-details-actions { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; }
+
+@media (pointer: coarse) {
+  .tag-list .ui-button.icon-button { min-width: 36px; min-height: 36px; }
+  .tag-suggestions .ui-button.tag-choice { min-height: 36px; }
+}

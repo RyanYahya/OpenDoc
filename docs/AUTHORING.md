@@ -4,9 +4,9 @@ Run these commands from your OpenDoc workspace, such as `~/Documents/My OpenDoc`
 
 The authoring API, full starter library, and commands below are shared by normal OpenDoc and OpenDoc Headless. Headless uses the `opendoc` package alias to preserve imports and guide paths; it needs no browser service. See [Headless](HEADLESS.md) for complete remote production and artifact delivery.
 
-Every document needs a project. Create its initial source and assignment with `npx opendoc create <id> --project <project-id> --title "Title"`, then develop the generated source. Add `--template <template-id>` when using a catalog layout; an ordinary document needs neither a template nor a starter. For imported document folders, use `npx opendoc projects assign <document-id> <project-id>`. See [Projects](PROJECTS.md) for defaults and membership.
+Every document needs a project. Create its initial source and assignment with `npx opendoc create <id> --project <project-id> --title "Title"`, then develop the generated source. Without `--theme`, it uses the project's default document theme, or Neutral. Add `--template <template-id>` when using a catalog layout; an ordinary document needs neither a template nor a starter. For imported document folders, use `npx opendoc projects assign <document-id> <project-id>`. See [Projects](PROJECTS.md) for defaults and membership.
 
-Use English, local assets, and a pure TSX component. OpenDoc owns a small set of document primitives; Forme provides the underlying page layout. Arbitrary HTML, browser CSS, React hooks, and asynchronous component effects do not belong inside document source.
+Write English or Arabic content (see [Arabic and right-to-left text](#arabic-and-right-to-left-text)), and use local assets and a pure TSX component. OpenDoc owns a small set of document primitives; Forme provides the underlying page layout. Arbitrary HTML, browser CSS, React hooks, and asynchronous component effects do not belong inside document source.
 
 ## A complete small document
 
@@ -45,11 +45,56 @@ Import document primitives from `opendoc`, asset adapters from `opendoc/assets`,
 
 `meta.kind` is an optional nonempty descriptive label, such as `quotation`. Omit it when a category adds nothing. Metadata describes the document; it does not choose its layout or constrain its structure. Themes are discovered from `themes/<id>/`. Use `npx opendoc themes list` and read only the selected theme’s `design.md`, then the needed component source. New documents import the adapted `theme` from `./theme`, preserving the saved asset choices; `meta.theme` must match the `Document` theme ID. Pass this same theme to any template factory before rendering. Civic Spectrum, Field Manual, McKinsey Consulting, and OpenDoc Neutral supply distinct print systems and reusable compositions. Neutral offers a simpler foundation and is the document fallback. See [Themes](THEMES.md).
 
+## Arabic and right-to-left text
+
+PDF output supports Arabic and other right-to-left scripts, including sentences that mix Arabic with English words and numbers. Set the base direction on the theme (`direction: 'rtl'`, `lang: 'ar'`) or on one document (`<Document direction="rtl" lang="ar">`); a `Document` prop wins over the theme. Every paragraph is laid out with the Unicode Bidirectional Algorithm: Arabic letters join, English words and numbers stay left to right inside the Arabic line, brackets are mirrored, and punctuation sits where an Arabic reader expects it. A wrapped paragraph is reordered line by line, so do not reverse words, insert directional marks, or split a sentence into separate runs to force an order.
+
+Arabic text needs no font setup. When a document contains Arabic-script characters that its fonts cannot draw, OpenDoc appends the built-in Noto Naskh Arabic family as the last fallback of every font list, so Arabic words typed into an English paragraph render with joined letters instead of question marks, and the English around them keeps its own face. Each run uses the face of its own weight (regular, medium, semibold, or bold), so `Strong` text gets semibold; italic runs use the upright faces. Only the faces the text uses are embedded, and a document without such characters renders exactly as before. A workspace whose asset library lacks `noto-naskh-arabic` (created before it was bundled) gets no automatic fallback and reports the characters as missing glyphs.
+
+To choose the Arabic font yourself, register one in `theme.fonts` (or bind it from the asset library) and list it in `fontFallbacks`, which OpenDoc appends to its own body, heading, label, caption, code, and table families. Theme fallbacks come before the built-in one, so characters the first family lacks come from your font, and English words can keep the Latin face:
+
+```tsx
+// Properties inside the theme definition; use a verified local Arabic font.
+direction: 'rtl',
+lang: 'ar',
+fontFallbacks: ['Noto Naskh Arabic'],
+fonts: [{ family: 'Noto Naskh Arabic', src: 'themes/acme/assets/NotoNaskhArabic-Regular.ttf', fontWeight: 400, fontStyle: 'normal' }],
+```
+
+```tsx
+<Paragraph id="update">قمنا بتحديث نظام Microsoft Office في المكتب الرئيسي يوم الأحد.</Paragraph>
+<Paragraph id="price">السعر 250 ريال لعام 2026 (شامل VAT).</Paragraph>
+<Paragraph id="note" style={{ direction: 'ltr' }}>An English paragraph inside an Arabic document.</Paragraph>
+```
+
+Any `fontFamily` may itself be a list of registered families, such as `'Acme Sans, Noto Naskh Arabic'`. A character that no listed font covers, such as a Chinese character in an Arabic sentence, prints as a question mark (`?`), and the space after it can disappear. The review reports a `missing-glyphs` warning naming the characters and their page or slide, and the reader shows a notice; fix the font list rather than accepting the warning. Other scripts get no automatic fallback, and the renderer currently detects missing glyphs only in paragraphs that contain right-to-left text, so also check the page images.
+
+`direction` is also a native style (`'ltr'`, `'rtl'`, or `'auto'`) for single paragraphs or containers. `auto` takes each paragraph's direction from its first strong letter, which suits mixed collections such as tables of names. Without an explicit `textAlign`, a paragraph aligns to the edge where it starts (right for Arabic); an explicit `textAlign` is kept. `textAlign: 'justify'` widens the spaces between words, never the joins inside Arabic words, and ends with a line aligned to the starting edge. Letter spacing is not applied to Arabic because it would break the joins.
+
+In a right-to-left document, rows start at the right: list markers, table columns (the first column is the rightmost), footer label and page numbers, and other `flexDirection: 'row'` compositions are mirrored. Lists indent and callouts draw their rule on the right. Text columns in `DataTable` default to right alignment and numeric columns to left. `CodeBlock` stays left to right. Padding, margins, borders, and absolute positions remain physical, so a custom composition that relies on `paddingLeft` or `left` should choose the side explicitly; theme components can call `documentDirection()` from `opendoc` inside their render function. Under `auto`, containers keep left-to-right rows while each paragraph follows its own text. Generated labels such as “Figure 1” and “Table 1” remain English. Extracted and copied text follows reading order, although some viewers omit the space where the direction changes; review the exported PDF's page images and extracted text as for any document.
+
+### Bundled Arabic font
+
+Instead of registering a font file, bind the bundled Noto Naskh Arabic family for Arabic body text, and for headings when they are also Arabic:
+
+```sh
+npx opendoc assets bind my-report body-font noto-naskh-arabic
+npx opendoc assets bind my-report heading-font noto-naskh-arabic
+```
+
+It has regular, medium, semibold, and bold faces, so `Strong` works. It has no italics: avoid `Em` and italic styles in Arabic text, because an unavailable style fails instead of being synthesized. The family also contains Latin letters and digits, so a sentence such as “قمنا بتحديث نظام Microsoft Office في المكتب الرئيسي يوم الأحد.” uses one font. See [Assets](ASSETS.md) for its provenance.
+
+### PowerPoint and the browser
+
+In PowerPoint exports, a paragraph is right-to-left when its `direction` style is `rtl`, or when it has no explicit direction and its first strong letter is Arabic or Hebrew. Such paragraphs export with PowerPoint's right-to-left paragraph setting and an Arabic (`ar-SA`) or Hebrew (`he-IL`) language tag, with the same font in the Latin and complex-script slots, so PowerPoint orders and shapes mixed text itself. Words that the PDF draws from a fallback font, such as Arabic from the built-in Noto Naskh Arabic, export as their own runs naming that font in both slots, and the font is embedded, so the deck matches the preview. PowerPoint keeps one regular and one bold face per family, so a deck cannot use both the semibold and the bold face, or the regular and the medium face, of the same fallback family. PowerPoint alignment is physical, and each paragraph exports with the alignment its reviewed PDF lines use. An explicit `left`, `right`, or `center` is kept; without one, a paragraph starts at its own direction's edge, so an English paragraph with `direction: 'ltr'` in a right-to-left deck exports left-aligned without repeating `textAlign: 'left'`. Left-to-right paragraphs keep left-to-right settings. Justified text remains unsupported. Because PowerPoint shapes Arabic itself, check the editable deck in PowerPoint when native rendering is available.
+
+In the browser, comments, text corrections, search, and name fields follow the direction of the text you type, and Arabic titles and comments display right-to-left within the left-to-right app.
+
 ## Page structure and reading rhythm
 
 ### Presentations
 
-Create a presentation with `npx opendoc create <id> --project <project-id> --title "Title" --format presentation`. It uses the same document folder, theme adapter, assets, media, selection, comments, and text corrections. The format is recorded in `projects.json` before source publication; older entries remain documents. Use the matching root rather than changing the format by swapping components alone.
+Create a presentation with `npx opendoc create <id> --project <project-id> --title "Title" --format presentation`. It uses the same document folder, theme adapter, assets, media, selection, comments, and text corrections. Without `--theme`, it starts from the project's default presentation theme, or Neutral. The format is recorded in `projects.json` before source publication; older entries remain documents. Use the matching root rather than changing the format by swapping components alone.
 
 ```tsx
 import { Presentation, Slide, Heading, Paragraph } from 'opendoc';
@@ -89,6 +134,7 @@ Compose for the editable export from the beginning:
 - Rounded containers with `overflow: 'hidden'` and children are not supported in PPTX: separately exported children cannot inherit rounded clipping. Use square corners, or remove clipping when it is unnecessary. PDF review remains available and reports this export limitation.
 - Embedded fonts must have TrueType outlines and permit editable embedding. PowerPoint has regular, bold, italic, and bold-italic slots; different faces competing for the same family/style slot cannot be preserved together. Use the exact selected asset faces and verify an early export when introducing custom fonts. Do not silently replace an explicitly chosen font.
 - Unsupported effects, including transforms, shadows, gradients, unequal corner radii, nonuniform rounded borders, group opacity, justified text, and custom word spacing, appear as `format: "pptx"` warnings during rendering and review, with a slide, component, and correction where available. These warnings permit PDF review but block PPTX export. There is no silent styling substitution or raster fallback. Font embedding and text-source compatibility are also checked during export; a render without styling warnings does not guarantee export success. Use compatible compositions within the brief; ask if resolving an error would materially change the user's chosen design or editability. Do not flatten the whole slide to work around an editable-export failure.
+- PowerPoint's Selection Pane names each object after its component's stable ID. A component's main text keeps the bare ID; its other text boxes add their text slot, such as `costs column-item` or `steps-call marker` for a list bullet, and shapes and images add their role, such as `card background`. A number is added only when a name would otherwise repeat on a slide.
 - Significant edits in PowerPoint can require resizing or reflowing a text box; PowerPoint does not rerun Forme. Inspect native rendering when available, and state verification limits accurately. A successful export or embedded-font record alone is not proof of identical appearance across platforms.
 
 #### Document primitives
@@ -105,18 +151,18 @@ Compose for the editable export from the beginning:
 | `Paragraph` | Readable prose with widow/orphan controls and optional whole-block `href` |
 | `Block` | A stable feedback target around a custom Forme visual or composition |
 
-Use `Section` for ordinary prose sections. Its lead is deliberately limited to 700 characters; put longer content in normal paragraphs inside the section. Do not place an entire long section, table, or variable data report in an unbreakable container.
+Use `Section` for ordinary prose sections. Its lead is limited to 700 characters, so it can stay with the heading; put longer content in normal paragraphs inside the section. Do not place an entire long section, table, or variable data report in an unbreakable container.
 
 `Pages` defaults to the theme's A4 portrait layout. It also accepts Forme page sizes or a custom `{ width, height }` in points, `margin`, `header`, `footer`, and `pageNumbers`. Set header/footer to `false` to suppress them. For custom page compositions import `Page` from OpenDoc, with native Forme primitives inside; it handles the current engine's page-background limitation. Columns are appropriate for short independent material; they are not a promise of sequential magazine text flow. Use a composed opening followed by flowing pages for long publications.
 
 ## Tables, figures, lists, and code
 
-`DataTable` takes `columns` and `rows`. Columns have `label`, optional positive `width` weights, and optional `align: 'left' | 'center' | 'right'`. Numeric columns align right automatically. Cells are strings, finite numbers, or transparent text bindings; every row must match the columns. Optional `rowIds` preserve cell targets when records reorder. Optional `caption` and `sourceNote` explain the table. The caption and column headings repeat on continued pages. An empty table displays `emptyMessage` instead of pretending to contain observations.
+`DataTable` takes `columns` and `rows`. Columns have `label`, optional positive `width` weights, optional `align: 'left' | 'center' | 'right'`, and an optional stable `id`, unique within the table. Numeric columns align right automatically (left in right-to-left documents). Write column labels as literals in `columns`, a local constant array, or a `.map` over one, so each heading stays editable in the browser; an `id` keeps a heading's identity when columns reorder and separates columns with equal wording (see [Selection](SELECTION.md#binding-reusable-content)). Cells are strings, finite numbers, or transparent text bindings; every row must match the columns. Write cells as literals in `rows`, a local constant array, or a `.map` over one, so each cell stays editable in the browser; a number cell stays a number. Give rows stable `rowIds`, one unique string per row in row order. They keep each cell's edits and phrase comments with its row when rows reorder or repeat wording, and without them a repeated row is read-only. Optional `caption` and `sourceNote` explain the table. The caption and column headings repeat on continued pages. An empty table displays `emptyMessage` instead of pretending to contain observations.
 
 ```tsx
 <DataTable id="measurements" caption="Illustrative measurements"
   columns={[{ label: 'Condition', width: 2 }, { label: 'Time (ms)' }]}
-  rows={[["Baseline", 24], ["Revised", 19]]}
+  rows={[["Baseline", 24], ["Revised", 19]]} rowIds={['baseline', 'revised']}
   sourceNote="Synthetic values for demonstrating table layout." />
 ```
 
@@ -138,11 +184,11 @@ Direct local image paths resolve relative to the document folder; managed `Media
 </Figure>
 ```
 
-`List` takes `items: { id, children }[]`, with optional `ordered` and `start`. Record IDs survive reordering. Omit empty lists. Items remain together and the list flows between items; a single item must fit on a page.
+`List` takes `items: { id, children }[]`, with optional `ordered` and `start`. Record IDs survive reordering. Omit empty lists. Items remain together and the list flows between items; a single item must fit on a page. Lists do not nest; write a nested point as its own list or paragraph. Write item text as literals in the `items` array, a local constant array, or a `.map` over one, so each item stays editable in the browser (see [Selection](SELECTION.md#binding-reusable-content)).
 
 For continuous essay text with first-line indentation, use `Prose` as described in [Continuous prose](PROSE.md). It preserves ordinary paragraph IDs and source bindings.
 
-Lists use ordinary text rows because the current engine mismeasures native wrapped list items. Their text and numbering remain selectable, but the PDF does not carry native list structure tags.
+Lists use ordinary text rows because the current engine mismeasures native wrapped list items. Selecting an item selects its text; bullets and generated numbers are drawn beside it but are never separately selectable or editable. The PDF does not carry native list structure tags.
 
 `Callout` accepts inline or block children and an optional title. Use it when the reader needs to notice a limitation, decision, or instruction, not as a container for every paragraph.
 
@@ -170,7 +216,7 @@ OpenDoc validates reference records and relationships. It does not verify whethe
 
 Every commentable block needs a unique, stable `id`. Preserve it when rewriting or moving the same idea; assign a new ID to a different idea. Avoid IDs derived from page numbers or array positions.
 
-Selections can identify individual phrases within those blocks. Literal document-owned text supports quick corrections; reusable props and instance data use transparent `TextSlot` bindings. Preserve slot and record IDs alongside block IDs. See [Selection and quick corrections](SELECTION.md) for the binding and agent-context contract.
+Selections can identify individual phrases within those blocks. Literal document-owned text supports quick corrections, including literal props passed to helper components in the same file. Shared components in other files and instance data use transparent `TextSlot` bindings, and marks a component generates, such as counters and arrows, sit in `Decoration` so they never become editable text. Preserve slot and record IDs alongside block IDs. See [Selection and quick corrections](SELECTION.md) for the binding and agent-context contract.
 
 Composite primitives reserve their child IDs. `TitleBlock id="opening"` creates `opening-title`, `opening-subtitle`, and `opening-byline` when present. `Section id="method"` creates `method-heading` and `method-lead`. `List id="steps"` combines its ID with each item ID. `Cover` defaults to the `cover-` prefix; choose another prefix for a second cover. References reserve `reference-<source-id>` and notes reserve `note-<note-id>`.
 

@@ -34,7 +34,7 @@ if (run('wasm-pack', ['--version'], work, true).trim() !== 'wasm-pack 0.15.0') t
 run('git', ['clone', '--depth', '1', '--branch', 'v0.20.1', 'https://github.com/formepdf/forme.git', 'source']);
 const source = resolve(work, 'source');
 if (run('git', ['rev-parse', 'HEAD'], source, true).trim() !== commit) throw new Error('The upstream tag no longer matches the pinned commit.');
-for (const patch of ['text-writer.patch', 'font-subset.patch']) {
+for (const patch of ['text-writer.patch', 'font-subset.patch', 'bidi-rtl.patch']) {
   run('git', ['apply', '--check', resolve(destination, patch)], source);
   run('git', ['apply', resolve(destination, patch)], source);
 }
@@ -49,13 +49,16 @@ const archive = resolve(work, packed.filename);
 if (createHash('sha512').update(readFileSync(archive)).digest('base64') !== originalIntegrity) throw new Error('The published upstream package failed its integrity check.');
 run('tar', ['-xzf', archive]);
 const pkg = resolve(work, 'package');
+// The published declarations predate the layout `direction` field; match the source patch.
+run('git', ['apply', '--check', resolve(destination, 'core-types.patch')], pkg);
+run('git', ['apply', resolve(destination, 'core-types.patch')], pkg);
 for (const folder of ['pkg', 'pkg-web', 'pkg-node']) {
   rmSync(resolve(pkg, folder), { recursive: true });
   cpSync(resolve(source, 'packages/core', folder), resolve(pkg, folder), { recursive: true });
   rmSync(resolve(pkg, folder, '.gitignore'), { force: true });
 }
 const manifest = JSON.parse(readFileSync(resolve(pkg, 'package.json'), 'utf8'));
-manifest.version = '0.20.1-opendoc.3';
+manifest.version = '0.20.1-opendoc.4';
 writeFileSync(resolve(pkg, 'package.json'), JSON.stringify(manifest, null, 2) + '\n');
 cpSync(resolve(source, 'LICENSE'), resolve(pkg, 'LICENSE'));
 run('npm', ['pack', '--ignore-scripts', '--pack-destination', destination], pkg);

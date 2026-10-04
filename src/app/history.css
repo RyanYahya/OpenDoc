@@ -1,0 +1,195 @@
+:root {
+  /* Page outlines: one per changed block, matching the selection outline, and a stronger one in focus. */
+  --history-mark: color-mix(in srgb, var(--accent) 6%, transparent);
+  --history-mark-strong: color-mix(in srgb, var(--accent) 14%, transparent);
+  --history-mark-line: var(--inspection-line);
+  --history-focus-line: var(--document-accent);
+  /* Word marks: removed words are struck through, added words underlined; color is never the only signal. */
+  --history-removed: color-mix(in srgb, var(--destructive) 12%, transparent);
+  --history-added: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+/* The reader's side panel places this tab; see reader-panel.css. */
+.history-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--ink);
+}
+
+.history-heading { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px; flex-shrink: 0; padding: 10px 8px 10px 16px; border-bottom: 1px solid var(--line); }
+.history-heading .history-back { margin-inline-start: -8px; margin-top: -2px; }
+.history-heading .ui-button.icon-button { color: var(--muted); }
+.history-back:dir(rtl) svg { transform: scaleX(-1); }
+.history-title { flex: 1; min-width: 0; }
+/* Type steps: panel title 20, day and row titles 13, metadata 12, badges 11. */
+.history-title h2 { margin: 0; font-size: var(--page-title-size); line-height: var(--page-title-leading); font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.history-title h2:focus { outline: none; }
+.history-title p { display: flex; align-items: baseline; gap: 6px; min-width: 0; margin: 2px 0 0; color: var(--muted); font-size: var(--caption-size); line-height: var(--caption-leading); }
+.history-title-summary { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The version's own action, Restore whole version, stays in its heading while the changes scroll below. */
+.history-heading-actions { margin-top: 8px; }
+.history-heading > .history-confirm { flex-basis: 100%; margin: 4px 8px 0 0; }
+
+/* Positioned, so screen-reader text marks inside it stay within its scrolling area instead of stretching the reader. */
+.history-content { position: relative; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 12px 16px 16px; }
+.history-content em { color: var(--muted); }
+
+.history-day + .history-day { margin-top: 16px; }
+.history-day h3 { margin: 0 0 2px; font-size: var(--label-size); line-height: var(--label-leading); font-weight: 600; color: var(--ink); }
+.history-files h3 { margin: 0 0 4px; font-size: var(--caption-size); line-height: var(--caption-leading); font-weight: 600; color: var(--ink); }
+.history-day ol, .history-changes, .history-entries, .history-files ul { list-style: none; margin: 0; padding: 0; }
+
+.ui-button.history-version {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-content: stretch;
+  justify-items: start;
+  gap: 1px;
+  margin-inline: -8px;
+  width: calc(100% + 16px);
+  min-height: 0;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  text-align: start;
+  font-weight: 400;
+}
+.ui-button.history-version:hover { background: var(--control-hover); }
+.history-version-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: var(--body-size);
+  line-height: var(--label-leading);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.history-version-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 8px; color: var(--muted); font-size: var(--caption-size); line-height: var(--caption-leading); }
+.history-version-meta time, .history-entry-meta time { font-variant-numeric: tabular-nums; }
+.history-run-count { display: inline-flex; align-items: center; gap: 2px; }
+.history-run-count svg { color: var(--muted); }
+.history-run-toggle[aria-expanded="true"] .history-run-count svg { transform: rotate(180deg); }
+.history-day .history-run-versions { margin: 2px 0 4px; padding-inline-start: 12px; border-inline-start: 1px solid var(--line); }
+.history-run-versions .ui-button.history-version { margin-inline-start: 0; width: calc(100% + 8px); }
+.history-run-versions .history-version-title { font-weight: 400; }
+
+/* Where a version came from: a quiet label, not a link. */
+.history-origin {
+  display: inline-block;
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: var(--tag-size);
+  line-height: var(--tag-leading);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.history-warning { color: var(--error-ink); font-size: var(--caption-size); line-height: var(--caption-leading); font-weight: 400; }
+.history-footnote, .history-note { margin: 16px 0 0; color: var(--muted); font-size: var(--caption-size); line-height: 1.55; }
+.history-note { margin-top: 6px; }
+
+.history-empty { padding: 20px 4px; color: var(--muted); font-size: var(--caption-size); line-height: 1.6; }
+.history-empty strong { display: block; color: var(--ink); font-size: var(--label-size); font-weight: 600; margin-bottom: 4px; }
+.history-empty p { margin: 0; }
+
+.history-skeleton { display: grid; gap: 14px; padding-top: 4px; }
+.history-skeleton span { display: block; height: 30px; border-radius: 6px; background: var(--surface); }
+@media (prefers-reduced-motion: no-preference) {
+  .history-skeleton span { animation: history-pulse 1.4s ease-in-out infinite; }
+  @keyframes history-pulse { 50% { opacity: 0.55; } }
+}
+
+.history-notice { margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--notice-surface); color: var(--notice-ink); font-size: var(--caption-size); line-height: 1.55; }
+.history-notice p { margin: 0; }
+.history-notice strong { display: block; font-weight: 500; color: var(--ink); }
+.history-notice-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px; }
+.history-notice-actions .ui-button { min-height: 30px; padding: 5px 9px; font-size: var(--caption-size); }
+.history-error { margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--error-line); border-radius: 8px; background: var(--error-surface); color: var(--error-ink); font-size: var(--caption-size); line-height: 1.55; }
+
+.history-summary-line { margin: 0 0 8px; color: var(--muted); font-size: var(--caption-size); line-height: var(--caption-leading); }
+.ui-button.history-action { min-height: 30px; padding: 5px 9px; font-size: var(--caption-size); white-space: nowrap; }
+.ui-button.history-action[aria-expanded="true"] { background: var(--control-active); }
+
+.history-change, .history-entry { padding: 12px 0; border-top: 1px solid var(--line); }
+.history-change:first-child, .history-entry:first-child { border-top: 0; padding-top: 4px; }
+.history-change-heading { display: grid; justify-items: start; gap: 1px; }
+.history-change-name { color: var(--ink); font-size: var(--body-size); line-height: var(--label-leading); font-weight: 500; overflow-wrap: anywhere; }
+/* An item's name shows it on the page: a title that underlines on hover, not a second link beside it. */
+.ui-button.text-button.history-change-name { display: inline; min-height: 0; padding: 0; color: var(--ink); font-size: var(--body-size); line-height: var(--label-leading); text-align: start; }
+.ui-button.text-button.history-change-name:hover { color: var(--ink); text-decoration: underline; text-decoration-color: var(--muted); text-underline-offset: 3px; }
+.history-change-meta { color: var(--muted); font-size: var(--caption-size); line-height: var(--caption-leading); }
+.history-diff { display: grid; gap: 6px; margin: 8px 0 0; }
+.history-diff div { display: grid; grid-template-columns: 2.6em minmax(0, 1fr); gap: 8px; }
+.history-diff dt { color: var(--muted); font-size: var(--caption-size); line-height: var(--body-leading); }
+.history-diff dd, .history-excerpt, .history-block-current p { margin: 0; font-size: var(--body-size); line-height: var(--body-leading); overflow-wrap: anywhere; white-space: pre-wrap; }
+/* Unmarked comparisons (rewrites) dim the earlier wording; marked ones keep it readable. */
+.history-diff:not(.marked) div:first-child:not(:only-child) dd { color: var(--muted); }
+.history-diff del, .history-diff ins { border-radius: 2px; padding-inline: 1px; text-decoration-thickness: 1.5px; text-decoration-skip-ink: none; }
+.history-diff del { background: var(--history-removed); color: var(--ink); text-decoration-line: line-through; }
+.history-diff ins { background: var(--history-added); color: var(--ink); text-decoration-line: underline; text-underline-offset: 3px; }
+/* Announce marks to screen readers, which do not report del and ins by default. */
+.history-diff del::before, .history-diff del::after, .history-diff ins::before, .history-diff ins::after {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+.history-diff del::before { content: " [removed: "; }
+.history-diff ins::before { content: " [added: "; }
+.history-diff del::after, .history-diff ins::after { content: "] "; }
+.history-gap { color: var(--muted); padding-inline: 3px; }
+.ui-button.history-expand { margin-top: 4px; margin-inline-start: calc(2.6em + 8px); font-size: var(--caption-size); }
+
+.history-entry-meta { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: var(--caption-size); line-height: var(--caption-leading); }
+.history-entry-meta time { color: var(--ink); }
+.history-entry .history-diff { margin-top: 6px; }
+/* Quiet text actions lead the row; the item's one Restore ends it. */
+.history-entry-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; }
+.history-entry-actions .text-button { font-size: var(--caption-size); }
+.history-entry-actions .history-action { margin-inline-start: auto; }
+.history-block-current { padding: 2px 0 12px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
+.history-meta { display: block; margin-bottom: 4px; color: var(--muted); font-size: var(--caption-size); line-height: var(--caption-leading); }
+.ui-button.history-link { margin-top: 14px; font-size: var(--caption-size); }
+
+/* The authoring ID stays one click away for agents, never in the reading path. */
+.ui-button.text-button.history-details-toggle { color: var(--muted); font-weight: 400; }
+.ui-button.text-button.history-details-toggle:hover, .ui-button.text-button.history-details-toggle[aria-expanded="true"] { color: var(--ink); }
+.history-details { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; margin: 6px 0 0; color: var(--muted); font-size: var(--caption-size); line-height: var(--caption-leading); }
+.history-details code { color: var(--ink); font-size: var(--tag-size); user-select: all; overflow-wrap: anywhere; }
+.history-block-details { margin-top: 10px; }
+.history-block-details .ui-button.text-button { font-size: var(--caption-size); }
+.history-details .ui-button.icon-button.history-copy { min-width: 24px; min-height: 24px; padding: 4px; }
+
+.history-confirm { margin-top: 8px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); }
+.history-confirm p { margin: 0; font-size: var(--caption-size); line-height: 1.55; }
+.history-confirm-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px; }
+.history-confirm-actions .ui-button { min-height: 30px; padding: 5px 10px; font-size: var(--caption-size); }
+/* A container chooses its own text or everything inside it, the narrower scope first. */
+.history-scope { display: flex; flex-wrap: wrap; gap: 2px; width: fit-content; max-width: 100%; margin-bottom: 8px; padding: 2px; border: 1px solid var(--line); border-radius: var(--control-radius); background: var(--surface-raised); }
+.history-scope .ui-button.tool-button { min-height: 26px; padding: 3px 9px; border-radius: calc(var(--control-radius) - 2px); font-size: var(--caption-size); }
+
+.history-files { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.history-files li { font-size: var(--caption-size); line-height: 1.7; color: var(--muted); }
+.history-files code { color: var(--ink); }
+
+/* A section or other item groups its changes: one divider per group, and a quiet label when only its contents changed. */
+.history-group { padding: 12px 0; border-top: 1px solid var(--line); }
+.history-group:first-child { border-top: 0; padding-top: 4px; }
+.history-group > ol { list-style: none; margin: 0; padding: 0; }
+.history-group .history-change { padding: 0; border-top: 0; }
+.history-group .history-change + .history-change, .history-group-label + .history-change { margin-top: 14px; }
+.history-group .history-change + .history-group-label { margin-top: 16px; }
+.history-group-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.history-group-label h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; min-width: 0; margin: 0; color: var(--ink); font-size: var(--label-size); line-height: var(--label-leading); font-weight: 600; overflow-wrap: anywhere; }
+.history-group-label h3 > span { color: var(--muted); font-size: var(--caption-size); font-weight: 400; }
+
+/* Phones and touch screens get finger-sized controls. */
+@media (max-width: 620px), (pointer: coarse) {
+  .ui-button.history-action, .history-confirm-actions .ui-button, .history-notice-actions .ui-button, .history-scope .ui-button.tool-button { min-height: 40px; }
+  .history-details .ui-button.icon-button.history-copy { min-width: 40px; min-height: 40px; }
+  .ui-button.history-version { padding-block: 8px; }
+  .history-heading .ui-button.icon-button { min-width: 40px; min-height: 40px; }
+}

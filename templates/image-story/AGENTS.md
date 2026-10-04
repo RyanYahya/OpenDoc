@@ -16,7 +16,7 @@ The half-page split and panorama with inset are strong everyday defaults. Collag
 
 ## Authoring contract
 
-Create through `pnpm run create -- <id> --project <project> --template image-story --title "Title"`. Keep the generated theme adapter and asset bindings. `ImageStory` is the document root; `ImageStoryPage` accepts a stable `id`, the adapted `theme`, a `layout`, native `title` and optional `eyebrow`, `lead`, `children`, `caption`, and named image props (`image`, `secondary`, `detail`). Each image is `{item:'media-folder-id', fit:'cover', position:{x:0.5,y:0.5}}`; omit fit/position for centered cover. Named media must exist and pass freshness checks. An omitted image prop creates a visible starter placeholder, never a silent blank. `lead` inherits the composition's foreground, including white on image covers. If you add custom `children` over artwork, explicitly choose their foreground against that image too.
+Create through `npx opendoc create <id> --project <project> --template image-story --title "Title"`. Keep the generated theme adapter and asset bindings. `ImageStory` is the document root; `ImageStoryPage` accepts a stable `id`, the adapted `theme`, a `layout`, native `title` and optional `eyebrow`, `lead`, `children`, `caption`, `footer`, and named image props (`image`, `secondary`, `detail`). The footer label and page number appear only when the theme has a running footer. Without `footer`, a page shows the template's `IMAGE STORY` label, which stays read-only in the reader; pass `footer` to make it the document's own editable text. The footer is a paragraph with the ID `<id>-footer`, so keep that ID free. The `Image position` placeholder is read-only and says the template generates it. Each image is `{item:'media-folder-id', fit:'cover', position:{x:0.5,y:0.5}}`; omit fit/position for centered cover. Named media must exist and pass freshness checks. An omitted image prop creates a visible starter placeholder, never a silent blank. `lead` inherits the composition's foreground, including white on image covers. If you add custom `children` over artwork, explicitly choose their foreground against that image too.
 
 Import or generate actual images into the **instance's** `media/<id>/` folder and review them using [Media](../../docs/MEDIA.md). The template and its specimen contain no artwork or prompts; new documents begin with replaceable placeholders. Do not borrow other documents' filesystem paths or bake brand/subject matter into the skeleton.
 
@@ -30,7 +30,7 @@ Use `MediaFrame` from `opendoc` for exact image boxes anywhere. It supports prop
 
 - Local page-background paths now resolve explicitly. Prefer `backgroundMedia` for provenance and freshness.
 - Native SVG image elements can disappear without failing export. `MediaFrame` prepares the bounded picture through the installed renderer; agents need no base64/filesystem/native-addon helper.
-- Media frames and backgrounds report their use and reject stale generated inputs just like ordinary `Media`.
+- Media frames and backgrounds report their use and reject stale generated inputs, as ordinary `Media` does.
 - Crop alignment is not anatomical or semantic understanding. Review faces, objects, and focal points. Use `contain` when the whole subject, labels, or evidence must remain visible.
 - Compilation and geometry checks cannot establish image visibility or good composition. Review **every PDF page**, especially the final crop, layering, contrast, captions, and extracted text.
 

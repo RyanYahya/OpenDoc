@@ -1,12 +1,10 @@
 import { lstat, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { lstatSync, readdirSync, renameSync } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
-import { dirname, resolve, sep } from 'node:path';
+import { resolve } from 'node:path';
 import { createCanvas } from '@napi-rs/canvas';
-import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import type { LayoutInfo } from '@formepdf/core';
 import type { BlockInfo, DocumentFormat, RenderArtifact, ReviewIssue } from '../shared/types';
-import { runtimeResolve } from '../runtime/paths';
 import { captureEntryExportInputs, captureExportInputs } from './export-inputs';
 import { ExportChangedError, outputFolder } from './export-file';
 import { renderOnce, validId } from './render';
@@ -15,6 +13,7 @@ import { ThemeCatalog, themeFile } from './themes';
 import { TemplateCatalog, templateFile } from './templates';
 import { inspectElements, type InspectedElement } from './layout-inspection';
 import { readPresentationBytes } from './pptx';
+import { openPdf } from './pdf-document';
 
 export interface ReviewTarget { kind: 'document' | 'theme' | 'template'; id: string }
 export interface ReviewPage {
@@ -126,12 +125,7 @@ export async function publishReview(root: string, target: ReviewTarget, artifact
       report.outputs.pptx = resolve(directory, 'document.pptx');
       report.powerpointVisualReview = 'required';
     }
-    const pdfjs = dirname(runtimeResolve('pdfjs-dist/package.json'));
-    const loading = getDocument({
-      data: new Uint8Array(bytes), useSystemFonts: false, verbosity: 0,
-      standardFontDataUrl: resolve(pdfjs, 'standard_fonts') + sep,
-      cMapUrl: resolve(pdfjs, 'cmaps') + sep, cMapPacked: true, wasmUrl: resolve(pdfjs, 'wasm') + sep,
-    });
+    const loading = openPdf(bytes);
     const texts: string[] = [];
     try {
       const pdf = await loading.promise;

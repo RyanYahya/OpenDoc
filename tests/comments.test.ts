@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { writeFile, readFile, symlink, mkdir, utimes } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { addComment, changeComment, editComment, deleteComment, readComments, Conflict } from '../src/server/comments';
+import { addComment, changeComment, editComment, deleteComment, restoreComment, readComments, Conflict } from '../src/server/comments';
 import { documentEntry } from '../src/server/render';
 import { Workspace } from '../src/server/workspace';
 import { getBlock } from '../src/shared/types';
@@ -96,6 +96,15 @@ test('editing and deleting feedback checks versions and retains its history', as
     assert.deepEqual(deleted.history.map(event => event.action), ['created', 'edited', 'deleted']);
     assert.equal((await readComments(f.root, 'proof'))[0].status, 'deleted');
     await assert.rejects(() => changeComment(f.root, 'proof', original.id, 'open', deleted.version), Conflict);
+    await assert.rejects(() => restoreComment(f.root, 'proof', original.id, edited.version), Conflict);
+    const [restored] = await restoreComment(f.root, 'proof', original.id, deleted.version);
+    assert.deepEqual({ ...restored, status: deleted.status, version: deleted.version, updatedAt: deleted.updatedAt, history: deleted.history }, deleted);
+    assert.equal(restored.status, 'open');
+    assert.deepEqual(restored.history.map(event => event.action), ['created', 'edited', 'deleted', 'restored']);
+    await assert.rejects(() => restoreComment(f.root, 'proof', original.id, deleted.version), Conflict);
+    const [resolved] = await changeComment(f.root, 'proof', original.id, 'resolved', restored.version);
+    const [deletedAgain] = await deleteComment(f.root, 'proof', original.id, resolved.version);
+    assert.equal((await restoreComment(f.root, 'proof', original.id, deletedAgain.version))[0].status, 'resolved');
   } finally { await f.cleanup(); }
 });
 

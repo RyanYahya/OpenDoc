@@ -15,7 +15,7 @@
 .markdown-body > :first-child { margin-top: 0; }
 .markdown-body > :last-child { margin-bottom: 0; }
 .template-guide-dialog .markdown-body p { color: inherit; font-size: inherit; line-height: inherit; margin: 0 0 1em; }
-.markdown-body :is(ul, ol) { padding-left: 24px; margin: 0 0 1em; }
+.markdown-body :is(ul, ol) { padding-inline-start: 24px; margin: 0 0 1em; }
 .markdown-body li + li { margin-top: 0.4em; }
 .markdown-body li > :is(ul, ol) { margin: 0.4em 0; }
 .markdown-body li > p { margin-bottom: 0.5em; }
@@ -23,16 +23,16 @@
 .markdown-body code { font-family: ui-monospace, monospace; font-size: 0.88em; background: var(--surface-alt); padding: 2px 5px; border-radius: 4px; }
 .markdown-body pre { overflow-x: auto; padding: 16px; margin: 0 0 1em; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; line-height: 1.6; }
 .markdown-body pre code { padding: 0; background: none; border-radius: 0; overflow-wrap: normal; }
-.markdown-body blockquote { margin: 0 0 1em; padding: 2px 0 2px 18px; border-left: 3px solid var(--line-strong); color: var(--muted); }
+.markdown-body blockquote { margin: 0 0 1em; padding-block: 2px; padding-inline: 18px 0; border-inline-start: 3px solid var(--line-strong); color: var(--muted); }
 .markdown-body blockquote > :last-child { margin-bottom: 0; }
 .markdown-body hr { border: 0; border-top: 1px solid var(--line); margin: 28px 0; }
 .markdown-body img { max-width: 100%; height: auto; }
 .markdown-table { overflow-x: auto; margin-bottom: 1em; }
 .markdown-body table { border-collapse: collapse; width: 100%; font-size: 14px; }
-.markdown-body :is(th, td) { padding: 9px 12px; border: 1px solid var(--line); text-align: left; }
+.markdown-body :is(th, td) { padding: 9px 12px; border: 1px solid var(--line); text-align: start; }
 .markdown-body th { background: var(--surface); font-weight: 600; }
-.markdown-body .contains-task-list { list-style: none; padding-left: 0; }
-.markdown-body .task-list-item input { margin-right: 8px; }
+.markdown-body .contains-task-list { list-style: none; padding-inline-start: 0; }
+.markdown-body .task-list-item input { margin-inline-end: 8px; }
 .guide-back { margin-top: 8px; }
 @media (max-width: 620px) {
   .template-guide-heading { padding: 20px 56px 16px 20px; }

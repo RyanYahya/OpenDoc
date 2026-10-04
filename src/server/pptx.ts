@@ -11,15 +11,39 @@ import { inspectPresentationCompatibility, roundedPanel, type PaintStyle } from 
 
 export interface PresentationCapture {
   version: 1; hash: string; meta: DocumentMeta; slides: SlideInfo[]; doc: FormeDocument; layout: LayoutInfo;
+  /** Each text target's slot, by the target number a text node's synthetic source line carries. */
+  textSlots?: string[];
 }
 type TextKind = Extract<FormeNode['kind'], { type: 'Text' | 'Heading' }>;
 type Run = { text: string; style: FormeStyle; href?: string };
-type FontFace = { bytes: Buffer; family: string; weight: number; italic: boolean; restrictions: { noEmbedding?: boolean; bitmapOnly?: boolean; viewOnly?: boolean } };
+type FontFace = { bytes: Buffer; family: string; weight: number; italic: boolean; covers: (character: string) => boolean; restrictions: { noEmbedding?: boolean; bitmapOnly?: boolean; viewOnly?: boolean } };
 const PT = 72;
 const key = (location: SourceLocation | undefined, type: string) => `${location?.file ?? ''}:${location?.line ?? 0}:${location?.column ?? 0}:${type}`;
 const hex = (color: Color) => [color.r, color.g, color.b].map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join('').toUpperCase();
 const fill = (color: Color) => ({ color: hex(color), transparency: (1 - (color.a ?? 1)) * 100 });
 const box = (node: ElementInfo) => ({ x: node.x / PT, y: node.y / PT, w: node.width / PT, h: node.height / PT });
+const blockOf = (node: Pick<ElementInfo, 'sourceLocation'>, inherited: string) => node.sourceLocation?.file.startsWith('opendoc:block:') ? node.sourceLocation.file.slice(14) : inherited;
+
+type SlideObject = { block: string; part: string; text?: boolean; draw: (objectName: string) => void };
+/**
+ * Selection Pane names for one slide, in drawing order. Each object is named by its component's
+ * block ID. A block's only text box, or its main text, keeps the bare ID; other text boxes add
+ * their text slot, such as "costs column-item" or "steps-call marker", and shapes and images
+ * name their role. A number is appended only when a name would still repeat on the slide.
+ */
+export function slideObjectNames(objects: Pick<SlideObject, 'block' | 'part' | 'text'>[]): string[] {
+  const texts = new Map<string, number>();
+  for (const object of objects) if (object.text) texts.set(object.block, (texts.get(object.block) ?? 0) + 1);
+  const used = new Set<string>();
+  return objects.map(object => {
+    const bare = object.text && (texts.get(object.block) === 1 || object.part === 'children');
+    const base = bare ? object.block : `${object.block} ${object.part}`;
+    let name = base;
+    for (let count = 2; used.has(name); count++) name = `${base} ${count}`;
+    used.add(name);
+    return name;
+  });
+}
 
 /** Preserve authored runs inside one editable textbox, using the reviewed line breaks. */
 export function presentationTextRuns(source: TextKind, lines: Pick<ElementInfo, 'textContent'>[]): Run[] | null {
@@ -42,6 +66,76 @@ export function presentationTextRuns(source: TextKind, lines: Pick<ElementInfo, 
   return output;
 }
 
+// Default-direction ranges of the right-to-left scripts (UAX #9 bidi classes R and AL):
+// Hebrew through Arabic Extended-A, Hebrew/Arabic presentation forms, and the SMP RTL blocks.
+const rtlLetter = /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF\u{10800}-\u{10FFF}\u{1E800}-\u{1EFFF}]/u;
+const hebrew = /[\u0590-\u05FF\uFB1D-\uFB4F]/u;
+const arabic = /[\u0600-\u06FF\u0750-\u077F\u0870-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/u;
+
+/**
+ * The paragraph's first strong character, following UAX #9 rules P2 and P3: skip text inside
+ * isolates, ignore weak and neutral characters such as digits and punctuation, and treat
+ * letters as strong. Returns undefined when the text has no strong character.
+ */
+export function firstStrongCharacter(text: string): { direction: 'ltr' | 'rtl'; character: string } | undefined {
+  let isolates = 0;
+  for (const character of text) {
+    if (character >= '\u2066' && character <= '\u2068') { isolates++; continue; }
+    if (character === '\u2069') { if (isolates) isolates--; continue; }
+    if (isolates) continue;
+    if (character === '\u200F' || character === '\u061C') return { direction: 'rtl', character };
+    if (character === '\u200E') return { direction: 'ltr', character };
+    if (/\p{L}/u.test(character)) return { direction: rtlLetter.test(character) ? 'rtl' : 'ltr', character };
+  }
+  return undefined;
+}
+
+type Direction = { rtl: boolean; lang?: string };
+/** An explicit direction style wins; otherwise the first strong character decides (P2/P3). */
+export function paragraphDirection(declared: unknown, text: string): Direction {
+  const value = typeof declared === 'string' ? declared.toLowerCase() : '';
+  const strong = firstStrongCharacter(text);
+  const rtl = value === 'rtl' || (value !== 'ltr' && strong?.direction === 'rtl');
+  if (!rtl) return { rtl };
+  // Language tags let PowerPoint choose proofing and complex-script handling for the paragraph.
+  const letter = Array.from(text).find(character => /\p{L}/u.test(character) && rtlLetter.test(character));
+  return { rtl, lang: letter && hebrew.test(letter) ? 'he-IL' : letter && arabic.test(letter) ? 'ar-SA' : undefined };
+}
+
+/**
+ * DrawingML alignment is physical. Forme reports an unaligned paragraph as Left; for a
+ * right-to-left paragraph that is its start edge, so it maps to right unless the reviewed
+ * PDF lines are visibly flush left.
+ */
+export function rtlParagraphAlignment(textAlign: string, node: Pick<ElementInfo, 'x' | 'width' | 'style'>, lines: Pick<ElementInfo, 'x' | 'width'>[]): 'left' | 'right' | 'center' | 'justify' {
+  const align = textAlign.toLowerCase();
+  if (align === 'center' || align === 'justify' || align === 'right') return align;
+  if (align === 'start') return 'right';
+  if (align === 'end') return 'left';
+  const style = node.style, tolerance = 0.5;
+  const left = node.x + (style.padding?.left ?? 0) + (style.borderWidth?.left ?? 0);
+  const right = node.x + node.width - (style.padding?.right ?? 0) - (style.borderWidth?.right ?? 0);
+  const flushLeft = lines.some(line => line.x - left <= tolerance && right - (line.x + line.width) > tolerance);
+  const flushRight = lines.some(line => right - (line.x + line.width) <= tolerance && line.x - left > tolerance);
+  return flushLeft && !flushRight ? 'left' : 'right';
+}
+
+type Alignment = 'left' | 'right' | 'center' | 'justify';
+/**
+ * The alignment the reviewed PDF applied to a paragraph. A text container reports its
+ * authored or inherited `textAlign`, which can be another paragraph's start edge: an
+ * English paragraph in a right-to-left deck inherits right while its lines start at the
+ * left. The engine reports each TextLine's resolved direction and the alignment it
+ * actually applied, so follow the lines. Layouts without a line direction (older engines)
+ * fall back to the container value, inferring a right-to-left start edge from geometry.
+ */
+export function paragraphAlignment(rtl: boolean, node: Pick<ElementInfo, 'x' | 'width' | 'style'>, lines: Pick<ElementInfo, 'x' | 'width' | 'style'>[]): Alignment {
+  const line = lines[0]?.style as { direction?: unknown; textAlign?: unknown } | undefined;
+  const applied = typeof line?.textAlign === 'string' ? line.textAlign.toLowerCase() : '';
+  if ((line?.direction === 'ltr' || line?.direction === 'rtl') && ['left', 'right', 'center', 'justify'].includes(applied)) return applied as Alignment;
+  return rtl ? rtlParagraphAlignment(node.style.textAlign, node, lines) : node.style.textAlign.toLowerCase() as Alignment;
+}
+
 function fontCatalog(doc: FormeDocument) {
   const fonts = new Map<string, FontFace>();
   for (const item of doc.fonts ?? []) {
@@ -49,7 +143,8 @@ function fontCatalog(doc: FormeDocument) {
     const font = fontkit.create(bytes);
     if (!('familyName' in font)) throw new Error('PowerPoint export requires individual font faces, not a font collection.');
     const restrictions = (font as unknown as { 'OS/2'?: { fsType?: FontFace['restrictions'] } })['OS/2']?.fsType ?? {};
-    fonts.set(`${item.family}:${item.weight ?? 400}:${!!item.italic}`, { bytes, family: font.familyName, weight: item.weight ?? 400, italic: !!item.italic, restrictions });
+    fonts.set(`${item.family}:${item.weight ?? 400}:${!!item.italic}`, { bytes, family: font.familyName, weight: item.weight ?? 400, italic: !!item.italic, restrictions,
+      covers: character => font.hasGlyphForCodePoint(character.codePointAt(0)!) });
   }
   return fonts;
 }
@@ -62,16 +157,41 @@ export async function presentationBytes(capture: PresentationCapture): Promise<U
   const pptx = new TsPptx();
   pptx.defineLayout({ name: 'OPENDOC', width: 960 / PT, height: 540 / PT });
   pptx.layout = 'OPENDOC'; pptx.title = capture.meta.title; pptx.author = capture.meta.author ?? 'OpenDoc';
-  function textStyle(style: ElementStyleInfo): TextPropsOptions {
+  const families = (style: ElementStyleInfo) => style.fontFamily.split(',').map(name => name.trim().replace(/^["']|["']$/g, ''));
+  function face(family: string, style: ElementStyleInfo) {
     // Match Forme 0.20.1 FontRegistry::resolve: exact, snapped, then opposite weight.
     // Choosing the numerically closest face would disagree with the reviewed PDF.
     const weight = style.fontWeight ?? 400, snapped = weight >= 600 ? 700 : 400;
+    for (const candidate of [weight, snapped, snapped === 700 ? 400 : 700]) {
+      const font = fonts.get(`${family}:${candidate}:${style.fontStyle === 'Italic'}`);
+      if (font) return font;
+    }
+    return undefined;
+  }
+  /**
+   * Split text where the PDF draws it from a later family in the fontFamily list, such as
+   * Arabic words from the Arabic fallback inside an English paragraph. Each part names the
+   * font that drew it, so PowerPoint's Latin and complex-script slots match the preview.
+   * Like the engine, spaces, digits, and punctuation stay in the preceding font when it has them.
+   */
+  function fontRuns(text: string, style: ElementStyleInfo): { text: string; fontFamily?: string }[] {
+    const list = families(style).filter(family => face(family, style));
+    if (list.length < 2) return [{ text }];
+    const parts: { text: string; family: string }[] = [];
+    for (const character of text) {
+      const previous = parts.at(-1)?.family;
+      const neutral = !/\p{L}/u.test(character) && previous !== undefined && (/\s/.test(character) || face(previous, style)!.covers(character));
+      const family = neutral ? previous : list.find(candidate => face(candidate, style)!.covers(character)) ?? previous ?? list[0];
+      if (previous === family) parts.at(-1)!.text += character;
+      else parts.push({ text: character, family });
+    }
+    if (parts.every(part => part.family === list[0])) return [{ text }];
+    return parts.map(part => ({ text: part.text, ...(part.family === list[0] ? {} : { fontFamily: part.family }) }));
+  }
+  function textStyle(style: ElementStyleInfo): TextPropsOptions {
     let font: FontFace | undefined;
-    for (const family of style.fontFamily.split(',').map(name => name.trim().replace(/^["']|["']$/g, ''))) {
-      for (const candidate of [weight, snapped, snapped === 700 ? 400 : 700]) {
-        font = fonts.get(`${family}:${candidate}:${style.fontStyle === 'Italic'}`);
-        if (font) break;
-      }
+    for (const family of families(style)) {
+      font = face(family, style);
       if (font) break;
     }
     if (!font) throw new Error(`PowerPoint export needs the exact font face: ${style.fontFamily}, weight ${style.fontWeight}.`);
@@ -95,23 +215,25 @@ export async function presentationBytes(capture: PresentationCapture): Promise<U
     }
     indexSource(sourcePage);
     const slide = pptx.addSlide(), config = sourcePage.kind.config;
-    if (config.backgroundImage) slide.addImage({ data: config.backgroundImage, x: 0, y: 0, w: 960 / PT, h: 540 / PT, transparency: (1 - (config.backgroundOpacity ?? 1)) * 100 });
-    function visit(node: ElementInfo) {
-      const style = node.style as PaintStyle;
+    // Collect the slide's objects in drawing order, name them together, then draw them.
+    const objects: SlideObject[] = [];
+    if (config.backgroundImage) objects.push({ block: label, part: 'background image', draw: objectName => slide.addImage({ data: config.backgroundImage!, x: 0, y: 0, w: 960 / PT, h: 540 / PT, transparency: (1 - (config.backgroundOpacity ?? 1)) * 100, objectName }) });
+    function visit(node: ElementInfo, inherited: string) {
+      const style = node.style as PaintStyle, block = blockOf(node, inherited);
       if (style.opacity === 0) return;
       if (node.kind === 'Rect') {
         const { radius } = roundedPanel(node);
         if (radius > 0) {
-          if (style.backgroundColor || style.borderWidth.top > 0) slide.addShape('roundRect', { ...box(node), rectRadius: radius / PT,
+          if (style.backgroundColor || style.borderWidth.top > 0) objects.push({ block, part: 'panel', draw: objectName => slide.addShape('roundRect', { ...box(node), rectRadius: radius / PT,
             line: style.borderWidth.top > 0 ? { ...fill(style.borderColor.top), width: style.borderWidth.top } : { transparency: 100 },
-            fill: style.backgroundColor ? fill(style.backgroundColor) : { transparency: 100 } });
+            fill: style.backgroundColor ? fill(style.backgroundColor) : { transparency: 100 }, objectName }) });
         } else {
-          if (style.backgroundColor) slide.addShape('rect', { ...box(node), line: { transparency: 100 }, fill: fill(style.backgroundColor) });
+          if (style.backgroundColor) objects.push({ block, part: 'background', draw: objectName => slide.addShape('rect', { ...box(node), line: { transparency: 100 }, fill: fill(style.backgroundColor!), objectName }) });
           for (const side of ['top', 'right', 'bottom', 'left'] as const) if (style.borderWidth?.[side] > 0) {
             const horizontal = side === 'top' || side === 'bottom';
-            slide.addShape('line', { x: (node.x + (side === 'right' ? node.width : 0)) / PT, y: (node.y + (side === 'bottom' ? node.height : 0)) / PT,
+            objects.push({ block, part: `${side} border`, draw: objectName => slide.addShape('line', { x: (node.x + (side === 'right' ? node.width : 0)) / PT, y: (node.y + (side === 'bottom' ? node.height : 0)) / PT,
               w: horizontal ? node.width / PT : 0, h: horizontal ? 0 : node.height / PT,
-              line: { ...fill(style.borderColor[side]), width: style.borderWidth[side], beginArrowType: 'none', endArrowType: 'none' } });
+              line: { ...fill(style.borderColor[side]), width: style.borderWidth[side], beginArrowType: 'none', endArrowType: 'none' }, objectName }) });
           }
         }
       }
@@ -123,22 +245,39 @@ export async function presentationBytes(capture: PresentationCapture): Promise<U
         const pageNumbers = (text: string) => text.replaceAll('{{pageNumber}}', String(index + 1)).replaceAll('{{totalPages}}', String(capture.slides.length)).replaceAll('\u0002', String(index + 1)).replaceAll('\u0003', String(capture.slides.length));
         const runs = presentationTextRuns({ ...source.kind, content: pageNumbers(source.kind.content), runs: source.kind.runs?.map(run => ({ ...run, content: pageNumbers(run.content) })) }, lines.map(line => ({ textContent: pageNumbers(line.textContent ?? '') })));
         if (!runs) throw new Error(`Slide ${label}: PowerPoint export cannot preserve this text transformation.`);
-        const rich = runs.map(run => ({ text: run.text, options: { ...textStyle({ ...style, ...run.style } as ElementStyleInfo), ...(run.href ? { hyperlink: { url: run.href } } : {}) } }));
-        slide.addText(rich, { ...box(node), y: lines[0].y / PT, ...textStyle(style), margin: 0, breakLine: false, paraSpaceAfter: 0, paraSpaceBefore: 0,
-          lineSpacing: style.fontSize * style.lineHeight, align: style.textAlign.toLowerCase() as TextPropsOptions['align'], valign: 'top', wrap: false, fit: 'none',
-          objectName: node.sourceLocation?.file?.replace('opendoc:block:', '') ?? 'text' });
+        // PowerPoint orders and shapes mixed-direction text itself once the paragraph is marked RTL.
+        // The PDF engine reports each line's resolved direction; follow it so the deck matches the preview.
+        // Layouts without one (older engines) fall back to the source's authored style, then the first strong letter.
+        const resolved = (lines[0]?.style as { direction?: unknown } | undefined)?.direction;
+        const declared = resolved === 'rtl' || resolved === 'ltr' ? resolved : (source.style as { direction?: unknown } | undefined)?.direction ?? (style as { direction?: unknown }).direction;
+        const direction = paragraphDirection(declared, source.kind.runs?.map(run => run.content).join('') ?? source.kind.content);
+        const bidi: TextPropsOptions = direction.rtl ? { rtlMode: true, ...(direction.lang ? { lang: direction.lang } : {}) } : {};
+        const rich = runs.flatMap(run => {
+          const runStyle = { ...style, ...run.style } as ElementStyleInfo;
+          return fontRuns(run.text, runStyle).map(part => ({ text: part.text, options: { ...textStyle(part.fontFamily ? { ...runStyle, fontFamily: part.fontFamily } : runStyle), ...bidi, ...(run.href ? { hyperlink: { url: run.href } } : {}) } }));
+        });
+        const align = paragraphAlignment(direction.rtl, node, lines);
+        // Text targets carry their number as a synthetic source line; line 0 marks a decoration such as a list marker.
+        const line = node.sourceLocation?.file.startsWith('opendoc:block:') ? node.sourceLocation.line : undefined;
+        const part = line === 0 ? 'marker' : (line && capture.textSlots?.[line - 1]) || 'text';
+        const textStyles = textStyle(style);
+        objects.push({ block, part, text: true, draw: objectName => slide.addText(rich, { ...box(node), y: lines[0].y / PT, ...textStyles, ...bidi, margin: 0, breakLine: false, paraSpaceAfter: 0, paraSpaceBefore: 0,
+          lineSpacing: style.fontSize * style.lineHeight, align, valign: 'top', wrap: false, fit: 'none', objectName }) });
         return;
       }
       if (node.kind === 'Image') {
         const source = sources.get(key(node.sourceLocation, 'Image'))?.shift();
         if (source?.kind.type !== 'Image' || !source.kind.src) throw new Error(`Slide ${label}: an image source could not be matched.`);
-        slide.addImage({ data: source.kind.src, ...box(node), altText: source.alt ?? '' }); return;
+        const data = source.kind.src;
+        objects.push({ block, part: 'image', draw: objectName => slide.addImage({ data, ...box(node), altText: source.alt ?? '', objectName }) }); return;
       }
       if (!['Rect', 'None', 'Text'].includes(node.kind)) throw new Error(`Slide ${label}: PowerPoint export does not yet support ${node.nodeType}.`);
       if (node.nodeType === 'TextLine') throw new Error(`Slide ${label}: an editable text line could not be matched.`);
-      node.children.forEach(visit);
+      node.children.forEach(child => visit(child, block));
     }
-    page.elements.forEach(visit);
+    page.elements.forEach(node => visit(node, label));
+    const names = slideObjectNames(objects);
+    objects.forEach((object, index) => object.draw(names[index]));
   }
   for (const font of used.values()) {
     if (font.restrictions.noEmbedding || font.restrictions.bitmapOnly || font.restrictions.viewOnly) throw new Error(`${font.family} does not permit editable font embedding. Choose a font that does before exporting PowerPoint.`);

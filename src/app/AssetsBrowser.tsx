@@ -1,15 +1,18 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Menu } from '@base-ui/react/menu';
 import type { AssetCatalog, AssetFile, AssetInspection, AssetKind, AssetSummary, FontRevision, LogoVariation } from '../shared/assets';
-import type { DocumentSummary } from '../shared/types';
+import { documentFormat, formatLabel, type DocumentSummary } from '../shared/types';
 import type { ThemeSummary } from '../shared/themes';
+import { groupMedia, type Materials } from '../shared/media';
+import { textLang } from '../shared/language';
 import { api } from './api';
 import { CreateLogoDialog, AddLogoVariationsDialog } from './LogoUploadDialog';
 import { MaterialsBrowser } from './MaterialsBrowser';
 import { AssetThemeDialog } from './AssetThemeDefaults';
 import { PdfPage, usePdf } from './Pdf';
-import { SearchField } from './SearchField';
 import { Button, Dialog, Input, SelectControl, useNotifications } from './ui';
+import { FilterBar, FilterChoices, useHashQuery, useSortPreference } from './FilterBar';
+import { compareNewest, compareText, matchesSearch, sortItems, type SortOption } from './libraryFilters';
 import { Icon } from './ui/Icon';
 import './assets.css';
 
@@ -134,7 +137,7 @@ function AssetEditDialog({ edit, connected, onClose, onSaved, onArchived }: {
     <Dialog.Title>{title}</Dialog.Title><Dialog.Description>{hint}</Dialog.Description>
     <form onSubmit={event => void submit(event)} aria-busy={busy}>
       {showName && <label className="create-field"><span>{edit.action === 'edit' && edit.variation ? 'Variation name' : kind === 'logo' ? 'Logo name' : 'Family name'}</span><Input ref={input} value={name} onChange={event => setName(event.target.value)} required={nameRequired} maxLength={120} disabled={busy} autoComplete="off" placeholder={edit.action === 'edit' && edit.variation ? 'For example, On dark backgrounds' : kind === 'logo' ? 'For example, Northstar' : 'Read from the font files'} /></label>}
-      {showName && <label className="create-field"><span>{edit.action === 'edit' && edit.variation ? 'When to use' : 'Guidance for your agent'} <span className="muted">(optional)</span></span><textarea value={description} onChange={event => setDescription(event.target.value)} disabled={busy} rows={3} placeholder="Describe where this asset fits, and anything to avoid." /></label>}
+      {showName && <label className="create-field"><span>{edit.action === 'edit' && edit.variation ? 'When to use' : 'Guidance for your agent'} <span className="muted">(optional)</span></span><textarea dir="auto" lang={textLang(description)} value={description} onChange={event => setDescription(event.target.value)} disabled={busy} rows={3} placeholder="Describe where this asset fits, and anything to avoid." /></label>}
       {removingDefault && <div className="create-field"><span>New default</span><SelectControl label="New default" value={replacementDefault} onValueChange={setReplacementDefault} items={[{ value: '', label: 'Choose a variation' }, ...(logo?.variations.filter(item => item.id !== edit.variation?.id).map(item => ({ value: item.id, label: item.name })) ?? [])]} /></div>}
       {upload && <label className="create-field asset-upload"><span>{kind === 'logo' ? 'Logo artwork' : 'Font files'}</span><input ref={fileInput} type="file" accept={kind === 'logo' ? '.svg,.png,image/svg+xml,image/png' : '.ttf,.otf,font/ttf,font/otf'} multiple={kind === 'font'} onChange={event => setFiles(Array.from(event.target.files ?? []))} disabled={busy} required /><span className="field-hint">{kind === 'logo' ? 'SVG or PNG. Transparency and proportions are preserved.' : 'Static TTF or OTF. Select multiple styles together.'}</span>{files.length > 0 && <ul className="asset-upload-files">{files.map((file, index) => <li key={`${file.name}/${index}`}>{file.name}<span>{Math.max(1, Math.round(file.size / 1024))} KB</span></li>)}</ul>}</label>}
       {archive && themes.length > 0 && <div className="asset-archive-relationships"><p>Used as a default by:</p><ul>{themes.map(theme => <li key={theme.id}><a href={`#themes/${theme.id}`}>{theme.name}</a><span>{theme.roles.join(', ')}</span></li>)}</ul><label className="asset-checkbox"><input type="checkbox" checked={clearDefaults} onChange={event => setClearDefaults(event.target.checked)} disabled={busy} /><span>Clear these theme defaults when archiving</span></label></div>}
@@ -144,12 +147,13 @@ function AssetEditDialog({ edit, connected, onClose, onSaved, onArchived }: {
   </Dialog.Popup></Dialog.Portal></Dialog.Root>;
 }
 
-function AssetRelationships({ inspection }: { inspection: AssetInspection }) {
+function AssetRelationships({ inspection, documents }: { inspection: AssetInspection; documents: DocumentSummary[] }) {
   const { usage } = inspection;
+  const formats = new Map(documents.map(document => [document.id, documentFormat(document)]));
   return <section className="asset-relationships"><h2>Used with</h2>
     {!usage.themes.length && !usage.documents.length ? <p className="muted small">No theme defaults or saved document choices yet.</p> : <>
       {usage.themes.map(theme => <a className="asset-relationship" href={`#themes/${theme.id}`} key={`theme/${theme.id}`}><Icon name="theme" size={16} /><span><strong>{theme.name}</strong><small>For new documents · {theme.roles.join(', ')}</small></span><Icon name="arrow" size={15} /></a>)}
-      {usage.documents.map(document => <div className="asset-relationship" key={`document/${document.id}/${document.revision}`}><Icon name={document.trashed ? 'trash' : 'document'} size={16} /><span>{document.trashed ? <strong>{document.name}</strong> : <a href={`#document/${document.id}`}><strong>{document.name}</strong></a>}<small>{document.trashed ? 'In Trash · ' : ''}{document.revision !== inspection.asset.revision ? inspection.asset.revision === inspection.head.revision ? 'Earlier saved version · ' : 'Another saved version · ' : ''}{document.rendered ? document.current ? 'Used in current PDF' : 'Used in last successful PDF' : 'Available to document'} · {document.roles.join(', ')}</small></span></div>)}
+      {usage.documents.map(document => <div className="asset-relationship" key={`document/${document.id}/${document.revision}`}><Icon name={document.trashed ? 'trash' : formats.get(document.id) === 'presentation' ? 'monitor' : 'document'} size={16} /><span>{document.trashed ? <strong>{document.name}</strong> : <a href={`#document/${document.id}`}><strong>{document.name}</strong></a>}<small>{document.trashed ? 'In Trash · ' : `${formatLabel(formats.get(document.id) ?? 'document')} · `}{document.revision !== inspection.asset.revision ? inspection.asset.revision === inspection.head.revision ? 'Earlier saved version · ' : 'Another saved version · ' : ''}{document.rendered ? document.current ? 'Used in current PDF' : 'Used in last successful PDF' : formats.get(document.id) === 'presentation' ? 'Available to presentation' : 'Available to document'} · {document.roles.join(', ')}</small></span></div>)}
     </>}
   </section>;
 }
@@ -161,16 +165,29 @@ function AssetVersions({ inspection, open, onClose, onSelect }: { inspection: As
   </Dialog.Popup></Dialog.Portal></Dialog.Root>;
 }
 
-function AssetCollection({ kind, catalog, query, setQuery, archived, setArchived, onAdd, error }: { kind: AssetKind; catalog?: AssetCatalog; error?: string; query: string; setQuery: (value: string) => void; archived: boolean; setArchived: (value: boolean) => void; onAdd: () => void }) {
-  const items = catalog?.items.filter(item => item.archived === archived && `${item.name} ${item.description}`.toLowerCase().includes(query.toLowerCase())) ?? [];
+const assetSorts: SortOption[] = [{ value: 'title', label: 'Name A–Z' }, { value: 'updated', label: 'Last updated' }];
+
+function AssetCollection({ kind, catalog, kinds, onAdd, error }: { kind: AssetKind; catalog?: AssetCatalog; error?: string; kinds: ReactNode; onAdd: () => void }) {
+  const { params, update } = useHashQuery();
+  const query = params.get('q') ?? '';
+  const archived = params.get('status') === 'archived';
+  const [sort, setSort] = useSortPreference(collection(kind), assetSorts, 'title');
+  const all = catalog?.items ?? [];
+  const archivedCount = all.filter(item => item.archived).length;
+  const items = sortItems(all.filter(item => item.archived === archived && matchesSearch(`${item.name} ${item.description}`, query)),
+    ...(sort === 'updated' ? [(a: AssetSummary, b: AssetSummary) => compareNewest(a.updatedAt, b.updatedAt)] : []), (a, b) => compareText(a.name, b.name));
+  // Archived assets are a separate view rather than a narrowing, so the choice is offered whenever any exist.
   return <>
-    <div className="asset-collection-toolbar"><SearchField label={`Search ${collection(kind)}`} value={query} onValueChange={setQuery} /><SelectControl label="Asset status" value={archived ? 'archived' : 'active'} onValueChange={value => setArchived(value === 'archived')} items={[{ value: 'active', label: `All ${collection(kind)}` }, { value: 'archived', label: 'Archived' }]} /></div>
-    {!catalog && <p className="asset-collection-status" role="status">{error ? 'Could not read local assets.' : `Reading ${collection(kind)}…`}</p>}
+    <FilterBar search={{ label: `Search ${collection(kind)}`, value: query, onChange: value => update({ q: value }, { replace: true }) }} primary={kinds}
+      facets={[{ key: 'status', label: 'Status', anyLabel: 'Active', total: all.length, value: archived ? 'archived' : '', offer: archivedCount > 0, options: [{ value: 'archived', label: 'Archived', count: archivedCount }] }]}
+      onFacetChange={(key, value) => update({ [key]: value })} onClearFacets={() => update({ status: null })}
+      sort={{ value: sort, options: assetSorts, onChange: setSort }} />
+    {(!catalog || all.length > 0) && <p className="library-count" role="status">{!catalog ? error ? 'Could not read local assets.' : `Reading ${collection(kind)}…` : `${items.length} ${archived ? 'archived ' : ''}${items.length === 1 ? kind : collection(kind)}${query ? ' matching the search' : ''}`}</p>}
     <div className="asset-grid">{items.map(item => <a href={`#assets/${collection(kind)}/${item.id}`} className={`asset-card ${item.error ? 'asset-card-error' : ''}`} key={item.id}>
       {kind === 'logo' ? <div className="asset-card-preview asset-background-transparent"><LogoImage id={item.id} revision={item.revision} file={item.preview} name={item.name} /></div> : <FontCardPreview item={item} />}
-      <div className="asset-card-caption"><strong>{item.name}<Icon name="arrow" size={16} /></strong><span>{(kind === 'logo' ? `${item.count} ${item.count === 1 ? 'variation' : 'variations'}` : item.builtIn ? 'Built-in family' : item.description || 'Local font family')}</span>{item.error ? <span className="media-problem">{item.error}</span> : kind === 'font' && item.compatibility && !item.compatibility.defaultEligible ? <span className="asset-health-note">{item.compatibility.status === 'needs-attention' ? 'Needs attention' : 'Additional styles needed for theme defaults'}</span> : null}{item.builtIn && kind === 'logo' && <span>Built in</span>}</div>
+      <div className="asset-card-caption"><h2><bdi lang={textLang(item.name)}>{item.name}</bdi><Icon name="arrow" size={16} /></h2><span>{(kind === 'logo' ? `${item.count} ${item.count === 1 ? 'variation' : 'variations'}` : item.builtIn ? 'Built-in family' : item.description || 'Local font family')}</span>{item.error ? <span className="media-problem">{item.error}</span> : kind === 'font' && item.compatibility && !item.compatibility.defaultEligible ? <span className="asset-health-note">{item.compatibility.status === 'needs-attention' ? 'Needs attention' : 'Additional styles needed for theme defaults'}</span> : null}{item.builtIn && kind === 'logo' && <span>Built in</span>}</div>
     </a>)}</div>
-    {catalog && !items.length && <div className="empty-state"><div className="asset-empty-mark" aria-hidden="true">{kind === 'logo' ? <Icon name="image" size={28} /> : 'Aa'}</div><h2>{query ? `No matching ${collection(kind)}` : archived ? 'Nothing archived' : kind === 'logo' ? 'Your logos' : 'Typography, ready to use.'}</h2><p>{query ? 'Try another name or clear your search.' : archived ? 'Archived assets remain available to existing documents.' : kind === 'logo' ? 'Add a logo, then keep all its variations inside.' : 'Add a family’s font files together, then explore its styles in a real PDF.'}</p>{query ? <Button onClick={() => setQuery('')}>Clear search</Button> : !archived && <Button onClick={onAdd}><Icon name="plus" size={16} />{kind === 'logo' ? 'Add your first logo' : 'Add fonts'}</Button>}</div>}
+    {catalog && !items.length && <div className="empty-state"><div className="asset-empty-mark" aria-hidden="true">{kind === 'logo' ? <Icon name="image" size={28} /> : 'Aa'}</div><h2>{query ? `No matching ${collection(kind)}` : archived ? 'Nothing archived' : kind === 'logo' ? 'Your logos' : 'Typography, ready to use.'}</h2><p>{query ? 'Try another name or clear your search.' : archived ? 'Archived assets remain available to existing documents.' : kind === 'logo' ? 'Add a logo, then keep all its variations inside.' : 'Add a family’s font files together, then explore its styles in a real PDF.'}</p>{query ? <Button onClick={() => update({ q: null })}>Clear search</Button> : !archived && <Button onClick={onAdd}><Icon name="plus" size={16} />{kind === 'logo' ? 'Add your first logo' : 'Add fonts'}</Button>}</div>}
   </>;
 }
 
@@ -184,25 +201,33 @@ export function AssetsBrowser({ selection, generation, documents, themes, connec
   const [selectedRevision, setSelectedRevision] = useState('');
   const [variationId, setVariationId] = useState('');
   const [background, setBackground] = useState('transparent');
-  const [query, setQuery] = useState('');
-  const [archived, setArchived] = useState(false);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
   const [edit, setEdit] = useState<AssetEdit | null>(null);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [counts, setCounts] = useState<Partial<Record<'media' | 'logos' | 'fonts', number>>>({});
   const working = useRef(false);
   const notifications = useNotifications();
   const requestKey = `${kind}/${id}/${selectedRevision}`;
   const inspection = inspectionState?.key === requestKey ? inspectionState.value : undefined;
-  useEffect(() => { setSelectedRevision(''); setVariationId(''); setError(''); setEdit(null); setVersionsOpen(false); setThemeOpen(false); setQuery(''); }, [tab, id]);
+  useEffect(() => { setSelectedRevision(''); setVariationId(''); setError(''); setEdit(null); setVersionsOpen(false); setThemeOpen(false); }, [tab, id]);
   useEffect(() => {
     if (tab === 'media') return;
     const controller = new AbortController();
     void api<AssetCatalog>(`/api/assets?kind=${kind}&archived=true`, { signal: controller.signal }).then(value => { setCatalog({ kind, value }); if (!id) setError(''); }).catch(error => { if (!controller.signal.aborted) setError(error.message); });
     return () => controller.abort();
   }, [tab, kind, id, generation, retry]);
+  // The collection buttons count what each one shows by default: media cards, and active logos and fonts.
+  useEffect(() => {
+    if (!connected) return;
+    const controller = new AbortController();
+    void Promise.all([api<AssetCatalog>('/api/assets', { signal: controller.signal }), api<Materials>('/api/materials', { signal: controller.signal })]).then(([assets, materials]) => setCounts({
+      media: groupMedia(materials.media).length, logos: assets.items.filter(item => item.kind === 'logo').length, fonts: assets.items.filter(item => item.kind === 'font').length,
+    })).catch(() => { /* Counts are a convenience; each collection reports its own loading problems. */ });
+    return () => controller.abort();
+  }, [generation, connected, retry]);
   useEffect(() => {
     if (tab === 'media' || !id) return;
     const controller = new AbortController();
@@ -234,18 +259,20 @@ export function AssetsBrowser({ selection, generation, documents, themes, connec
     } catch (error) { setError((error as Error).message); }
     finally { working.current = false; setBusy(false); }
   }
+  // Media, logos, and fonts are separate collections; their buttons lead the filter bar of each.
+  const kinds = <FilterChoices label="Collection" value={tab} onChange={value => { location.hash = `assets/${value}`; }}
+    choices={[{ value: 'media', label: 'Media', count: counts.media }, { value: 'logos', label: 'Logos', count: counts.logos }, { value: 'fonts', label: 'Fonts', count: counts.fonts }]} />;
   return <section className="library-content assets-content">
     <div className="library-heading assets-heading"><h1>Media &amp; Assets</h1>{tab !== 'media' && !id && <Button onClick={() => setEdit({ action: 'create', kind })} disabled={!connected}><Icon name="plus" size={17} />{kind === 'logo' ? 'Add logo' : 'Add fonts'}</Button>}</div>
-    <nav className="assets-tabs" aria-label="Media and assets categories">{(['media', 'logos', 'fonts'] as const).map(value => <a key={value} href={`#assets/${value}`} aria-current={tab === value ? 'page' : undefined}>{value === 'media' ? 'Media' : value === 'logos' ? 'Logos' : 'Fonts'}</a>)}</nav>
-    {tab === 'media' ? <MaterialsBrowser connected={connected} selection={id} generation={generation} documents={documents} /> : <>
+    {tab === 'media' ? <MaterialsBrowser connected={connected} selection={id} generation={generation} documents={documents} collections={kinds} /> : <>
       {error && <div className="error-banner" role="alert"><span>{error}</span><Button className="text-button" onClick={() => setRetry(value => value + 1)}>Try again</Button></div>}
       {catalog?.kind === kind && catalog.value.issues.map(issue => <p className="media-problem materials-issue" role="status" key={issue}>{issue}</p>)}
-      {!id ? <AssetCollection error={error} kind={kind} catalog={catalog?.kind === kind ? catalog.value : undefined} query={query} setQuery={setQuery} archived={archived} setArchived={setArchived} onAdd={() => setEdit({ action: 'create', kind })} /> : <>
-        <a className="media-back" href={`#assets/${collection(kind)}`}><Icon name="left" size={16} />All {collection(kind)}</a>
+      {!id ? <AssetCollection error={error} kind={kind} catalog={catalog?.kind === kind ? catalog.value : undefined} kinds={kinds} onAdd={() => setEdit({ action: 'create', kind })} /> : <>
+        <a className="back-link" href={`#assets/${collection(kind)}`}><Icon name="left" size={16} />All {collection(kind)}</a>
         {!asset || !inspection ? <div className="empty-state"><h2>{error ? 'Asset unavailable' : 'Loading asset…'}</h2><p>{error ? 'Check the local files or return to the library.' : 'Opening its saved artwork and guidance.'}</p></div> : <>
           {historical && <div className="asset-state-banner" role="status"><span>Viewing a previous version · {dateLabel(asset.createdAt)}</span><Button className="text-button" onClick={() => setSelectedRevision('')}>View current version</Button></div>}
           {inspection.head.archived && <div className="asset-state-banner" role="status"><span>Archived. Existing documents can still use this asset.</span><Button onClick={() => void quickAction('restore')} disabled={!connected || busy || inspection.head.builtIn}>{busy ? 'Restoring…' : 'Restore'}</Button></div>}
-          <header className="asset-detail-heading"><div><h2>{asset.name}</h2>{asset.description ? <p>{asset.description}</p> : <p className="muted">{asset.kind === 'logo' ? 'A shared logo for your documents.' : 'A shared font family for your documents.'}</p>}</div><div className="asset-detail-actions"><Button onClick={() => setThemeOpen(true)} disabled={!connected || inspection.head.archived || historical || (asset.kind === 'font' && !asset.compatibility.defaultEligible)}>Use with theme</Button><Menu.Root><Menu.Trigger render={<Button className="icon-button" aria-label={`Options for ${asset.name}`} />}><Icon name="more" /></Menu.Trigger><Menu.Portal><Menu.Positioner className="ui-positioner" align="end" sideOffset={6}><Menu.Popup className="ui-menu-popup"><Menu.Item className="ui-menu-item" disabled={!editable} onClick={() => setEdit({ action: 'edit', inspection })}><Icon name="edit" size={16} />Edit name &amp; guidance</Menu.Item><Menu.Item className="ui-menu-item" onClick={() => setVersionsOpen(true)}><Icon name="history" size={16} />Previous versions</Menu.Item><Menu.Separator className="ui-menu-separator" /><Menu.Item className="ui-menu-item" disabled={!editable} onClick={() => setEdit({ action: 'archive', inspection })}><Icon name="trash" size={16} />Archive</Menu.Item></Menu.Popup></Menu.Positioner></Menu.Portal></Menu.Root></div></header>
+          <header className="asset-detail-heading"><div><h2 dir="auto" lang={textLang(asset.name)}>{asset.name}</h2>{asset.description ? <p dir="auto" lang={textLang(asset.description)}>{asset.description}</p> : <p className="muted">{asset.kind === 'logo' ? 'A shared logo for your documents.' : 'A shared font family for your documents.'}</p>}</div><div className="asset-detail-actions"><Button onClick={() => setThemeOpen(true)} disabled={!connected || inspection.head.archived || historical || (asset.kind === 'font' && !asset.compatibility.defaultEligible)}>Use with theme</Button><Menu.Root><Menu.Trigger render={<Button className="icon-button" aria-label={`Options for ${asset.name}`} />}><Icon name="more" /></Menu.Trigger><Menu.Portal><Menu.Positioner className="ui-positioner" align="end" sideOffset={6}><Menu.Popup className="ui-menu-popup"><Menu.Item className="ui-menu-item" disabled={!editable} onClick={() => setEdit({ action: 'edit', inspection })}><Icon name="edit" size={16} />Edit name &amp; guidance</Menu.Item><Menu.Item className="ui-menu-item" onClick={() => setVersionsOpen(true)}><Icon name="history" size={16} />Previous versions</Menu.Item><Menu.Separator className="ui-menu-separator" /><Menu.Item className="ui-menu-item" disabled={!editable} onClick={() => setEdit({ action: 'archive', inspection })}><Icon name="trash" size={16} />Archive</Menu.Item></Menu.Popup></Menu.Positioner></Menu.Portal></Menu.Root></div></header>
           {asset.kind === 'logo' && <>
               <section className="asset-variations logo-folder-contents"><div className="asset-section-heading"><h3>Files <span>{asset.variations.length}</span></h3><Button className="text-button" disabled={!editable} onClick={() => setEdit({ action: 'variation', inspection })}><Icon name="plus" size={16} />Add variations</Button></div>
                 <div className="asset-variation-list">{asset.variations.map(item => <Button static className={`asset-variation-choice ${variation?.id === item.id ? 'selected' : ''}`} key={item.id} aria-pressed={variation?.id === item.id} onClick={() => setVariationId(item.id)}><span className={`asset-variation-thumb asset-background-${background}`} aria-hidden="true"><LogoImage id={asset.id} revision={asset.revision} file={item.image} name={item.name} /></span><span><strong>{item.name}</strong><small>{item.id === asset.defaultVariation ? 'Default variation' : item.original.mime === 'image/svg+xml' ? 'SVG' : 'PNG'}</small></span>{variation?.id === item.id && <Icon name="check" size={16} />}</Button>)}</div>
@@ -260,7 +287,7 @@ export function AssetsBrowser({ selection, generation, documents, themes, connec
           </div><aside className="asset-side-column">
             {asset.kind === 'logo' && variation && <section className="asset-variation-details"><div className="asset-section-heading"><h3>{variation.name}</h3>{variation.id === asset.defaultVariation && <span className="asset-badge">Default</span>}</div><h4>When to use</h4><p>{variation.description || 'No guidance yet. Describe which backgrounds or layouts suit this variation.'}</p><div className="asset-action-stack"><Button className="text-button" onClick={() => setEdit({ action: 'edit', inspection, variation })} disabled={!editable}><Icon name="edit" size={15} />Edit guidance</Button><Button className="text-button" onClick={() => setEdit({ action: 'replace', inspection, variation })} disabled={!editable}>Replace file</Button>{variation.id !== asset.defaultVariation && <Button className="text-button" disabled={!editable} onClick={() => void quickAction('default')}>Make default</Button>}{asset.variations.length > 1 && <Button className="text-button" disabled={!editable} onClick={() => setEdit({ action: 'remove', inspection, variation })}><Icon name="trash" size={15} />Remove variation</Button>}</div><p className="small muted asset-variation-size">{variation.image.width} × {variation.image.height} px · Prepared for PDF</p></section>}
             {asset.kind === 'font' && <><section className="asset-font-health"><h3>{asset.compatibility.defaultEligible ? 'Ready for theme defaults' : 'Font compatibility'}</h3><p className={asset.compatibility.status === 'needs-attention' ? 'media-problem' : ''}>{asset.compatibility.message || (asset.compatibility.defaultEligible ? 'This family includes regular and semibold or bold, and passed the PDF checks.' : 'Add regular and semibold or bold before using this family as a theme default.')}</p></section><section className="asset-font-styles"><div className="asset-section-heading"><h3>Styles <span>{asset.faces.length}</span></h3><Button className="text-button" onClick={() => setEdit({ action: 'faces', inspection })} disabled={!editable}><Icon name="plus" size={15} />Add</Button></div>{!asset.faces.some(face => face.style === 'italic') && <p className="small muted asset-missing-style">No italic styles included. Add them if your documents use italics.</p>}{!asset.faces.some(face => face.weight === 600 && face.style === 'normal') && asset.faces.some(face => face.weight === 700 && face.style === 'normal') && <p className="small muted asset-missing-style">Semibold requests use the family’s Bold face.</p>}<ul>{asset.faces.map(face => <li key={face.id}><span><strong>{fontStyle(face)}</strong><small>{face.weight} · {face.file.file.toLowerCase().endsWith('.otf') ? 'OTF' : 'TTF'}</small></span><a href={assetFileUrl('font', asset.id, asset.revision, face.file)} aria-label={`Download ${fontStyle(face)}`} download><Icon name="download" size={16} /></a></li>)}</ul></section><Button className="text-button" disabled={!editable} onClick={() => setEdit({ action: 'edit', inspection })}><Icon name="edit" size={15} />Edit guidance</Button></>}
-            <AssetRelationships inspection={inspection} />
+            <AssetRelationships inspection={inspection} documents={documents} />
             {inspection.head.builtIn && <p className="small muted">Built-in asset. Its original files stay in the workspace.</p>}
           </aside></div>
           <AssetVersions inspection={inspection} open={versionsOpen} onClose={() => setVersionsOpen(false)} onSelect={setSelectedRevision} />

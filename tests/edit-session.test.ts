@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSession, createSessionStore, materializeTarget, pendingEdits, rebaseSession, redo, sessionForDocument, sourceIdentity, undo, updateComponent } from '../src/app/editSession';
 import type { EditSession } from '../src/app/editSession';
-import type { TextSourceValue, TextTarget } from '../src/shared/selection';
+import { numberSourceError, type TextSourceValue, type TextTarget } from '../src/shared/selection';
 
 function source(value: string, start = 100): TextSourceValue {
   return { file: 'documents/proof/index.tsx', digest: 'original-digest', start, end: start + value.length + 2, kind: 'string', value };
@@ -101,6 +101,13 @@ test('empty text is a draft value; unchanged and cancelled typing do not add his
   assert.equal(restored.pending.length, 0);
   assert.equal(restored.past.length, 0);
   assert.equal(restored.future.length, 0);
+});
+
+test('a number cell accepts only a plain number and keeps the draft when the input is not one', () => {
+  const hours: TextSourceValue = { ...source('24'), end: 102, kind: 'number' };
+  const initial = createSession(baseline([target('costs:row-a-column-1', [hours])]));
+  for (const text of ['1,250', '12 h', '12.50', '']) assert.equal(updateComponent(initial, 'costs:row-a-column-1', text).error, numberSourceError, text);
+  for (const text of ['-3', '12.5', '1250']) assert.equal(update(initial, 'costs:row-a-column-1', text).pending[0].replacement, text);
 });
 
 test('typing groups for 500ms, undo and redo retain immutable snapshots, new typing discards redo', () => {

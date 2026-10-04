@@ -1,22 +1,25 @@
 /* Shared interaction tokens. Document themes have their own independent palette. */
 :root {
-  --page-title-size: 18px;
-  --title-size: 14px;
-  --title-leading: 20px;
+  /* Type roles step by about 1.25 so page titles, section titles and body copy read as distinct levels.
+     Caption carries metadata and secondary labels; tag is the floor for compact badges and key hints. */
+  --page-title-size: 20px;
+  --page-title-leading: 26px;
+  --title-size: 16px;
+  --title-leading: 22px;
   --label-size: 13px;
   --label-leading: 18px;
   --body-size: 13px;
   --body-leading: 20px;
+  --caption-size: 12px;
+  --caption-leading: 16px;
+  --tag-size: 11px;
+  --tag-leading: 15px;
   --control-radius: 6px;
   --control-hit-size: 32px;
   --data-row-height: 32px;
   --browse-row-height: 40px;
   --badge-height: 20px;
   --badge-radius: 6px;
-  /* Reserved for a future switch; the app currently has no switch control. */
-  --switch-width: 24px;
-  --switch-height: 14px;
-  --switch-thumb-size: 10px;
   --popup-radius: 6px;
   --menu-font-size: 12.5px;
   --menu-leading: 18px;
@@ -27,8 +30,9 @@
   --menu-min-width: 184px;
   --motion-quick: 140ms;
 }
+/* Touch screens raise every shared control to a 40px target; fine pointers keep the compact 32px. */
 @media (pointer: coarse) {
-  :root { --data-row-height: 44px; --menu-row-height: 44px; }
+  :root { --control-hit-size: 40px; --data-row-height: 44px; --menu-row-height: 44px; }
 }
 #root {
   isolation: isolate;
@@ -70,10 +74,10 @@
   outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
 }
+/* Text fields keep the 2px ring, drawn over their edge so containers never clip it. */
 :where(input, textarea):focus-visible {
-  outline: 1px solid var(--focus-ring);
+  outline: 2px solid var(--focus-ring);
   outline-offset: -1px;
-  box-shadow: 0 0 3px color-mix(in srgb, var(--focus-ring) 25%, transparent);
 }
 .ui-button.primary {
   background: var(--accent);
@@ -90,6 +94,36 @@
 .ui-button.primary:active:not(:disabled) {
   background: var(--accent-active);
   border-color: var(--accent-active);
+}
+/* A faded accent still reads as available, so disabled primary actions use the neutral fill. */
+.ui-button.primary:disabled,
+.ui-button.primary[data-disabled] {
+  background: var(--control-active);
+  border-color: var(--control-active);
+  color: var(--muted);
+  box-shadow: none;
+}
+/* Confirms an action that removes something, such as deleting a document or a folder. */
+.ui-button.destructive {
+  background: var(--destructive-fill);
+  border-color: var(--destructive-fill);
+  color: var(--on-destructive);
+  box-shadow: var(--shadow-control);
+}
+.ui-button.destructive:hover {
+  background: var(--destructive-fill-hover);
+  border-color: var(--destructive-fill-hover);
+}
+.ui-button.destructive:active:not(:disabled) {
+  background: var(--destructive-fill-active);
+  border-color: var(--destructive-fill-active);
+}
+.ui-button.destructive:disabled,
+.ui-button.destructive[data-disabled] {
+  background: var(--control-active);
+  border-color: var(--control-active);
+  color: var(--muted);
+  box-shadow: none;
 }
 .ui-button.icon-button {
   background: transparent;
@@ -185,11 +219,15 @@
   user-select: none;
   outline: 0;
 }
+/* The fill alone is too faint to find, so the highlighted row, by keyboard or pointer, also gets
+   an inset ring at least 3:1 against the menu in every appearance. */
 .ui-menu-item[data-highlighted],
 .ui-select-item[data-highlighted],
 .ui-menu-item:focus-visible,
 .ui-select-item:focus-visible {
   background: var(--control-hover);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
 }
 .ui-select-item[data-selected] {
   color: var(--accent-ink);
@@ -200,11 +238,16 @@
 .ui-popover-popup .ui-menu-item { width: 100%; justify-content: flex-start; border: 0; text-decoration: none; }
 .ui-popover-popup .ui-menu-item:hover { background: var(--control-hover); }
 .ui-menu-item > svg { flex-shrink: 0; color: var(--muted); }
-.ui-menu-item > span:not(.pill):not(.ui-menu-check) { flex: 1; min-width: 0; }
+.ui-menu-item > span:not(.pill):not(.ui-menu-check):not(.ui-menu-value) { flex: 1; min-width: 0; }
+/* The current choice behind a submenu row, e.g. Appearance → System. */
+.ui-menu-value { color: var(--muted); white-space: nowrap; }
+.ui-menu-item[data-popup-open] { background: var(--control-hover); }
 .ui-menu-item[data-disabled], .ui-select-item[data-disabled] { opacity: 0.45; cursor: default; }
 .ui-menu-check { margin-inline-start: auto; display: flex; }
 .ui-menu-label { margin: 0; padding: var(--menu-item-padding); font-size: var(--menu-font-size); line-height: var(--menu-leading); font-weight: 500; color: var(--muted); }
 .ui-menu-group { margin-top: 4px; }
+.ui-select-group + .ui-select-group, .ui-select-item + .ui-select-group { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--line); }
+.ui-select-group-label { padding: var(--menu-item-padding); font-size: var(--caption-size); line-height: var(--caption-leading); font-weight: 500; color: var(--muted); }
 .ui-menu-separator { height: 1px; background: var(--line); margin: 3px var(--menu-padding); }
 .ui-menu-item-danger, .ui-menu-item-danger > svg { color: var(--destructive); }
 .ui-select-popup[data-starting-style],
@@ -218,7 +261,7 @@
   color: var(--inverse-ink);
   border-radius: 5px;
   padding: 6px 9px;
-  font-size: 11px;
+  font-size: var(--tag-size);
   line-height: 1.4;
   box-shadow: var(--shadow-tooltip);
   transition: opacity var(--motion-quick);
@@ -259,7 +302,8 @@
 }
 .ui-notifications {
   position: fixed;
-  bottom: 24px;
+  /* The reader sets a clearance so notifications sit above its floating bottom controls. */
+  bottom: max(24px, var(--notification-clearance, 0px));
   right: 24px;
   z-index: 70;
   display: flex;
@@ -371,12 +415,18 @@
   }
 }
 
-.search-field { display: flex; align-items: center; gap: 10px; min-width: 200px; max-width: 440px; flex: 1; min-height: var(--control-hit-size); padding: 0 10px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--control-radius); color: var(--muted); font-size: var(--body-size); line-height: var(--body-leading); }
-.search-field:focus-within { border-color: var(--focus-ring); box-shadow: 0 0 3px color-mix(in srgb, var(--focus-ring) 25%, transparent); }
+.search-field { display: flex; align-items: center; gap: 10px; min-width: 200px; max-width: 440px; flex: 1; min-height: var(--control-hit-size); padding: 0 10px; background: var(--surface-raised); border: 1px solid var(--control-line); border-radius: var(--control-radius); color: var(--muted); font-size: var(--body-size); line-height: var(--body-leading); }
+.search-field:focus-within { border-color: var(--focus-ring); box-shadow: 0 0 0 1px var(--focus-ring); }
 .search-field input { border: 0; background: none; outline: none; box-shadow: none; width: 100%; min-width: 0; padding: 5px 0; }
 .search-field input::placeholder { color: var(--muted); }
 @media (forced-colors: active) {
   .search-field:focus-within { outline: 1px solid Highlight; outline-offset: -1px; }
+  /* Forced colors drop fills and shadows, so highlighted, pressed, and active states use system colors. */
+  .ui-menu-item[data-highlighted],
+  .ui-select-item[data-highlighted],
+  .ui-menu-item:focus-visible,
+  .ui-select-item:focus-visible { outline-color: Highlight; }
+  .ui-button.tool-button[data-pressed] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
 }
 @media (max-width: 620px) { .search-field { min-width: 0; flex-basis: 100%; } }
 .ui-tabs { display: flex; gap: 24px; border-bottom: 1px solid var(--line); margin-top: 24px; }
@@ -386,3 +436,4 @@
 .ui-tab:hover::after { background: var(--line-strong); }
 .ui-tab[data-active]::after { background: var(--ink); }
 .ui-tab:focus-visible { outline-offset: -3px; border-radius: 4px; }
+@media (forced-colors: active) { .ui-tab[data-active]::after { background: Highlight; } }

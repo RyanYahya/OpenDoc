@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><meta name="theme-color" content="#f8f8f8"/><title>OpenDoc</title>
-<link rel="icon" type="image/png" href="/assets/brand/wordmark.png"/>
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/brand/favicon-32.png"/><link rel="icon" type="image/png" sizes="64x64" href="/assets/brand/favicon-64.png"/>
 <script>
   // Apply a saved appearance before the first paint, including on direct document links.
   (() => {
@@ -9,6 +9,7 @@
     const dark = preference === 'dark' || (preference !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
     document.documentElement.dataset.appearance = dark ? 'dark' : 'light';
     document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+    // The styles have not loaded yet, so this mirrors --background in src/app/colors.css until the app takes over.
     document.querySelector('meta[name="theme-color"]').content = dark ? '#181818' : '#f8f8f8';
   })();
 </script>

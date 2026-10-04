@@ -1,6 +1,7 @@
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { discoverDocumentIds, exportDocuments, exportUsage, parseExportArgs, type ExportOptions } from './export-batch';
+import { recordAgentChanges } from './history-capture';
 
 export async function runExportCli(args: string[], root = process.cwd(), settings: Pick<ExportOptions, 'mode'> = {}): Promise<void> {
   if (args.includes('--help') || args.includes('-h')) {
@@ -9,6 +10,7 @@ export async function runExportCli(args: string[], root = process.cwd(), setting
   }
   const options = parseExportArgs(args);
   const ids = options.all ? await discoverDocumentIds(root) : options.ids;
+  await recordAgentChanges(root, ids);
   const results = await exportDocuments(root, ids, { format: options.format, ...settings });
   if (options.json) console.log(JSON.stringify({ results }, null, 2));
   else for (const result of results) {

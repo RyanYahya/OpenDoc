@@ -17,6 +17,9 @@ Work together in the browser, or let an agent produce the finished files entirel
 - **Consistency across projects.** Reuse themes, fonts, logos, and templates so the next report feels like it belongs with the last one.
 - **A complete starting library.** Adapt the included templates, explore five themes, or ask your agent to create a design of your own.
 - **An easy review loop.** In the browser, correct text directly, leave comments on specific content, and have your agent apply the feedback. Stable identities keep feedback attached through revisions.
+- **Arabic and English.** Write in English, Arabic, or both on one page or slide. Arabic text that the document's fonts cannot draw falls back to the bundled Noto Naskh Arabic, and review flags any character no font covers, which prints as `?`.
+- **Version history.** Every saved edit and agent change is kept for 90 days. Restore one paragraph, one section, or a whole earlier version, and undo any restore.
+- **Organized work.** Group documents into projects, give each a type and status, and find work by type, status, detected language, or your own tags.
 - **Files you own.** Keep editable source, project records, and media alongside your exports. Use the same commands locally or in an agent's remote environment.
 
 ## OpenDoc or OpenDoc Headless?
@@ -33,7 +36,7 @@ Both editions share the **same engine, authoring API, templates, themes, fonts, 
 | Service | A local foreground server while the app is open | No browser or server needed |
 | Package | [`@ryanyahya/opendoc`](https://www.npmjs.com/package/@ryanyahya/opendoc) | [`@ryanyahya/opendoc-headless`](https://www.npmjs.com/package/@ryanyahya/opendoc-headless) |
 
-With Headless, the recipient simply receives the PDF or PowerPoint. They do not need OpenDoc installed.
+With Headless, the recipient receives the PDF or PowerPoint. They do not need OpenDoc installed.
 
 <a id="start"></a>
 
@@ -94,24 +97,30 @@ Give an agent this README and a task like:
 
 > Use OpenDoc Headless to turn these notes into a polished project proposal. Install it in your environment if needed, and read the workspace's AGENTS.md. Use a suitable template and theme, flag missing facts, review every page, and return the finished PDF here. Keep the source so we can revise it later.
 
-The workspace's `AGENTS.md` routes requests to six skills for creation, current context, feedback, themes, templates, and review. `CLAUDE.md` imports the shared instructions, and `.claude/skills` exposes the same skills as `.agents/skills`. If an agent doesn't discover skills automatically, have it read the guide and the matching skill directly. Start in the workspace, and explicitly read its guide when installing during an existing conversation.
+The workspace's `AGENTS.md` routes requests to ten skills for creation, current context, feedback, revision, logos, fonts and media, themes, templates, review and export, version history, and organization. `CLAUDE.md` imports the shared instructions, and `.claude/skills` exposes the same skills as `.agents/skills`. If an agent doesn't discover skills automatically, have it read the guide and the matching skill directly. Start in the workspace, and explicitly read its guide when installing during an existing conversation.
 
 For an older workspace, preserve its instructions and use the [compatibility setup](docs/HEADLESS.md#agent-setup) to add the shared Claude entry points. Reading the guides works without registering a plugin or publishing the workspace to GitHub.
+
+In normal OpenDoc, **Create** prepares the request for you: describe the work, check the project, theme, and template, copy the prompt, and paste it into your agent. The library shows a waiting card until the new document or presentation appears. [Create in the app →](docs/WORKSPACE.md#create-in-the-app)
 
 Agents author TSX using OpenDoc's components, check the source, inspect the rendered pages, revise, and export. For remote work, the agent delivers real attachments or accessible downloads through its existing tools.
 
 ## Agent skills
 
-Both editions include **six skills** that guide an agent through the work, from understanding your brief to delivering reviewed files. They cover writing, design, context, feedback, and quality checks. Ask in ordinary language; the [agent guide](AGENTS.md) explains which workflow to use, and each link below opens its full instructions.
+Both editions include **ten skills** that guide an agent through the work, from understanding your brief to delivering reviewed files. They cover writing, revising, design, logos, fonts and images, context, feedback, quality checks, recovering earlier versions, and organizing your work. Ask in ordinary language; the [agent guide](AGENTS.md) explains which workflow to use, and each link below opens its full instructions.
 
 | Skill | What it does |
 | --- | --- |
 | [Create a document or presentation](.agents/skills/opendoc-create/SKILL.md) | Turns a brief and source material into a finished report, proposal, document, or slide deck. Resolves the audience and design choices, selects a project, theme, and template, then authors, reviews, revises, and exports. Documents are delivered as PDF; presentations as PDF and editable PowerPoint, unless you request otherwise. |
 | [Understand the current document](.agents/skills/opendoc-current-document/SKILL.md) | Resolves what you mean by “this document,” “this slide,” or “the selected passage,” including the relevant theme or asset. Uses fresh browser context when available, or the task and workspace records in Headless, so edits target the right content. |
 | [Apply comments and feedback](.agents/skills/opendoc-apply-comments/SKILL.md) | Reads saved comments and marked passages, makes the requested revisions, and verifies the result before resolving feedback. Preserves content anchors and comment history so corrections stay connected to the work. |
+| [Revise a document or presentation](.agents/skills/opendoc-revise-document/SKILL.md) | Makes direct changes to existing work without saved comments: updated content and figures, a shorter or longer version, a translation or Arabic right-to-left version, a document turned into a deck or back, or a new theme. Keeps content identities and history, then reviews and redelivers the PDF and PowerPoint. |
+| [Manage logos, fonts, and media](.agents/skills/opendoc-assets-media/SKILL.md) | Imports and updates logos and fonts with their licenses, binds exact versions to documents, sets the logo and fonts a theme gives new documents, and adds or regenerates images and charts in a document, checking each in the rendered PDF. |
 | [Create or refine a theme](.agents/skills/opendoc-create-theme/SKILL.md) | Builds a reusable visual system from your brief, brand materials, or references: typography, colors, spacing, page details, and shared components. Produces and reviews a specimen so the same design can carry across documents and presentations. |
 | [Create or refine a template](.agents/skills/opendoc-create-template/SKILL.md) | Builds a reusable page layout, presentation skeleton, or recurring report structure. Separates content from layout where appropriate and verifies a specimen, giving future work a consistent starting point. Use the creation skill above for a single deliverable using an existing template. |
-| [Review documents and presentations](.agents/skills/opendoc-review-document/SKILL.md) | Checks the actual rendered pages for clipping, missing glyphs, awkward spacing, broken tables, and reference problems. Inspects extracted text, reviews theme and template specimens, and checks editable PowerPoint exports. Reports any unverified rendering or failed output before delivery. |
+| [Review documents and presentations](.agents/skills/opendoc-review-document/SKILL.md) | Checks the actual rendered pages for clipping, missing glyphs, awkward spacing, broken tables, and reference problems. Inspects extracted text, reviews theme and template specimens, and checks editable PowerPoint exports. Exports or re-exports files, including every document at once, and can leave findings as comments. Reports any unverified rendering or failed output before delivery. |
+| [Restore earlier versions](.agents/skills/opendoc-history/SKILL.md) | Answers what changed and brings back earlier wording from version history: one paragraph, one section, or a whole version, leaving the rest as it is. Confirms the version when more than one fits, reports the command that undoes each restore, and restores deleted comments. |
+| [Organize your work](.agents/skills/opendoc-organize/SKILL.md) | Sets each document's type and status, finds work by type, status, language, or tag, and cleans up tags when asked. Arranges themes into folders, moves documents between projects and changes project settings when you ask, renames, duplicates, deletes, and restores documents, and regroups work only after you approve a proposed grouping. |
 
 Creation, theme, template, and feedback workflows call for review before completion. You can also request a review on its own. Skills use the same files and commands across agents; when automatic discovery is unavailable, the agent can read the linked instructions directly.
 
@@ -149,7 +158,7 @@ A theme gives documents their visual character: typography, color, spacing, page
 
 Also included: **Neutral**, a quiet starting point, and **McKinsey Consulting**, an independent consulting-inspired theme with structured exhibits. OpenDoc is not affiliated with McKinsey & Company.
 
-Themes and templates remain editable in your workspace. Shared font families include Geist, Inter, Roboto, Open Sans, Lato, and Merriweather, with their licenses. [Theme authoring →](docs/THEMES.md) · [Fonts and logos →](docs/ASSETS.md)
+Themes and templates remain editable in your workspace. Shared font families include Geist, Inter, Roboto, Open Sans, Lato, Merriweather, and Noto Naskh Arabic, with their licenses. [Theme authoring →](docs/THEMES.md) · [Fonts and logos →](docs/ASSETS.md)
 
 ## Made with OpenDoc
 
@@ -182,8 +191,11 @@ Updates preserve your edition, documents, templates, themes, assets, and feedbac
 | Produce finished files remotely | [Headless](docs/HEADLESS.md) |
 | Author documents and presentations | [Authoring API](docs/AUTHORING.md) |
 | Create reusable designs | [Templates](docs/TEMPLATES.md) · [Themes](docs/THEMES.md) |
+| Group documents into projects; rename, duplicate, delete, and restore them | [Projects](docs/PROJECTS.md) |
+| Type, status, language, and tags for documents, themes, and templates | [Tags](docs/TAGS.md) |
 | Work with images, fonts, and logos | [Media](docs/MEDIA.md) · [Assets](docs/ASSETS.md) |
 | Apply precise corrections and feedback | [Selection](docs/SELECTION.md) |
+| Restore earlier wording, sections, or versions | [Version history](docs/HISTORY.md) |
 | Contribute to the framework | [Contributing](CONTRIBUTING.md) · [Validation](VALIDATION.md) |
 
 For development, use Node.js 24+ and the pnpm version pinned in `package.json`:
@@ -195,7 +207,7 @@ pnpm dev
 
 Run `pnpm verify` before contributing. Build both distributions with `pnpm package:pack`; the packages share one repository and release version. npm distributes the installable editions; GitHub hosts source and release notes.
 
-OpenDoc currently supports English content and TSX authoring. It runs trusted document code in your environment. PowerPoint supports editable text, rectangular shapes, images, and compatible embedded fonts; some visual effects are intentionally unsupported. [Security](SECURITY.md) · [Third-party notices](THIRD_PARTY.md)
+OpenDoc supports English, Arabic, and mixed right-to-left content ([Authoring](docs/AUTHORING.md#arabic-and-right-to-left-text)) with TSX authoring. It runs trusted document code in your environment. PowerPoint supports editable text, rectangular shapes, images, and compatible embedded fonts; some visual effects are intentionally unsupported. [Security](SECURITY.md) · [Third-party notices](THIRD_PARTY.md)
 
 ## License
 

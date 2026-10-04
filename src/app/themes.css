@@ -1,5 +1,3 @@
-.theme-intro { max-width: 65ch; line-height: 1.6; }
-.theme-gallery-label { margin: 24px 0 20px; padding-bottom: 12px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 12px; }
 .theme-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 28px 24px; }
 .theme-gallery-card { min-width: 0; max-width: 280px; }
 .theme-gallery-preview { position: relative; }
@@ -8,9 +6,13 @@
 .theme-specimen { min-width: 0; background: var(--surface-alt); border-radius: 6px; padding: 26px 32px; transition: background-color 160ms ease; }
 .theme-gallery-preview .theme-specimen { padding-bottom: 46px; }
 .theme-gallery-preview:hover .theme-specimen { background: var(--surface-hover); }
-.theme-preview-placeholder { aspect-ratio: 595 / 842; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--muted); font-size: 13px; text-align: center; }
+.theme-preview-placeholder { aspect-ratio: 595 / 842; }
 .theme-pdf { display: flex; flex-direction: column; align-items: center; gap: 24px; width: 100%; min-width: 0; }
-.theme-gallery-card .theme-pdf { justify-content: center; }
+.theme-gallery-card .theme-pdf { position: relative; justify-content: center; }
+/* Until its page is drawn, a card shows the placeholder it showed before the PDF arrived, not a blank page. */
+.theme-gallery-card .theme-pdf > .theme-preview-placeholder { display: none; position: absolute; inset: 0; aspect-ratio: auto; }
+.theme-gallery-card .theme-pdf:has(> .pdf-page[data-rendered="false"]) > .theme-preview-placeholder { display: flex; }
+.theme-gallery-card .theme-pdf > .pdf-page[data-rendered="false"] { visibility: hidden; }
 .theme-pdf .pdf-page { flex-shrink: 0; box-shadow: var(--shadow-preview); max-width: 100%; scroll-margin-top: 24px; }
 .theme-preview-message { padding: 20px 0; font-size: 13px; line-height: 1.6; color: var(--muted); overflow-wrap: anywhere; }
 .theme-preview-message p + p { margin-top: 8px; }
@@ -18,13 +20,13 @@
 .theme-gallery-card h2 { margin: 12px 0 0; font-size: var(--title-size); line-height: var(--title-leading); font-weight: 500; }
 .theme-gallery-card h2 a { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 28px; }
 .theme-gallery-card h2 a:hover { text-decoration: underline; text-underline-offset: 4px; }
+@media (pointer: coarse) { .theme-gallery-card h2 a { min-height: var(--control-hit-size); } }
+.theme-gallery-description { margin-top: 4px; color: var(--muted); font-size: 13px; line-height: 1.5; }
 .theme-palette-strip { position: absolute; left: 24px; right: 24px; bottom: 16px; display: flex; border-radius: 2px; overflow: hidden; box-shadow: 0 0 0 1px var(--line); }
 .theme-palette-strip span { flex: 1; min-width: 0; height: 6px; }
-.theme-back { display: inline-flex; align-items: center; gap: 5px; min-height: 40px; margin-bottom: 20px; font-size: 13px; color: var(--muted); }
-.theme-back:hover { color: var(--ink); }
 .theme-detail-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(250px, 1fr); gap: 40px; align-items: start; }
 .theme-specimen-full { padding: 22px; }
-.theme-proof-label { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; margin-bottom: 20px; font-size: 12px; color: var(--muted); }
+.theme-proof-label { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; margin-bottom: 20px; font-size: var(--caption-size); color: var(--muted); }
 .theme-specimen-full .theme-preview-placeholder { min-height: 380px; aspect-ratio: auto; }
 .theme-options { min-width: 0; align-self: stretch; padding-bottom: 4px; overflow-wrap: anywhere; }
 .theme-options > header { position: sticky; top: 32px; z-index: 1; margin-bottom: 22px; background: var(--background); }
@@ -35,14 +37,14 @@
 .theme-options section > p, .theme-options ul { font-size: 13px; color: var(--muted); line-height: 1.75; }
 .theme-options ul { padding-left: 18px; margin: 0; }
 .theme-options li + li { margin-top: 9px; }
-.theme-type-details { margin: 0; font-size: 12px; }
+.theme-type-details { margin: 0; font-size: var(--caption-size); }
 .theme-type-details div { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 12px; }
 .theme-type-details div + div { margin-top: 10px; }
 .theme-type-details dt { color: var(--muted); }
 .theme-type-details dd { margin: 0; }
 .theme-actions { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
-.theme-actions .primary { justify-content: space-between; }
 .theme-actions .text-button { align-self: flex-start; }
+.theme-action-hint { margin: -4px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .theme-system-details { min-width: 0; margin-top: 26px; padding-top: 24px; border-top: 1px solid var(--line); }
 .theme-system-details > section:first-child { margin-top: 0; }
 .theme-options .theme-palette { list-style: none; padding: 0; display: grid; gap: 13px; }
@@ -51,12 +53,13 @@
 .theme-color-swatch { display: block; width: 34px; height: 34px; flex: 0 0 34px; border-radius: 3px; box-shadow: inset 0 0 0 1px #00000022; }
 .theme-palette li > div { min-width: 0; flex: 1; }
 .theme-color-label { display: flex; align-items: baseline; flex-wrap: wrap; gap: 3px 10px; line-height: 1.3; }
-.theme-color-label strong { font-size: 12px; font-weight: 500; color: var(--ink); }
-.theme-color-label code { font-family: ui-monospace, monospace; font-size: 11px; color: var(--muted); }
-.theme-palette p { margin-top: 4px; font-size: 12px; line-height: 1.5; }
+.theme-color-label strong { font-size: var(--caption-size); font-weight: 500; color: var(--ink); }
+.theme-color-label code { font-family: ui-monospace, monospace; font-size: var(--tag-size); color: var(--muted); }
+.theme-palette p { margin-top: 4px; font-size: var(--caption-size); line-height: 1.5; }
 .theme-used-by { padding-top: 22px; border-top: 1px solid var(--line); }
 .theme-used-by a { display: flex; align-items: center; gap: 9px; min-height: 40px; font-size: 13px; line-height: 1.5; }
-.theme-used-by a span { flex: 1; min-width: 0; }
+.theme-used-by a > span { flex: 1; min-width: 0; }
+.theme-used-format { color: var(--muted); }
 .theme-used-by a:hover span { text-decoration: underline; text-underline-offset: 3px; }
 @media (max-width: 1050px) {
   .theme-detail-layout { grid-template-columns: minmax(0, 1fr); gap: 28px; }

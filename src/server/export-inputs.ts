@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { documentDependencies, isManagedAssetPath, isThemeAssetDefaultsPath } from './dependencies';
 import { documentEntry } from './render';
 import { ExportChangedError } from './export-file';
+import { historyFolder } from './history-paths';
 
 type Stamp = { size: bigint; mtimeNs: bigint; ctimeNs: bigint; ino: bigint };
 const signature = (value: Stamp) => `${value.size}:${value.mtimeNs}:${value.ctimeNs}:${value.ino}`;
@@ -21,7 +22,8 @@ export async function captureEntryExportInputs(root: string, entry: string, comp
   const dependencies = await documentDependencies(root, entry);
   const inputs = new Map<string, { stamp: string; directory: boolean; missing?: boolean; emptyWhenMissing?: boolean }>();
   const visited = new Set<string>();
-  const included = (parent: string, name: string) => name !== 'comments.json' && !name.startsWith('.forme-render-') && !name.endsWith('.tmp')
+  // Feedback and recorded history change independently of what a render reads.
+  const included = (parent: string, name: string) => name !== 'comments.json' && name !== historyFolder && !name.startsWith('.forme-render-') && !name.endsWith('.tmp')
     && (dependencies.readsFiles || (!isManagedAssetPath(root, resolve(parent, name)) && !isThemeAssetDefaultsPath(root, resolve(parent, name))));
   async function collect(path: string) {
     // A newly created managed logo container is equivalent to an empty catalog;

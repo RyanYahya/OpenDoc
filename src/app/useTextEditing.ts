@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { DocumentState } from '../shared/types';
 import type { TextEditPreview } from '../shared/selection';
-import { api } from './api';
+import { api, failureMessage } from './api';
 import {
   createSession, createSessionStore, materializeTarget, pendingEdits,
   rebaseSession, redo, sessionForDocument, undo, updateComponent, type EditSession,
@@ -137,7 +137,7 @@ export function useTextEditing(state: DocumentState, connected: boolean, onState
       keepReceipt(state.id, submitted.current);
       setSavedId(next.manualEdit.id); onState(next);
       return true;
-    } catch (failure) { setError((failure as Error).message); setSaving(false); busy.current = false; return false; }
+    } catch (failure) { setError(failureMessage(failure, 'Your draft is kept here; save again once it reconnects.')); setSaving(false); busy.current = false; return false; }
   }
   async function undoSaved() {
     if (!state.manualEdit?.canUndo || busy.current || !connected || (count && !savedId)) return false;

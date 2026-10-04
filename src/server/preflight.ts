@@ -164,3 +164,41 @@ export function assertLayoutSafe(issues: ReviewIssue[]) {
   if (!errors.length) return;
   throw new RenderFailure(`Layout check failed:\n${errors.slice(0, 8).map(issue => `- ${issue.blockId ? `${issue.blockId}: ` : ''}${issue.message}`).join('\n')}${errors.length > 8 ? `\n- ${errors.length - 8} more layout errors.` : ''}`, issues);
 }
+
+const glyphCode = (character: string) => `U+${character.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')} ${character}`;
+function glyphList(characters: string[]) {
+  return `${characters.slice(0, 8).map(glyphCode).join(', ')}${characters.length > 8 ? ', ...' : ''}`;
+}
+
+/**
+ * Turn the engine's `Missing glyphs:` warnings, which name characters but not where they
+ * are, into one issue per page that lists them and points at the first affected block.
+ */
+export function missingGlyphIssues(warnings: string[], layout: LayoutInfo, blocks: Record<string, BlockInfo>): ReviewIssue[] {
+  const characters = new Set<string>();
+  for (const message of warnings) for (const [, code] of message.matchAll(/U\+([0-9A-F]{4,6})\b/g)) characters.add(String.fromCodePoint(parseInt(code, 16)));
+  if (!characters.size) return warnings.map(message => ({ code: 'missing-glyphs', severity: 'warning', message }));
+  const issues: ReviewIssue[] = [];
+  const located = new Set<string>();
+  for (const [index, page] of layout.pages.entries()) {
+    const found = new Set<string>();
+    const lines: { node: ElementInfo; blockId?: string }[] = [];
+    const visit = (node: ElementInfo, inherited?: string) => {
+      const blockId = blockIdOf(node, inherited);
+      const missing = node.nodeType === 'TextLine' ? Array.from(node.textContent ?? '').filter(character => characters.has(character)) : [];
+      if (missing.length) { missing.forEach(character => found.add(character)); lines.push({ node, blockId }); }
+      node.children.forEach(child => visit(child, blockId));
+    };
+    page.elements.forEach(node => visit(node));
+    const [first] = lines;
+    if (!first) continue;
+    found.forEach(character => located.add(character));
+    issues.push({ code: 'missing-glyphs', severity: 'warning', page: index + 1, blockId: first.blockId, source: first.blockId ? blocks[first.blockId]?.source : undefined,
+      bounds: boundsOf(first.node), characters: [...found],
+      message: `Missing glyphs on page ${index + 1}: no font covers ${glyphList([...found])}. They print as question marks (?); add a font that covers them to the fontFamily fallback list.` });
+  }
+  const elsewhere = [...characters].filter(character => !located.has(character));
+  if (elsewhere.length) issues.push({ code: 'missing-glyphs', severity: 'warning', characters: elsewhere,
+    message: `Missing glyphs: no font covers ${glyphList(elsewhere)}. They print as question marks (?); add a font that covers them to the fontFamily fallback list.` });
+  return issues;
+}

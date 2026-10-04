@@ -1,15 +1,15 @@
 ---
 name: opendoc-create-theme
-description: Design or refine an OpenDoc theme from a brief, brand material, or references when the user wants a reusable visual system for documents or presentations. Choose an existing theme for a new deliverable through opendoc-create.
+description: Design or refine an OpenDoc theme from a brief, brand material, or references when the user wants a reusable visual system (palette, typography, page design) for documents or presentations, including an Arabic or right-to-left theme. Choose an existing theme for a new deliverable through opendoc-create.
 ---
 
 Use the user's OpenDoc workspace as the working directory. `documents/`, `templates/`, `themes/`, `assets/`, and `.opendoc/` are workspace paths; guide links are relative to this installed skill. Use `npx opendoc` for commands and keep authoring changes out of `node_modules/opendoc`. In Headless, follow [the remote workflow](../../../docs/HEADLESS.md); these commands and imports stay the same, and no browser or recipient-side installation is needed.
 
 ## 1. Inspect the design basis
 
-Resolve the requested theme explicitly or through [opendoc-current-document](../opendoc-current-document/SKILL.md). Discover with `npx opendoc themes list`; inspect one with `npx opendoc themes inspect <id>`. Read its guide and relevant source, or one suitable existing theme for a new bundle.
+Resolve the requested theme explicitly or through [opendoc-current-document](../opendoc-current-document/SKILL.md). Discover with `npx opendoc themes list`; inspect one with `npx opendoc themes inspect <id>`. The list also reports each theme's `folder` from the user's optional `themes/folders.json`, its detected `language`, and its custom `tags` from `tags.json`; narrow it with `--folder <name>` (or `none`), `--language arabic`, or `--tag <tag>`; the filters combine. Folders are single-level and live in `themes/folders.json`, so filing a theme never moves `themes/<id>/`. Change folders with `npx opendoc themes assign` or `themes folders` only when the user asks, as described in [Themes](../../../docs/THEMES.md#organize-the-catalog); [opendoc-organize](../opendoc-organize/SKILL.md) covers the commands. Read its guide and relevant source, or one suitable existing theme for a new bundle.
 
-Inspect supplied images, brand-guide pages, document PDFs, and referenced websites. Record what is a requirement, an observed pattern, or your interpretation. Identify unavailable references and font substitutions honestly. Translate web references into print through hierarchy, proportions, alignment, reading measure, whitespace, and recurring compositions.
+Inspect supplied images, brand-guide pages, document PDFs, and referenced websites. Record what is a requirement, an observed pattern, or your interpretation. Report unavailable references and font substitutions. Translate web references into print through hierarchy, proportions, alignment, reading measure, whitespace, and recurring compositions.
 
 **Ready:** the design basis is grounded in inspected material and the target is identified as a new theme, adaptation, or shared revision.
 
@@ -23,9 +23,19 @@ Choose the palette, typography, spacing rhythm, page geometry, running matter, a
 
 Follow the [Themes contract](../../../docs/THEMES.md) and supported roles exported by `opendoc/themes`. Create or refine `themes/<id>/` with a discoverable pure-data `index.ts`, actionable `design.md`, and a real `preview.tsx`. Add native PDF components only where standard roles cannot express the system.
 
-Keep exact guide values synchronized with executable tokens. Describe component inputs and link their source rather than duplicating implementations. Build the specimen with the actual theme/components and a plausible application; two to four pages is a starting point, not a quota. A theme specimen imports `./index`; an authored document imports its generated `./theme` adapter.
+Keep exact guide values synchronized with executable tokens. Describe component inputs and link their source rather than duplicating implementations. Keep component text correctable: bind every string a document passes with `TextSlot`, mark generated counters and prefixes with `Decoration`, and give fixed or transformed labels a stated reason, as described in [editable text in components](../../../docs/THEMES.md#editable-text-in-components). Build the specimen with the actual theme/components and a plausible application; two to four pages is a starting point, not a quota. A theme specimen imports `./index`; an authored document imports its generated `./theme` adapter.
 
 For logos or custom fonts, read [Assets](../../../docs/ASSETS.md) and the font section of Themes before implementing them. Verify local faces and licenses, preserve original artwork, and use semantic document font bindings inside reusable components. For generated visuals, follow [Media](../../../docs/MEDIA.md). Keep reference originals in their existing project location.
+
+For a theme intended for Arabic or bilingual text, set `direction: 'rtl'`, `lang: 'ar'`, and `fontFallbacks` naming a registered Arabic family, as described in [Arabic and right-to-left text](../../../docs/AUTHORING.md#arabic-and-right-to-left-text). Rows, lists, tables, and running matter mirror automatically, but padding, margins, borders, and absolute positions stay physical; a component that places a rule, inset, or mark on one side calls `documentDirection()` from `opendoc` inside its render function to choose it. Write the specimen in the intended Arabic text so its review exercises the mirrored layout.
+
+Themes have no type or status, and their language comes from `direction` and `lang`, so a new theme needs no tags. Add a custom tag only when it will help find the theme later, such as a brand or client name, reusing an existing spelling from `npx opendoc tags`:
+
+```sh
+npx opendoc tags add theme <theme-id> "Client Acme"
+```
+
+When refining an existing theme, keep its tags. Never remove or rename the user's tags unless asked. See [Tags](../../../docs/TAGS.md#tagging-by-agents).
 
 **Ready:** the bundle is discoverable, its guide matches its tokens, and the specimen demonstrates the implemented print system.
 

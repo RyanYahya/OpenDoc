@@ -112,16 +112,17 @@ export class TextEditService {
       const changes = [...groups.values()].filter(group => group.file === file && group.edits.length).sort((a, b) => a.source.start - b.source.start);
       if (!changes.length) continue;
       if (changes.some((group, index) => index > 0 && group.source.start < changes[index - 1].source.end)) throw new Conflict('These text bindings overlap. Refresh the document before saving.');
-      const replacements: SourceOverride['replacements'] = [];
+      const replacements: SourceOverride['replacements'] = [], tokens: string[] = [];
       for (const group of changes) {
         let value = group.source.value;
         for (const edit of group.edits.sort((a, b) => b.start - a.start)) value = value.slice(0, edit.start) + edit.replacement + value.slice(edit.end);
-        const token = serializeSourceValue(group.source, value);
+        const token = serializeSourceValue(group.source, value, file.before.slice(group.source.start, group.source.end));
+        tokens.push(token);
         replacements.push({ start: group.source.start, end: group.source.end, tokenLength: token.length, value });
       }
       for (let index = changes.length - 1; index >= 0; index--) {
         const { source } = changes[index];
-        file.after = file.after.slice(0, source.start) + serializeSourceValue(source, replacements[index].value) + file.after.slice(source.end);
+        file.after = file.after.slice(0, source.start) + tokens[index] + file.after.slice(source.end);
       }
       validateTextSyntax(file.path, file.after);
       file.afterDigest = textDigest(file.after);

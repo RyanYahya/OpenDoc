@@ -6,6 +6,8 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { excludedFromCopy, forbiddenInPackage } from './package-rules.mjs';
+import { excludedFromPackage, forbiddenPackagePath } from './package-files.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const argv = process.argv.slice(2);
@@ -23,7 +25,7 @@ if (Number(process.versions.node.split('.')[0]) < 24) throw new Error('OpenDoc p
 
 const browserDependencies = ['@base-ui/react', 'react-dom', '@types/react-dom', 'react-markdown', 'remark-gfm', 'chokidar', 'ws', '@types/ws'];
 const browserFiles = ['dist', 'src/app', 'src/server/index.ts'];
-const sourceArchive = 'vendor/formepdf/formepdf-core-0.20.1-opendoc.3.tgz';
+const sourceArchive = 'vendor/formepdf/formepdf-core-0.20.1-opendoc.4.tgz';
 
 async function run(command, args, cwd, capture = false) {
   return new Promise((resolve, reject) => {
@@ -40,9 +42,10 @@ async function copy(relative, destination, selectedEdition) {
     recursive: true,
     filter(source) {
       const name = path.relative(root, source).split(path.sep).join('/');
-      if (name === sourceArchive || name === 'docs/showcase' || name.startsWith('docs/showcase/')) return false;
+      // Showcase material and a workspace's own folders, tags, and projects stay out of releases.
+      if (excludedFromCopy(name, sourceArchive)) return false;
       if (selectedEdition === 'headless' && browserFiles.some((entry) => name === entry || name.startsWith(`${entry}/`))) return false;
-      return !['.DS_Store', 'node_modules', '.git', '.opendoc', 'output', 'tmp'].includes(path.basename(source));
+      return !excludedFromPackage(source);
     },
   });
 }
@@ -69,7 +72,7 @@ async function keepNodeEngine(stage) {
   const coreRoot = path.join(stage, 'node_modules/@formepdf/core');
   const manifestPath = path.join(coreRoot, 'package.json');
   const engine = JSON.parse(await readFile(manifestPath, 'utf8'));
-  if (engine.version !== '0.20.1-opendoc.3') throw new Error('The release must contain the repaired Forme 0.20.1-opendoc.3 engine.');
+  if (engine.version !== '0.20.1-opendoc.4') throw new Error('The release must contain the repaired Forme 0.20.1-opendoc.4 engine.');
   // Both editions render in Node. Keep the repaired Node engine byte for byte;
   // browser and worker targets remain available in the source rebuild archive.
   for (const entry of ['pkg', 'pkg-web', 'scripts', 'dist/browser.js', 'dist/browser.d.ts', 'dist/worker.js', 'dist/worker.d.ts']) {
@@ -159,10 +162,7 @@ for (const selectedEdition of editions) {
     const packed = JSON.parse(await run('npm', ['pack', '--ignore-scripts', '--json', '--pack-destination', output], stage, true))[0];
     const archive = path.join(output, packed.filename);
     const filenames = new Set(packed.files.map(({ path: name }) => name));
-    const forbidden = packed.files.filter(({ path: name }) => /^(?:tests|documents|projects\.json|\.opendoc|\.git|output|tmp)(?:\/|$)/.test(name)
-      || name === sourceArchive
-      || /^node_modules\/@formepdf\/(?:html|renderer)(?:\/|$)/.test(name)
-      || /^node_modules\/@formepdf\/core\/(?:pkg|pkg-web)(?:\/|$)/.test(name));
+    const forbidden = packed.files.filter(({ path: name }) => forbiddenInPackage(name, sourceArchive) || forbiddenPackagePath(name));
     if (forbidden.length) throw new Error(`Excluded files entered the package: ${forbidden.map(({ path: name }) => name).join(', ')}`);
     if (packed.bundled.some((name) => name === 'esbuild' || name.startsWith('@esbuild/') || name.startsWith('@napi-rs/') || name.startsWith('@resvg/'))) {
       throw new Error('A platform-specific dependency entered the bundle.');

@@ -3,8 +3,10 @@ import { access, readdir, rm } from 'node:fs/promises';
 import { relative, resolve, sep } from 'node:path';
 import { renderOnce, validId, documentEntry } from './render';
 import { atomicWrite } from './files';
+import { historyFolder } from './history-paths';
 import { themePaths, readThemePaths } from './themes';
 import { readProjects } from './projects';
+import { projectDefaultTheme, projectThemeDefaults } from '../shared/projects';
 import { readComments } from './comments';
 import { documentDependencies, includesDependency, type DocumentDependencies, isRenderRuntimePath, isThemeAssetDefaultsPath } from './dependencies';
 import { readMedia, mediaFreshness } from '../media/files';
@@ -75,6 +77,8 @@ export class Workspace extends EventEmitter {
     if (this.closed) return [];
     const path = resolve(this.root, file);
     const parts = relative(this.root, path).split(sep);
+    // Recording a version must never re-render the document it records.
+    if (parts[0] === 'documents' && parts.includes(historyFolder)) return [];
     const owner = parts[0] === 'documents' && validId(parts[1] ?? '') ? parts[1] : undefined;
     const sharedRuntime = isRenderRuntimePath(this.root, path) || (parts[0] === 'documents' && parts.length === 1);
     const affected: string[] = [];
@@ -192,7 +196,7 @@ export class Workspace extends EventEmitter {
       const selectionCurrent = !!state && !!selection && (!selection?.renderHash || selection.renderHash === state.artifact?.hash)
         && (selection?.revision === undefined || selection.revision === state.revision) && state.status === 'ready';
       const editable = selectionCurrent ? getEditableSelection(state?.artifact, selection) : undefined;
-      const themeId = state?.artifact?.meta.theme ?? this.context.themeId ?? project?.defaultTheme ?? null;
+      const themeId = state?.artifact?.meta.theme ?? this.context.themeId ?? (project && projectDefaultTheme(project, state?.format ?? 'document'));
       const theme = themeId ? await readThemePaths(this.root, themeId).then(
         paths => ({ id: themeId, ...paths, available: true }),
         () => ({ id: themeId, ...themePaths(themeId), available: false }),
@@ -203,7 +207,7 @@ export class Workspace extends EventEmitter {
       ) : undefined;
       await atomicWrite(resolve(this.root, '.opendoc/current.json'), JSON.stringify({
         ...this.context, updatedAt: new Date().toISOString(),
-        projectId: project?.id ?? null, project,
+        projectId: project?.id ?? null, project: project && { ...project, themeDefaults: projectThemeDefaults(project) },
         themeId, theme: theme ? { ...theme, assetDefaults } : null,
         status: state?.status ?? 'idle', error: state?.error, revision: state?.revision,
         format: state?.format,

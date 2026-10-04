@@ -7,14 +7,15 @@ import type { MediaUse } from '../shared/media';
 import type { AssetUse, DocumentAssets } from '../shared/assets';
 import { documentThemeAssets, withDocumentAssets, type AppliedDocumentAssets } from '../assets';
 import { assetFile, assetRevisionPath, readAssetRevision } from '../assets/files';
-import { neutral, themePage, themeType, validateTheme, type DocTheme, type ThemeTypeRole } from '../themes/index';
+import { neutral, themePage, themeType, validateTheme, withFontFallbacks, type DocTheme, type TextDirection, type ThemeTypeRole } from '../themes/index';
+import { fontFamilies, languageTag } from '../themes/types';
 import type { BlockInfo, SourceLocation, DocumentFormat, SlideInfo } from '../shared/types';
 import { Page } from './page';
-import { TextCapture, TextSlot, type TextSlotProps } from './text-targets';
-export { TextSlot, type TextSlotProps, type TextFieldPath } from './text-targets';
+import { Decoration, TextCapture, TextSlot, type TextSlotProps } from './text-targets';
+export { TextSlot, Decoration, type TextSlotProps, type TextFieldPath, type TextRecordPath } from './text-targets';
 
 export type { DocumentMeta } from '../shared/types';
-export type { DocTheme } from '../themes/index';
+export type { DocTheme, TextDirection } from '../themes/index';
 export { Page } from './page';
 export type { PageProps } from './page';
 export type { ImageFrameOptions } from '../media/render';
@@ -31,7 +32,7 @@ type Runtime = {
   format: DocumentFormat; slides: SlideInfo[]; currentSlide?: string; slidePages: WeakSet<object>;
   media: MediaUse[];
   assets: AssetUse[]; managed?: AppliedDocumentAssets; currentBlock?: string;
-  theme: DocTheme; refs: ReferenceMap; cited: string[]; citationStyle: CitationStyle;
+  theme: DocTheme; direction: TextDirection; refs: ReferenceMap; cited: string[]; citationStyle: CitationStyle;
   blocks: Record<string, BlockInfo>; targets: Map<string, Target>; notes: Endnote[];
   figureCount: number; tableCount: number; documentCount: number; referencesCount: number; notesCount: number;
 };
@@ -60,14 +61,16 @@ function requireText(value: unknown, label: string): asserts value is string {
 export function prepareDocument(input: ReactNode) {
   runtime = {
     format: 'document', slides: [], slidePages: new WeakSet(),
-    media: [], assets: [], theme: neutral, refs: {}, cited: [], citationStyle: 'numeric', blocks: Object.create(null), targets: new Map(), notes: [],
+    media: [], assets: [], theme: neutral, direction: 'ltr', refs: {}, cited: [], citationStyle: 'numeric', blocks: Object.create(null), targets: new Map(), notes: [],
     figureCount: 0, tableCount: 0, documentCount: 0, referencesCount: 0, notesCount: 0,
   };
   const map = globals.__formeSourceMap ??= new WeakMap();
   const textCapture = new TextCapture(map);
-  // A passed React child retains the component that constructed it. This is
-  // the explicit provenance chain for TextSlot, not a search through ancestors.
-  const componentOwners = new WeakMap<object, SourceLocation | undefined>();
+  // A passed React child retains the component instances that constructed it,
+  // innermost first. This is the explicit provenance chain for text bindings,
+  // not a search through ancestors.
+  const componentOwners = new WeakMap<object, SourceLocation[]>();
+  const frames = (element: object, source?: SourceLocation) => source ? [source, ...(componentOwners.get(element) ?? [])] : [];
   function elementsIn(value: unknown, found: WeakSet<object>, callback?: (element: ReactElement) => void) {
     if (!value || typeof value !== 'object' || found.has(value)) return;
     found.add(value);
@@ -135,6 +138,7 @@ export function prepareDocument(input: ReactNode) {
       const props = el.props as TextSlotProps;
       return textCapture.wrap(visit(props.children, parentId, caller, resolving), props, componentOwners.get(el));
     }
+    if (el.type === Decoration) return textCapture.decorate(visit(el.props.children, parentId, caller, resolving), el.props.reason);
     const nativeChart = nativeCharts.get(el.type);
     if (nativeChart) throw new Error(`${parentId ? `${parentId}: ` : ''}${nativeChart} is not supported by the current PDF engine with OpenDoc fonts: chart labels are encoded incorrectly. Generate a local chart asset inside Figure and review its labels, units, scale, and legend.`);
     const ownSource = map.get(el);
@@ -196,8 +200,9 @@ export function prepareDocument(input: ReactNode) {
       let output: ReactNode;
       try {
         output = (el.type as (p: unknown) => ReactNode)(el.props);
+        const owners = frames(el, ownSource);
         elementsIn(output, new WeakSet(), element => {
-          if (!inputs.has(element) && !componentOwners.has(element)) componentOwners.set(element, ownSource);
+          if (!inputs.has(element) && !componentOwners.has(element)) componentOwners.set(element, owners);
         });
         return visit(output, id, source, resolving);
       } finally { runtime.currentBlock = previousBlock; runtime.currentSlide = previousSlide; }
@@ -206,7 +211,7 @@ export function prepareDocument(input: ReactNode) {
     const cloned = createElement(el.type, { ...el.props, key: el.key }, visit(el.props.children, id, source, resolving));
     const location = id ? { file: `opendoc:block:${id}`, line: 1, column: 1 } : map.get(el);
     if (location) map.set(cloned, location);
-    textCapture.remember(cloned, ownSource);
+    textCapture.remember(cloned, frames(el, ownSource));
     return cloned;
   }
   const collected = visit(input);
@@ -308,8 +313,13 @@ export const Slide = block(function Slide({ id, children, padding = 40, style, .
   return page;
 }, 'slide');
 
-export function Document({ title, author, theme = neutral, references = {}, citationStyle = 'numeric', children }: {
-  title: string; author?: string; theme?: DocTheme; references?: ReferenceMap; citationStyle?: CitationStyle; children: ReactNode;
+export function Document({ title, author, theme = neutral, references = {}, citationStyle = 'numeric', direction, lang, children }: {
+  title: string; author?: string; theme?: DocTheme; references?: ReferenceMap; citationStyle?: CitationStyle;
+  /** Base text direction; overrides the theme. `rtl` for Arabic documents, `auto` per paragraph. */
+  direction?: TextDirection;
+  /** BCP 47 language tag for the PDF; overrides the theme. Defaults to `en`. */
+  lang?: string;
+  children: ReactNode;
 }) {
   runtime.documentCount++;
   if (!documentThemeAssets(theme) && globals.__opendocDocumentAssets) theme = withDocumentAssets(theme, globals.__opendocDocumentAssets);
@@ -319,6 +329,10 @@ export function Document({ title, author, theme = neutral, references = {}, cita
   validateTheme(runtime.managed ? { ...theme, fonts: theme.fonts?.filter(font => !runtime.managed!.fonts.has(font.family)) } : theme);
   requireText(title, 'Document title');
   if (!['numeric', 'author-date'].includes(citationStyle)) throw new Error('citationStyle must be numeric or author-date.');
+  const textDirection = direction ?? theme.direction;
+  if (textDirection !== undefined && !['ltr', 'rtl', 'auto'].includes(textDirection)) throw new Error('Document direction must be ltr, rtl, or auto.');
+  const language = lang ?? theme.lang ?? 'en';
+  if (typeof language !== 'string' || !languageTag.test(language)) throw new Error('Document lang must be a BCP 47 language tag such as ar or en-GB.');
   if (!references || typeof references !== 'object' || Array.isArray(references)) throw new Error('references must be an object of named source records.');
   for (const [key, ref] of Object.entries(references)) {
     checkId(key, 'Reference key');
@@ -334,6 +348,7 @@ export function Document({ title, author, theme = neutral, references = {}, cita
     }
   }
   runtime.theme = theme;
+  runtime.direction = textDirection ?? 'ltr';
   runtime.refs = references;
   runtime.citationStyle = citationStyle;
   const fonts: NonNullable<F.DocumentProps['fonts']> = ['Sans', 'Serif'].flatMap(family => ['Regular', 'Semibold', 'Italic', 'SemiboldItalic'].map(face => ({
@@ -354,23 +369,35 @@ export function Document({ title, author, theme = neutral, references = {}, cita
     fonts.push({ ...font, src: local });
   }
   const registered = new Set(fonts.map(font => font.family));
-  const families = new Set([theme.body, theme.heading]);
+  // A family may be a fallback list, such as "OpenDoc Sans, Noto Naskh Arabic".
+  const families = new Set([...fontFamilies(theme.body), ...fontFamilies(theme.heading), ...(theme.fontFallbacks ?? [])]);
   function collectFonts(value: unknown) {
     if (!value || typeof value !== 'object') return;
     for (const [key, item] of Object.entries(value)) {
-      if (key === 'fontFamily' && typeof item === 'string') families.add(item);
+      if (key === 'fontFamily' && typeof item === 'string') fontFamilies(item).forEach(family => families.add(family));
       else if (item && typeof item === 'object') collectFonts(item);
     }
   }
   collectFonts(theme.design);
   for (const family of families) if (!registered.has(family)) throw new Error(`Theme ${theme.id}: register local font family ${family} in fonts.`);
-  return <F.Document title={title} author={author} lang="en" tagged fonts={fonts} style={{ fontFamily: theme.body, fontSize: theme.fontSize, color: theme.ink, lineHeight: theme.lineHeight }}>{children}</F.Document>;
+  return <F.Document title={title} author={author} lang={language} tagged fonts={fonts} style={{ fontFamily: withFontFallbacks(theme, theme.body), fontSize: theme.fontSize, color: theme.ink, lineHeight: theme.lineHeight, ...(textDirection ? { direction: textDirection } : {}) }}>{children}</F.Document>;
 }
 
-/** Semantic families for theme components. Read inside the component's render function. */
+/** Semantic families for theme components, with the theme's fallbacks. Read inside the component's render function. */
 export function documentFont(role: 'body' | 'heading') {
   if (!runtime?.documentCount) throw new Error('documentFont must be called while rendering an OpenDoc document. Use it inside a component, not at module scope.');
-  return runtime.theme[role];
+  return withFontFallbacks(runtime.theme, runtime.theme[role]);
+}
+
+/** Style for running headers and footers, which do not inherit the document's direction. */
+function fixedDirection(): F.Style {
+  return runtime.direction === 'ltr' ? {} : { direction: runtime.direction };
+}
+
+/** The document's base direction (`ltr` unless the Document or theme sets one). Read inside a component's render function. */
+export function documentDirection(): TextDirection {
+  if (!runtime?.documentCount) throw new Error('documentDirection must be called while rendering an OpenDoc document. Use it inside a component, not at module scope.');
+  return runtime.direction;
 }
 
 export function Pages({ title, children, size, margin, header, footer, pageNumbers = true }: {
@@ -382,14 +409,21 @@ export function Pages({ title, children, size, margin, header, footer, pageNumbe
   const headerText = header === undefined ? (t.runningHeader ? (furniture?.uppercaseHeader === false ? title : title.toUpperCase()) : false) : header;
   const footerText = footer === undefined ? (t.runningFooter ? t.footerLabel : false) : footer;
   const furnitureText = { ...themeType(t, 'small', { fontSize: 8 }), ...furniture?.text };
+  // Running furniture does not inherit document styles, so it repeats the direction.
+  const direction = fixedDirection();
   return <Page {...themePage(t)} size={size ?? t.pageSize} margin={margin ?? themePage(t).margin}>
-    {headerText !== false && <F.Fixed position="header"><F.Text style={{ ...furnitureText, paddingBottom: 18, ...furniture?.header }}>{headerText}</F.Text></F.Fixed>}
-    {footerText !== false && <F.Fixed position="footer"><F.View style={{ borderTopWidth: 0.5, borderColor: t.line, paddingTop: 10, flexDirection: 'row', justifyContent: 'space-between', ...furniture?.footer }}>
+    {headerText !== false && <F.Fixed position="header"><F.Text style={{ ...direction, ...furnitureText, paddingBottom: 18, ...furniture?.header }}>{headerText}</F.Text></F.Fixed>}
+    {footerText !== false && <F.Fixed position="footer"><F.View style={{ ...direction, borderTopWidth: 0.5, borderColor: t.line, paddingTop: 10, flexDirection: 'row', justifyContent: 'space-between', ...furniture?.footer }}>
       <F.Text style={furnitureText}>{footerText}</F.Text>
       {pageNumbers && <F.Text style={furnitureText}>{furniture?.pageNumber === 'page' ? '{{pageNumber}}' : '{{pageNumber}} / {{totalPages}}'}</F.Text>}
     </F.View></F.Fixed>}{children}
   </Page>;
 }
+
+/** A theme may set eyebrows in capitals; the displayed text then differs from what the document wrote. */
+const capitalsReason = 'The theme sets this label in capitals, so it cannot be edited here. Ask your agent to change it, or comment instead.';
+const eyebrowText = (eyebrow: string) => runtime.theme.design?.title?.uppercaseEyebrow === false
+  ? <TextSlot slot="eyebrow" from="eyebrow">{eyebrow}</TextSlot> : <TextSlot slot="eyebrow" reason={capitalsReason}>{eyebrow.toUpperCase()}</TextSlot>;
 
 export function Cover({ eyebrow, title, subtitle, footer, idPrefix = 'cover' }: {
   eyebrow: string; title: string; subtitle: string; footer: string; idPrefix?: string;
@@ -398,12 +432,12 @@ export function Cover({ eyebrow, title, subtitle, footer, idPrefix = 'cover' }: 
   checkId(idPrefix, 'Cover prefix');
   requireText(title, 'Cover title');
   return <Page {...themePage(t, { top: t.margin, left: t.margin, right: t.margin, bottom: t.margin + 36 })} style={{ backgroundColor: t.paper, ...t.design?.page?.style, ...t.design?.cover?.page }}>
-    <Paragraph id={`${idPrefix}-eyebrow`} style={{ ...themeType(t, 'label', { fontSize: 10, letterSpacing: 1.6 }), ...t.design?.title?.eyebrow, ...t.design?.cover?.eyebrow }}>{t.design?.title?.uppercaseEyebrow === false ? <TextSlot slot="eyebrow" from="eyebrow">{eyebrow}</TextSlot> : eyebrow.toUpperCase()}</Paragraph>
+    <Paragraph id={`${idPrefix}-eyebrow`} style={{ ...themeType(t, 'label', { fontSize: 10, letterSpacing: 1.6 }), ...t.design?.title?.eyebrow, ...t.design?.cover?.eyebrow }}>{eyebrowText(eyebrow)}</Paragraph>
     <F.View style={{ marginTop: 72, borderTopWidth: 1, borderColor: t.accent, paddingTop: 26, ...t.design?.cover?.block }}>
       <TextSlot slot="title" from="title"><Heading id={`${idPrefix}-title`} level={1} baseStyle={{ fontSize: 44, lineHeight: 1.1, marginBottom: 26 }} style={t.design?.cover?.title}>{title}</Heading></TextSlot>
       <TextSlot slot="subtitle" from="subtitle"><Paragraph id={`${idPrefix}-subtitle`} style={{ ...themeType(t, 'lead', { fontSize: 16, lineHeight: 1.5, color: t.muted }), ...t.design?.cover?.subtitle }}>{subtitle}</Paragraph></TextSlot>
     </F.View>
-    <F.Fixed position="footer"><TextSlot slot="footer" from="footer"><Paragraph id={`${idPrefix}-footer`} style={{ ...themeType(t, 'small', { fontSize: 10, color: t.accent }), marginBottom: 0, ...t.design?.furniture?.text, ...t.design?.cover?.footer }}>{footer}</Paragraph></TextSlot></F.Fixed>
+    <F.Fixed position="footer"><TextSlot slot="footer" from="footer"><Paragraph id={`${idPrefix}-footer`} style={{ ...fixedDirection(), ...themeType(t, 'small', { fontSize: 10, color: t.accent }), marginBottom: 0, ...t.design?.furniture?.text, ...t.design?.cover?.footer }}>{footer}</Paragraph></TextSlot></F.Fixed>
   </Page>;
 }
 
@@ -435,7 +469,7 @@ export const TitleBlock = block(function TitleBlock({ id, eyebrow, title, subtit
   const t = runtime.theme;
   const titleDesign = t.design?.title;
   return <F.View wrap={false} style={{ marginBottom: 24, paddingBottom: 18, borderBottomWidth: 0.6, borderColor: t.line, ...titleDesign?.block, ...style }}>
-    {eyebrow && <F.Text style={{ ...themeType(t, 'label', { marginBottom: 12 }), ...titleDesign?.eyebrow }}>{titleDesign?.uppercaseEyebrow === false ? <TextSlot slot="eyebrow" from="eyebrow">{eyebrow}</TextSlot> : eyebrow.toUpperCase()}</F.Text>}
+    {eyebrow && <F.Text style={{ ...themeType(t, 'label', { marginBottom: 12 }), ...titleDesign?.eyebrow }}>{eyebrowText(eyebrow)}</F.Text>}
     <TextSlot slot="title" from="title"><Heading id={`${id}-title`} level={1} baseStyle={{ fontSize: 32, marginBottom: 12 }} style={titleDesign?.heading}>{title}</Heading></TextSlot>
     {subtitle && <TextSlot slot="subtitle" from="subtitle"><Paragraph id={`${id}-subtitle`} style={{ ...themeType(t, 'lead', { marginBottom: byline ? 12 : 0 }), ...titleDesign?.subtitle }}>{subtitle}</Paragraph></TextSlot>}
     {byline && <TextSlot slot="byline" from="byline"><Paragraph id={`${id}-byline`} style={{ ...themeType(t, 'small', { fontSize: 9, marginBottom: 0 }), ...titleDesign?.byline }}>{byline}</Paragraph></TextSlot>}
@@ -461,12 +495,15 @@ export const Callout = block(function Callout({ title, children, style, keepToge
   authored.forEach((child, childIndex) => collect(typeof child === 'string' || typeof child === 'number'
     ? <TextSlot slot="children" from="children" childIndex={childIndex}>{child}</TextSlot> : child));
   flush();
-  return <F.View wrap={keepTogether === undefined ? undefined : !keepTogether} style={{ backgroundColor: t.paper, borderLeftWidth: 2, borderColor: t.accent, padding: 14, marginTop: 6, marginBottom: 18, ...t.design?.callout?.text, ...t.design?.callout?.block, ...style }}>
+  // The accent rule marks the edge where reading starts.
+  const rule = runtime.direction === 'rtl' ? { borderRightWidth: 2 } : { borderLeftWidth: 2 };
+  return <F.View wrap={keepTogether === undefined ? undefined : !keepTogether} style={{ backgroundColor: t.paper, ...rule, borderColor: t.accent, padding: 14, marginTop: 6, marginBottom: 18, ...t.design?.callout?.text, ...t.design?.callout?.block, ...style }}>
     {title && <F.Text style={{ ...themeType(t, 'label', { fontWeight: 600, fontSize: 10, letterSpacing: 0 }), marginBottom: 6, ...t.design?.callout?.title }}><TextSlot slot="title" from="title">{title}</TextSlot></F.Text>}
     {content}
   </F.View>;
 }, 'callout');
 
+const listItemReason = "This list item's text is produced by the document's code, or repeats another mapped item's wording, so it cannot be traced to one written value. Ask your agent to change it, or comment instead.";
 const ListEntry = block(function ListEntry({ id, children, ordered, number }: Props & { ordered: boolean; number: number }) {
   if (!plainText(children).trim()) throw new Error(`List item ${id} needs nonempty text.`);
   // Native Forme lists mismeasure wrapped items and can panic on page breaks.
@@ -474,7 +511,7 @@ const ListEntry = block(function ListEntry({ id, children, ordered, number }: Pr
   const design = runtime.theme.design?.list;
   const markerWidth = Math.max(design?.markerWidth ?? 18, String(number).length * runtime.theme.fontSize * 0.7);
   return <F.View wrap={false} style={{ flexDirection: 'row', gap: design?.gap ?? 8, marginBottom: 7, ...design?.item }}>
-    <F.Text style={{ width: markerWidth, flexShrink: 0 }}>{ordered ? `${number}.` : '•'}</F.Text>
+    <Decoration><F.Text style={{ width: markerWidth, flexShrink: 0 }}>{ordered ? `${number}.` : '•'}</F.Text></Decoration>
     <F.Text style={{ flex: 1, minWidth: 0, minWidowLines: 2, minOrphanLines: 2, lineBreaking: 'greedy' }}>{children}</F.Text>
   </F.View>;
 }, 'list-item');
@@ -483,8 +520,16 @@ export const List = block(function List({ id, items, ordered = false, start = 1,
 }) {
   if (!Array.isArray(items) || !items.length) throw new Error(`List ${id} needs at least one item. Omit the List when there is nothing to show.`);
   if (!Number.isSafeInteger(start) || start < 1) throw new Error(`List ${id} start must be a positive integer.`);
-  const children = items.map((item, index) => { checkId(item.id, `List ${id} item`); return <ListEntry id={`${id}-${item.id}`} key={item.id} ordered={ordered} number={start + index}>{item.children}</ListEntry>; });
-  const listStyle: F.Style = { marginBottom: runtime.theme.paragraphGap, paddingLeft: 18, ...runtime.theme.design?.list?.block, ...style };
+  const children = items.map((item, index) => {
+    checkId(item.id, `List ${id} item`);
+    // Each item's text belongs to its record in the caller's items, found by record ID.
+    return <ListEntry id={`${id}-${item.id}`} key={item.id} ordered={ordered} number={start + index}>
+      <TextSlot slot="children" from="items" path={[{ id: item.id }, 'children']} readOnlyReason={listItemReason}>{item.children}</TextSlot>
+    </ListEntry>;
+  });
+  // Right-to-left rows already start at the right; indent from that edge.
+  const indent = runtime.direction === 'rtl' ? { paddingRight: 18 } : { paddingLeft: 18 };
+  const listStyle: F.Style = { marginBottom: runtime.theme.paragraphGap, ...indent, ...runtime.theme.design?.list?.block, ...style };
   return <F.View style={listStyle}>{children}</F.View>;
 }, 'list');
 
@@ -498,7 +543,7 @@ export const CodeBlock = block(function CodeBlock({ id, children, language, capt
   const code = children.replace(/\r\n?/g, '\n').replace(/\t/g, ' '.repeat(tabSize));
   return <F.View style={{ marginTop: 8, marginBottom: 18, ...t.design?.code?.block, ...style }}>
     {(caption || language) && <F.Text style={themeType(t, 'caption', { marginBottom: 7 })}><TextSlot slot="caption" from="caption">{caption}</TextSlot>{caption && language ? ' / ' : ''}<TextSlot slot="language" from="language">{language}</TextSlot></F.Text>}
-    <F.View style={{ padding: 14, backgroundColor: t.paper, ...t.design?.code?.panel }}><F.Text style={{ ...themeType(t, 'code'), minWidowLines: 2, minOrphanLines: 2, hyphens: 'none', lineBreaking: 'greedy' }}><TextSlot slot="children" from="children">{code}</TextSlot></F.Text></F.View>
+    <F.View style={{ padding: 14, backgroundColor: t.paper, ...t.design?.code?.panel }}><F.Text style={{ ...themeType(t, 'code'), minWidowLines: 2, minOrphanLines: 2, hyphens: 'none', lineBreaking: 'greedy', ...(runtime.direction === 'ltr' ? {} : { direction: 'ltr' as const }) }}><TextSlot slot="children" from="children">{code}</TextSlot></F.Text></F.View>
   </F.View>;
 }, 'code');
 
@@ -521,7 +566,11 @@ export const Figure = block(function Figure({ id, children, caption, sourceNote,
   </F.View>;
 }, 'figure');
 
-export type TableColumn = { label: string; width?: number; align?: 'left' | 'center' | 'right' };
+/** `id` gives a column a stable identity, so its heading keeps its own text target and saves to its own record. */
+export type TableColumn = { id?: string; label: string; width?: number; align?: 'left' | 'center' | 'right' };
+const columnLabelReason = "This column heading is produced by the document's code, or repeats another column's wording, so it cannot be traced to one written value. Ask your agent to change it, or comment instead.";
+const tableCellReason = "This table cell is computed by the document's code, repeats wording the table cannot tell apart, or is also used in its logic, so it cannot be traced to one written value. Ask your agent to change it, or comment instead.";
+const repeatedRowReason = "This row repeats another row's wording, so its cells cannot be traced to one written value. Ask your agent to give the table rowIds, which make every row editable, or comment instead.";
 export const DataTable = block(function DataTable({ id, columns, rows, rowIds, caption, sourceNote, emptyMessage = 'No records to display.', style }: {
   id: string; columns: TableColumn[]; rows: (string | number | ReactElement<TextSlotProps>)[][]; rowIds?: string[]; caption?: string; sourceNote?: string; emptyMessage?: string; style?: F.Style;
 }) {
@@ -531,23 +580,35 @@ export const DataTable = block(function DataTable({ id, columns, rows, rowIds, c
   const total = columns.reduce((sum, c) => sum + (c.width ?? 1), 0);
   if (columns.some(c => !Number.isFinite(c.width ?? 1) || (c.width ?? 1) <= 0) || !Number.isFinite(total)) throw new Error('Table columns need positive finite widths.');
   for (const column of columns) {
+    if (column.id !== undefined) checkId(column.id, `Table ${id} column`);
     requireText(column.label, `Table ${id} column label`);
     if (column.align !== undefined && !['left', 'center', 'right'].includes(column.align)) throw new Error(`Table ${id} column alignment must be left, center, or right.`);
   }
+  const columnIds = columns.flatMap(column => column.id === undefined ? [] : [column.id]);
+  if (new Set(columnIds).size !== columnIds.length) throw new Error(`Table ${id} column ids must be unique.`);
   if (!Array.isArray(rows) || rows.some(row => !Array.isArray(row) || row.length !== columns.length)) throw new Error('Every table row must match the number of columns.');
   rows.forEach((row, r) => row.forEach((value, c) => {
     if ((typeof value !== 'string' && typeof value !== 'number' && !(isValidElement(value) && value.type === TextSlot)) || (typeof value === 'number' && !Number.isFinite(value))) throw new Error(`Table ${id} row ${r + 1}, column ${c + 1} must be text or a finite number.`);
   }));
   if (rowIds && (rowIds.length !== rows.length || new Set(rowIds).size !== rowIds.length || rowIds.some(value => typeof value !== 'string' || !value))) throw new Error(`Table ${id} rowIds must identify every row uniquely.`);
   requireText(emptyMessage, `Table ${id} emptyMessage`);
-  const alignments = columns.map((column, i) => column.align ?? (rows.length && rows.every(row => typeof row[i] === 'number') ? 'right' : 'left'));
+  // Text starts at the reading edge (each cell's own edge under auto); numbers align to the opposite edge.
+  const [start, end] = runtime.direction === 'rtl' ? ['right', 'left'] as const : runtime.direction === 'auto' ? [undefined, 'right'] as const : ['left', 'right'] as const;
+  const alignments = columns.map((column, i) => column.align ?? (rows.length && rows.every(row => typeof row[i] === 'number') ? end : start));
+  const tableFont = withFontFallbacks(t, 'OpenDoc Sans');
   const noteStyle = themeType(t, 'caption');
   const design = t.design?.table;
   const alternate = design?.alternate === false ? '#ffffff' : design?.alternate ?? t.paper;
+  // Each heading belongs to its record in the caller's columns, found by column id or else by its wording.
+  // A plain cell belongs to its row in the caller's rows, found at its rowIds position or else by the
+  // row's wording, and to the element at its column's position.
+  const shown = rows.map(row => row.map(cell => isValidElement(cell) ? undefined : String(cell)));
+  const wording = shown.map(row => JSON.stringify(row));
+  const repeated = rowIds ? [] : wording.map(row => wording.indexOf(row) !== wording.lastIndexOf(row));
   return <F.Table columns={columns.map(c => ({ width: { fraction: (c.width ?? 1) / total } }))} style={{ marginTop: 8, marginBottom: 16, ...design?.block, ...style }}>
     {caption && <F.Row header><F.Cell colSpan={columns.length} style={{ paddingBottom: 8 }}><F.Text style={{ ...noteStyle, color: t.ink, fontWeight: 600 }}>{numberedCaption(id, caption)}</F.Text></F.Cell></F.Row>}
-    <F.Row header style={{ backgroundColor: t.accent, ...design?.header }}>{columns.map((col, i) => <F.Cell key={i} style={{ padding: 9, ...design?.cell, ...design?.header }}><F.Text style={{ fontFamily: 'OpenDoc Sans', fontSize: 9, color: '#ffffff', fontWeight: 600, ...design?.headerText, textAlign: alignments[i] }}>{col.label}</F.Text></F.Cell>)}</F.Row>
-    {rows.length ? rows.map((row, i) => <F.Row key={rowIds?.[i] ?? i} style={{ backgroundColor: i % 2 === 0 ? alternate : '#ffffff' }}>{row.map((cell, j) => <F.Cell key={j} style={{ padding: 9, borderBottomWidth: 0.4, borderColor: t.line, ...design?.cell }}><F.Text style={{ fontFamily: 'OpenDoc Sans', fontSize: 10, ...design?.text, textAlign: alignments[j] }}>{isValidElement(cell) ? cell : <TextSlot slot={`row-${rowIds?.[i] ?? i}-column-${j}`} stable={false}>{typeof cell === 'number' ? String(cell) : cell}</TextSlot>}</F.Text></F.Cell>)}</F.Row>) : <F.Row><F.Cell colSpan={columns.length} style={{ padding: 12, backgroundColor: t.paper }}><F.Text style={noteStyle}>{emptyMessage}</F.Text></F.Cell></F.Row>}
+    <F.Row header style={{ backgroundColor: t.accent, ...design?.header }}>{columns.map((col, i) => <F.Cell key={col.id ?? i} style={{ padding: 9, ...design?.cell, ...design?.header }}><F.Text style={{ fontFamily: tableFont, fontSize: 9, color: '#ffffff', fontWeight: 600, ...design?.headerText, textAlign: alignments[i] }}><TextSlot slot={`column-${col.id ?? i}`} stable={col.id !== undefined} from="columns" path={[{ id: col.id }, 'label']} readOnlyReason={columnLabelReason}>{col.label}</TextSlot></F.Text></F.Cell>)}</F.Row>
+    {rows.length ? rows.map((row, i) => <F.Row key={rowIds?.[i] ?? i} style={{ backgroundColor: i % 2 === 0 ? alternate : '#ffffff' }}>{row.map((cell, j) => <F.Cell key={j} style={{ padding: 9, borderBottomWidth: 0.4, borderColor: t.line, ...design?.cell }}><F.Text style={{ fontFamily: tableFont, fontSize: 10, ...design?.text, textAlign: alignments[j] }}>{isValidElement(cell) ? cell : <TextSlot slot={`row-${rowIds?.[i] ?? i}-column-${columns[j].id ?? j}`} stable={!!rowIds} from="rows" path={[rowIds ? { id: rowIds[i], ids: 'rowIds', values: shown[i] } : { values: shown[i] }, String(j)]} readOnlyReason={repeated[i] ? repeatedRowReason : tableCellReason}>{shown[i][j]}</TextSlot>}</F.Text></F.Cell>)}</F.Row>) : <F.Row><F.Cell colSpan={columns.length} style={{ padding: 12, backgroundColor: t.paper }}><F.Text style={noteStyle}>{emptyMessage}</F.Text></F.Cell></F.Row>}
     {sourceNote && <F.Row><F.Cell colSpan={columns.length} style={{ paddingTop: 8 }}><F.Text style={noteStyle}><TextSlot slot="sourceNote" from="sourceNote">{sourceNote}</TextSlot></F.Text></F.Cell></F.Row>}
   </F.Table>;
 }, 'table');

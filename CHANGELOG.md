@@ -1,5 +1,51 @@
 # Changelog
 
+## Unreleased
+
+### Arabic and right-to-left text
+
+- PDFs, presentations, and PowerPoint exports support Arabic and mixed Arabic and English text. Set `direction` and `lang` on a theme or `Document`. The repaired Forme engine (core `0.20.1-opendoc.4`) lays out each line with the Unicode Bidirectional Algorithm, joins Arabic letters, and mirrors rows, lists, and tables.
+- Noto Naskh Arabic 2.021 is bundled as a shared font asset, and Arabic text that a document's fonts cannot draw falls back to it automatically. A character that no font covers prints as `?` and is reported as a `missing-glyphs` issue.
+- PowerPoint exports mark right-to-left paragraphs, follow the engine's resolved line direction, and align each paragraph as its PDF lines are aligned.
+- Comments, text corrections, search, and name fields in the app follow the direction of the typed text.
+
+### Version history
+
+- Each document keeps 90 days of versions in `documents/<id>/.history/`. The app records saved edits, agent writes, and restores. Without a running service, as always in Headless, `create`, `check`, `review`, `export`, `comments`, `documents`, and `history` record agent edits first.
+- The reader's **History** tab names each change by its kind and opening words, groups versions by day and by ten-minute bursts, and marks changed words. A version's changes are grouped by the section they belong to. One **Restore** action brings back one item or a section or slide with or without its contents, and **Restore whole version** in the version's heading brings back everything; each confirmation names the scope and opens in view with focus, and each restore offers Undo. Escape steps back from a confirmation, then a version, then the panel.
+- `npx opendoc history list|show|block|restore` works in both editions. `list --json` adds `groups` and each version's `description`; `show --json` adds `words` to changed blocks.
+- Deleted comments stay restorable for 90 days under **Recently deleted**, `comments list --deleted`, and `comments restore`. `comments delete` is available from the command line.
+
+### Organization
+
+- Tags use a version 2 model: one of nine types for documents and templates, one status per document (`draft`, `in-review`, `final`, `archived`), a language derived from source text, and custom tags. `npx opendoc tags` sets, shows, and finds them, with `--type`, `--status`, and `--language` filters. Version 1 `tags.json` files are read as version 2 and saved in the new form on the next change.
+- Library pages share one filter bar: search, the page's main choice as buttons (a project's formats, theme folders, template formats, or media, logos, and fonts), one **Filter** button with removable chips for type, status, language, tags, and similar choices, and a remembered sort order such as **Last edited** or **Title A–Z**. Choices that would not narrow the list are hidden, and the address keeps the search and filters. Document, theme, and template summaries report when their source last changed (`updatedAt`), and logo and font summaries when their current version was saved.
+- Theme folders are single-level and appear as folder buttons in the Themes filter bar. Nested folders from earlier versions are flattened, and the flat form is saved on the next folder or assignment change.
+- Projects can set separate default themes for documents and presentations with `--document-theme` and `--presentation-theme`. Earlier versions report a `projects.json` with different defaults as invalid.
+- `npx opendoc documents rename|duplicate|delete|trash|restore` manages documents from the command line in both editions. Deleted documents keep their history, comments, tags, and status in Trash.
+
+### Reader and feedback
+
+- Comments and History share one side panel, docked beside the pages on wide screens and a bottom sheet on narrow ones. The reader toolbar's **Comments** and **History** buttons open its tabs; **Comments** shows the number of open comments. The selection bar holds Edit, Comment, and History and steps aside while the editor or comment composer is open; a separate save bar appears only while there are changes to save.
+- Comments can target a phrase within a paragraph or table cell. `comments add --phrase "words"` does the same from the command line, with `--target <field-id>` when the words appear in more than one field, and `comments list --anchors` reports whether each comment still finds its text. `comments add` works without a running service.
+- Double-clicking text opens the editor. List items, plain `DataTable` cells and column headings, text passed through local helper components, and literal text a document passes to theme components are editable. Labels a theme or template generates explain why they cannot be edited.
+- The document menu groups Rename, Duplicate, Move to project, Details, and Status, then Previous exports with its own archive icon, then Delete. In the reader, Appearance and the agent skills list live in a labelled **Skills and appearance** menu.
+- Each comment shows when it was created, and deleting one offers Undo. Export suggests the document title as the filename.
+- Views load in the background once OpenDoc is running, so they still open if the local server stops later. A view that could not load during an outage reloads by itself when the server returns, and the rest of the app stays usable instead of going blank.
+- Each reader page is one tab stop, with arrow keys moving in reading order. Text fields share the buttons' focus ring, badge text meets WCAG AA contrast, the type scale is larger, and keyboard hints are hidden on touch screens.
+
+### Creating with your agent
+
+- **Create with your agent** replaces the copy-prompt dialog. It shows three steps, keeps the prompt visible beside the brief, and lets you change the format, project, theme (defaulting to the project's default for that format, listed with folders), and template (filtered by format, with its type) before copying. Ctrl+Enter copies, and Alt+N (Option+N on a Mac) opens it from the Documents, Presentations, and project pages. Project pages, **Use this template**, and **Create with this theme** fill in their choice. After copying, a **Waiting for your agent** card on the project and library pages turns to **Ready** when the new work appears; it is kept in browser storage only.
+
+### PowerPoint export
+
+- Every exported object has a unique, descriptive name.
+
+### Agent skills
+
+- Workspaces include ten skills. New: `opendoc-revise-document`, `opendoc-assets-media`, `opendoc-history`, and `opendoc-organize`. The existing skills cover Arabic text, table rows, projects, phrase comments, and re-export.
+
 ## 0.5.0 — 2026-09-16
 
 ### Document review and authoring
