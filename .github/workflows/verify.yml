@@ -30,7 +30,21 @@ jobs:
         with:
           cache: true
       - run: pnpm install --frozen-lockfile
-      - run: pnpm verify
+      - name: Verify source, build, and tests
+        shell: bash
+        run: |
+          if pnpm verify 2>&1 | tee "$RUNNER_TEMP/opendoc-verify.log"; then
+            exit 0
+          fi
+          node --input-type=module <<'NODE'
+          import { readFileSync, appendFileSync } from 'node:fs';
+          const log = readFileSync(`${process.env.RUNNER_TEMP}/opendoc-verify.log`, 'utf8');
+          const excerpt = log.split('\n').slice(-160).join('\n');
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Verification failure\n\n\`\`\`text\n${excerpt}\n\`\`\`\n`);
+          const escaped = excerpt.replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A');
+          console.log(`::error title=Verification failure details::${escaped}`);
+          NODE
+          exit 1
       - run: pnpm package:pack --skip-build
       - name: Accept the installed release and updates
         run: |
