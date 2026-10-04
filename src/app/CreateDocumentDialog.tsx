@@ -7,7 +7,7 @@ import { Icon } from "./ui/Icon";
 import "./handoffs.css";
 import { api } from "./api";
 import { createDocumentPrompt, type ProjectThemeChoice } from "./agentPrompts";
-import type { PendingHandoff } from "./pendingHandoffs";
+import type { PendingHandoff } from "./pendingHandoffStore";
 import { projectDefaultTheme, type Project } from "../shared/projects";
 import type { TemplateItem } from "../shared/templates";
 import type { ThemeSummary } from "../shared/themes";

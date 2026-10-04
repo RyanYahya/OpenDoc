@@ -8,7 +8,7 @@ import { useTextEditing } from "./useTextEditing";
 import { CommentDock } from "./CommentDock";
 import { DeletedComments } from "./DeletedComments";
 import { ReaderPanel } from "./ReaderPanel";
-import { closePanel, isShowing, loadPanelPreference, panelFromPreference, savePanelPreference, selectTab, showPanel, togglePanel, type PanelState, type PanelTarget } from "./readerPanel";
+import { closePanel, isShowing, loadPanelPreference, panelFromPreference, savePanelPreference, selectTab, showPanel, togglePanel, type PanelState, type PanelTarget } from "./readerPanelState";
 import { saveBarStatus, saveBarVisible } from "./saveBar";
 import { unionBox, useAnchoredPanel } from "./anchoredPanel";
 import { applyCommentsPrompt } from "./agentPrompts";

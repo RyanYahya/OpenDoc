@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { documentName, formatLabel, type DocumentSummary } from '../shared/types';
 import { textLang } from '../shared/language';
-import { briefExcerpt, dismissHandoff, type PendingHandoff } from './pendingHandoffs';
+import { briefExcerpt, dismissHandoff, type PendingHandoff } from './pendingHandoffStore';
 import { CommentTime } from './CommentTime';
 import { Button, IconButton } from './ui';
 import { Icon } from './ui/Icon';

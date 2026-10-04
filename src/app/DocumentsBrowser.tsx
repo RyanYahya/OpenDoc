@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import type { HandoffFilters } from './pendingHandoffs';
+import type { HandoffFilters } from './pendingHandoffStore';
 import { Menu } from '@base-ui/react/menu';
 import type { Project } from '../shared/projects';
 import { documentName, documentFormat, type DocumentFormat, type DocumentSummary } from '../shared/types';

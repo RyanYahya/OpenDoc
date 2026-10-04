@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { closePanel, closedPanel, isShowing, panelFromPreference, readPanelPreference, selectTab, showPanel, togglePanel } from '../src/app/readerPanel';
+import { closePanel, closedPanel, isShowing, panelFromPreference, readPanelPreference, selectTab, showPanel, togglePanel } from '../src/app/readerPanelState';
 
 const block = (blockId: string) => ({ kind: 'block' as const, blockId });
 

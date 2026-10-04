@@ -22,7 +22,7 @@ import "./reader-toolbar.css";
 import "./edit-workbench.css";
 import { CreateDocumentDialog, type CreatePreset } from "./CreateDocumentDialog";
 import { PendingHandoffs } from "./PendingHandoffs";
-import { dismissHandoff, filteredHandoffs, ignoreDocument, pendingHandoffs, reconcileHandoffs, recordHandoff, savePendingHandoffs, subscribePendingHandoffs, visibleHandoffs, type HandoffFilters } from "./pendingHandoffs";
+import { dismissHandoff, filteredHandoffs, ignoreDocument, pendingHandoffs, reconcileHandoffs, recordHandoff, savePendingHandoffs, subscribePendingHandoffs, visibleHandoffs, type HandoffFilters } from "./pendingHandoffStore";
 import { ProjectDialog, MoveDocumentDialog } from "./ProjectDialogs";
 import { ProjectDocuments, DocumentsBrowser } from "./DocumentsBrowser";
 import { Sidebar } from "./Sidebar";

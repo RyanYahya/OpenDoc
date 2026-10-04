@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { belongsHere, briefExcerpt, filteredHandoffs, handoffLifetime, parseHandoffs, readyLifetime, reconcileHandoffs, visibleHandoffs, type PendingHandoff } from '../src/app/pendingHandoffs';
+import { belongsHere, briefExcerpt, filteredHandoffs, handoffLifetime, parseHandoffs, readyLifetime, reconcileHandoffs, visibleHandoffs, type PendingHandoff } from '../src/app/pendingHandoffStore';
 
 const start = Date.UTC(2026, 9, 2, 9);
 const workspace = [

@@ -1,7 +1,7 @@
 import type { ReactNode, Ref } from 'react';
 import { IconButton, Tabs } from './ui';
 import { Icon } from './ui/Icon';
-import type { PanelTab } from './readerPanel';
+import type { PanelTab } from './readerPanelState';
 import './reader-panel.css';
 
 /**
