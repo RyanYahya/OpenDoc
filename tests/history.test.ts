@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { copyFile, mkdir, readdir, readFile, rm, utimes, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readdir, readFile, realpath, rm, utimes, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { writeFileSync } from 'node:fs';
 import { HistoryRecorder, HistoryStore } from '../src/server/history';
@@ -283,8 +283,9 @@ export default function Proof(){return <Document title="Proof"><Pages title="Pro
     assert.match(await readFile(f.entry, 'utf8'), /data.previous.toUpperCase/);
     assert.equal(await readFile(dataPath, 'utf8'), '{"previous":"Earlier words"}');
     const external = entry;
+    const actualEntry = await realpath(f.entry);
     await assert.rejects(restoreVersion(store, 'proof', brokenData.id, { scope: 'version', written: path => {
-      if (path === f.entry) writeFileSync(f.entry, external + '\n// Newer external edit.');
+      if (path === actualEntry) writeFileSync(path, external + '\n// Newer external edit.');
     } }), /Newer edits were preserved/);
     assert.match(await readFile(f.entry, 'utf8'), /Newer external edit/);
     assert.equal(await readFile(dataPath, 'utf8'), '{"previous":"Earlier words"}');
