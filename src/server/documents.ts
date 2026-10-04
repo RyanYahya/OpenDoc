@@ -195,8 +195,18 @@ export async function restoreDocument(root: string, restoreId: string) {
     await save();
     try { await rename(resolve(trash, 'document'), destination); }
     catch (error) { delete manifest.assignments[receipt.id]; if (manifest.names) delete manifest.names[receipt.id]; if (manifest.formats) delete manifest.formats[receipt.id]; await save(); throw error; }
+    try {
+      await restoreDocumentTags(root, receipt.id, { tags: receipt.tags, status: receipt.status, version: receipt.tagsVersion });
+    } catch (error) {
+      // Keep the receipt and document together until their metadata is restored too.
+      await rename(destination, resolve(trash, 'document'));
+      delete manifest.assignments[receipt.id];
+      if (manifest.names) delete manifest.names[receipt.id];
+      if (manifest.formats) delete manifest.formats[receipt.id];
+      await save();
+      throw error;
+    }
     await rm(trash, { recursive: true, force: true });
-    await restoreTags(root, receipt.id, { tags: receipt.tags, status: receipt.status, version: receipt.tagsVersion });
     return { id: receipt.id, projectId: receipt.projectId, name: receipt.name };
   });
 }

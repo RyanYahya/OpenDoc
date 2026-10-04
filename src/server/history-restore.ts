@@ -154,7 +154,11 @@ export async function restoreVersion(store: HistoryStore, id: string, versionId:
   let checkable = true;
   for (const target of targets.values()) {
     if (target.previous === undefined) { checkable = false; continue; }
-    if (isBlockSource(target.path)) overrides.push({ file: await realpath(target.path), contents: target.contents, originalDigest: sha256(target.previous), replacements: [], optional: true });
+    // Only TS/TSX inputs are fully substituted by the candidate bundler. JSON,
+    // asset bindings and other data may be read directly at render time. Validate
+    // those together in place and roll back every write if rendering fails.
+    if (!/\.tsx?$/.test(target.path)) { checkable = false; continue; }
+    overrides.push({ file: await realpath(target.path), contents: target.contents, originalDigest: sha256(target.previous), replacements: [], optional: true });
   }
   const verify = async (sources?: SourceOverride[]) => {
     try { const result = await renderOnce(store.root, id, options.timeoutMs ?? 60_000, sources); await rm(result.directory, { recursive: true, force: true }); }
@@ -170,17 +174,23 @@ export async function restoreVersion(store: HistoryStore, id: string, versionId:
     await atomicWrite(target.path, target.contents);
     options.written?.(target.path);
   };
-  const written: { path: string; previous?: string }[] = [];
+  const written: { path: string; contents: string; previous?: string }[] = [];
   try {
     for (const target of targets.values()) { await write(target, target.previous); written.push(target); }
-    // Restoring a file that no longer exists cannot be checked in isolation; check it in place.
+    // New files and data inputs cannot be fully checked in isolation.
     if (!checkable) await verify();
   } catch (error) {
+    let newerChanges = false;
     for (const item of written.reverse()) {
+      const now = await readFile(item.path, 'utf8').catch(error => { if (error.code === 'ENOENT') return undefined; throw error; });
+      // An external edit made after our write belongs to its author, even if
+      // another candidate file fails validation. Never undo that newer edit.
+      if (now !== item.contents) { newerChanges = true; continue; }
       if (item.previous === undefined) await rm(item.path, { force: true });
       else await atomicWrite(item.path, item.previous);
       options.written?.(item.path);
     }
+    if (newerChanges) throw new Conflict('The restore failed while the source changed elsewhere. Newer edits were preserved; review the current document before trying again.');
     throw error;
   }
   const version = await capture('restore', { restore: { from: versionId, scope, ...(options.blockId && scope !== 'version' ? { blockId: options.blockId } : {}) } });

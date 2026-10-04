@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { copyFile, mkdir, readdir, readFile, rm, utimes, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
 import { HistoryRecorder, HistoryStore } from '../src/server/history';
 import { compareVersion, restoreVersion, blockHistory, RestoreRefusal } from '../src/server/history-restore';
 import { addComment, deleteComment, readComments, recentlyDeletedComments, restoreComment } from '../src/server/comments';
@@ -251,4 +252,41 @@ test('the history CLI lists, compares, and restores with structured output', { t
     assert.deepEqual((await store.list('proof')).map(version => version.origin), ['restore', 'external', 'external', 'baseline'], 'The replaced state was recorded before restoring.');
     await assert.rejects(runHistoryCli(['restore', 'proof', first.id, '--block', 'title-x', '--section', 'title'], f.root), /not both/);
   } finally { console.log = log; await f.cleanup(); }
+});
+
+
+test('whole-version restore validates imported JSON and rolls back invalid data with code', { timeout: 120_000 }, async () => {
+  const f = await fixture();
+  try {
+    const entry = `import {Document,Pages,Paragraph} from '../../src/document';
+import data from './data.json';
+export const meta={title:'Proof',description:'Test fixture',kind:'report',theme:'neutral'};
+export default function Proof(){return <Document title="Proof"><Pages title="Proof"><Paragraph id="target">{data.title}</Paragraph></Pages></Document>}`;
+    await writeFile(f.entry, entry);
+    const dataPath = resolve(f.root, 'documents/proof/data.json');
+    const store = new HistoryStore(f.root);
+    await writeFile(dataPath, '{invalid');
+    const brokenData = (await store.capture('proof', 'external')).version!;
+    await writeFile(dataPath, '{"title":"Working words"}');
+    await store.capture('proof', 'external');
+    await assert.rejects(restoreVersion(store, 'proof', brokenData.id, { scope: 'version' }), /does not render/);
+    assert.equal(await readFile(dataPath, 'utf8'), '{"title":"Working words"}');
+    assert.equal(await readFile(f.entry, 'utf8'), entry);
+    // Validate the restored code and data as one candidate, rather than new code with current data.
+    await writeFile(f.entry, entry.replace('{data.title}', '{data.previous.toUpperCase()}'));
+    await writeFile(dataPath, '{"previous":"Earlier words"}');
+    const earlier = (await store.capture('proof', 'external')).version!;
+    await writeFile(f.entry, entry);
+    await writeFile(dataPath, '{"title":"Working words"}');
+    await store.capture('proof', 'external');
+    await restoreVersion(store, 'proof', earlier.id, { scope: 'version' });
+    assert.match(await readFile(f.entry, 'utf8'), /data.previous.toUpperCase/);
+    assert.equal(await readFile(dataPath, 'utf8'), '{"previous":"Earlier words"}');
+    const external = entry;
+    await assert.rejects(restoreVersion(store, 'proof', brokenData.id, { scope: 'version', written: path => {
+      if (path === f.entry) writeFileSync(f.entry, external + '\n// Newer external edit.');
+    } }), /Newer edits were preserved/);
+    assert.match(await readFile(f.entry, 'utf8'), /Newer external edit/);
+    assert.equal(await readFile(dataPath, 'utf8'), '{"previous":"Earlier words"}');
+  } finally { await f.cleanup(); }
 });

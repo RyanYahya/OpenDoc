@@ -1,11 +1,11 @@
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { cp, mkdir, readFile, readdir } from 'node:fs/promises';
+import { cp, mkdir, readFile, readdir, writeFile, access } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fixture } from './helpers';
 import { runDocumentsCli } from '../src/server/documents-cli';
 import { readProjects, createProject } from '../src/server/projects';
-import { changeItemTags, readTags, setDocumentStatus } from '../src/server/tags';
+import { changeItemTags, createCustomTag, readTags, setDocumentStatus } from '../src/server/tags';
 import { HistoryStore } from '../src/server/history';
 import { main } from '../src/cli/main';
 
@@ -120,4 +120,34 @@ test('the documents command is listed in the main command line help', async t =>
   t.mock.method(console, 'log', (line: string) => { lines.push(line); });
   await main(['--help']);
   assert.match(lines.join('\n'), /npx opendoc documents +Rename, duplicate, delete, and restore documents/);
+});
+
+
+test('a failed metadata restore keeps the document and receipt in Trash for retry', async t => {
+  const f = await fixture();
+  const json = output(t);
+  try {
+    await changeItemTags(f.root, 'documents', 'proof', { add: ['report', 'Client Acme'] });
+    await setDocumentStatus(f.root, 'proof', 'final');
+    await runDocumentsCli(['delete', 'proof', '--json'], f.root);
+    const deleted = json();
+    // A later tag operation prunes the deleted document's entries; its receipt owns them now.
+    await createCustomTag(f.root, 'Another client');
+    const tagsPath = resolve(f.root, 'tags.json');
+    const validTags = await readFile(tagsPath, 'utf8');
+    const receiptPath = resolve(f.root, '.opendoc/trash', deleted.restoreId, 'receipt.json');
+    const receipt = await readFile(receiptPath, 'utf8');
+    await writeFile(tagsPath, '{broken');
+    await assert.rejects(runDocumentsCli(['restore', deleted.restoreId, '--json'], f.root), /Could not read tags.json/);
+    assert.equal(await readFile(receiptPath, 'utf8'), receipt);
+    await assert.rejects(access(f.entry), { code: 'ENOENT' });
+    assert.equal((await readProjects(f.root)).assignments.proof, undefined);
+    await writeFile(tagsPath, validTags);
+    await runDocumentsCli(['restore', deleted.restoreId, '--json'], f.root);
+    assert.equal(json().id, 'proof');
+    const restored = await readTags(f.root);
+    assert.deepEqual(restored.documents.proof, ['report', 'Client Acme']);
+    assert.equal(restored.status.proof, 'final');
+    await assert.rejects(access(receiptPath), { code: 'ENOENT' });
+  } finally { await f.cleanup(); }
 });
