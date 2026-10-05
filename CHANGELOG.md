@@ -52,13 +52,15 @@
 
 Both npm editions use version `0.6.0`: `@ryanyahya/opendoc` and `@ryanyahya/opendoc-headless`.
 
-For an existing initialized workspace, stop its browser service first, then run:
+Version 0.6.0 is the new compatibility baseline. Start with a fresh workspace; updating a 0.5.x or earlier workspace to 0.6.0 is unsupported.
 
 ```sh
-npx opendoc update --version 0.6.0
+npx --yes @ryanyahya/opendoc@0.6.0 init /path/to/new-workspace
+# Or, for Headless:
+npx --yes @ryanyahya/opendoc-headless@0.6.0 init /path/to/new-workspace
 ```
 
-The explicit version is necessary when moving from `0.5.x` or earlier, because the default updater stays within the current minor version before `1.0`. Restart the normal edition with `npx opendoc start` afterward. Updates preserve authored content and local catalogs; existing workspaces can import the bundled Arabic font from the installed starter library when needed.
+New workspaces include the full current starter library and Arabic font asset. From this baseline, `npx opendoc update` selects future compatible 0.6.x releases; stop the normal edition's service before updating. Pre-1.0 updates stay within the current minor version by default.
 
 ## 0.5.0 — 2026-09-16
 

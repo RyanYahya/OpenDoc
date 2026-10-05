@@ -55,6 +55,8 @@ Inside either edition, commands remain `npx opendoc` and authoring imports remai
 
 ## Update an existing workspace
 
+Version 0.6.0 is the compatibility baseline. For 0.5.x or earlier, initialize a fresh workspace with 0.6.0 or newer; the old updater cannot upgrade directly to 0.6.0. The workflow below applies to workspaces created from the 0.6 baseline onward.
+
 In normal OpenDoc, first stop the foreground service with **Ctrl-C**. Then run this from either edition's workspace:
 
 ```sh
