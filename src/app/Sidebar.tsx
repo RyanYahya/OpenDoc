@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { version } from '../../package.json';
 import type { Project } from '../shared/projects';
 import { documentFormat, type DocumentSummary } from '../shared/types';
 import { textLang } from '../shared/language';
@@ -53,7 +54,16 @@ function SidebarContent({ view, projectId, projects, documents, loaded, connecte
         {!projects.length && <p className="sidebar-empty">{loaded ? 'Create a project to organize your documents.' : 'Loading projects…'}</p>}
       </nav>
     </section>
-    <div className="sidebar-footer"><span className="workspace-status" role="status"><span className={`status-dot ${connected ? '' : 'offline'}`} />{connected ? 'Local workspace' : 'Reconnecting…'}</span><div className="sidebar-footer-actions"><SkillIndex /><AppearanceControl value={appearance} onChange={onAppearanceChange} /></div></div>
+    <div className="sidebar-footer">
+      <div className="workspace-status">
+        <a className="ui-button icon-button" href="https://github.com/RyanYahya/OpenDoc" target="_blank" rel="noopener noreferrer" aria-label="OpenDoc on GitHub (opens in a new tab)" title="GitHub"><Icon name="github" size={18} /></a>
+        <span role="status">{connected ? version : 'Reconnecting…'}</span>
+      </div>
+      <div className="sidebar-footer-actions">
+        <SkillIndex />
+        <AppearanceControl value={appearance} onChange={onAppearanceChange} />
+      </div>
+    </div>
   </>;
 }
 
