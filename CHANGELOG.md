@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.6.0 — 2026-10-05
+
 ### Arabic and right-to-left text
 
 - PDFs, presentations, and PowerPoint exports support Arabic and mixed Arabic and English text. Set `direction` and `lang` on a theme or `Document`. The repaired Forme engine (core `0.20.1-opendoc.4`) lays out each line with the Unicode Bidirectional Algorithm, joins Arabic letters, and mirrors rows, lists, and tables.
@@ -45,6 +47,18 @@
 ### Agent skills
 
 - Workspaces include ten skills. New: `opendoc-revise-document`, `opendoc-assets-media`, `opendoc-history`, and `opendoc-organize`. The existing skills cover Arabic text, table rows, projects, phrase comments, and re-export.
+
+### Install or update
+
+Both npm editions use version `0.6.0`: `@ryanyahya/opendoc` and `@ryanyahya/opendoc-headless`.
+
+For an existing initialized workspace, stop its browser service first, then run:
+
+```sh
+npx opendoc update --version 0.6.0
+```
+
+The explicit version is necessary when moving from `0.5.x` or earlier, because the default updater stays within the current minor version before `1.0`. Restart the normal edition with `npx opendoc start` afterward. Updates preserve authored content and local catalogs; existing workspaces can import the bundled Arabic font from the installed starter library when needed.
 
 ## 0.5.0 — 2026-09-16
 
