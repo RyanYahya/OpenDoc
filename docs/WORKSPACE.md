@@ -180,6 +180,7 @@ For development and pull requests, read [Contributing](../CONTRIBUTING.md). Revi
 | Manage logos, fonts, and document images | [Assets and media skill](../.agents/skills/opendoc-assets-media/SKILL.md), [Assets](ASSETS.md), [Media](MEDIA.md) |
 | Create or adapt a reusable layout | [Templates](TEMPLATES.md) |
 | Create or apply a design system | [Themes](THEMES.md) |
+| Share or install themes and templates | [Share skill](../.agents/skills/opendoc-share/SKILL.md), [Design packs](PACKS.md) |
 | Manage projects and document ownership | [Projects](PROJECTS.md) |
 | Prepare document visuals | [Media](MEDIA.md) |
 | Import and bind shared logos or fonts | [Assets](ASSETS.md) |
