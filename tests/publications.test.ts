@@ -182,7 +182,7 @@ test('references can precede citations and forward cross-references use real lab
     const pdf = await extracted(resolve(result.directory, 'document.pdf'));
     assert.match(pdf.text, /First source.*Second source.*See Table 1 and Figure 1, then Interpretation/);
     assert.match(pdf.text, /Sample Organization, 2026a/);
-    assert.match(pdf.text, /Sample Organization, 2026b/);
+    assert.match(pdf.text.replace(/\s+/g, ' '), /Sample Organization, 2026b/);
     assert.match(pdf.text.replace(/\s+/g, ' '), /2026b, p. 12/);
     assert.ok(result.artifact.blocks['reference-alpha']);
     assert.ok(result.artifact.blocks['reference-beta']);
