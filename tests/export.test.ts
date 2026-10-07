@@ -101,7 +101,7 @@ test('a live invalid preview or refused export remains authoritative without an 
 
 test('live batch concurrency is bounded and slow readiness returns a useful per-output error', async () => {
   const f = await fixture();
-  let active = 0, peak = 0, rendering = false;
+  let active = 0, peak = 0, rendering = false, stalledPolls = false, lists = 0;
   const ids = ['proof', 'second', 'third'];
   for (const id of ids.slice(1)) {
     await mkdir(resolve(f.root, 'documents', id));
@@ -109,7 +109,9 @@ test('live batch concurrency is bounded and slow readiness returns a useful per-
   }
   const close = await serveSession(f.root, (req, res) => {
     if (req.url === '/api/documents') {
-      json(res, ids.map(id => ({ id, status: rendering ? 'rendering' : 'ready', artifact: { hash: `${id}-hash`, pages: [{}] } })));
+      const states = ids.map(id => ({ id, status: rendering ? 'rendering' : 'ready', artifact: { hash: `${id}-hash`, pages: [{}] } }));
+      if (stalledPolls && lists++ > 0) setTimeout(() => json(res, states), 400);
+      else json(res, states);
     } else {
       active++; peak = Math.max(peak, active);
       setTimeout(() => { active--; res.writeHead(200, { 'Content-Type': 'application/pdf' }); res.end('%PDF-test'); }, 35);
@@ -123,5 +125,9 @@ test('live batch concurrency is bounded and slow readiness returns a useful per-
     const [pending] = await exportDocuments(f.root, ['proof'], { readyTimeoutMs: 50 });
     assert.equal(pending.status, 'error');
     if (pending.status === 'error') assert.match(pending.error, /still rendering/);
+    stalledPolls = true;
+    const [stalled] = await exportDocuments(f.root, ['proof'], { readyTimeoutMs: 150 });
+    assert.equal(stalled.status, 'error');
+    if (stalled.status === 'error') assert.match(stalled.error, /still rendering/);
   } finally { await close(); await f.cleanup(); }
 });

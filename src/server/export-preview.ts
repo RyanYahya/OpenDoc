@@ -48,7 +48,12 @@ export async function exportPreview(root: string, id: string, session: Session, 
     await new Promise(accept => setTimeout(accept, Math.min(120, Math.max(1, deadline - Date.now()))));
     const remaining = deadline - Date.now();
     if (remaining <= 0) break;
-    state = (await readStates(session.connection, Math.min(options.requestTimeoutMs, remaining))).find(item => item.id === id);
+    try { state = (await readStates(session.connection, Math.min(options.requestTimeoutMs, remaining))).find(item => item.id === id); }
+    catch (error) {
+      // A poll cut short by the readiness deadline leaves the last known rendering state authoritative.
+      if ((error as Error).name === 'TimeoutError' && Date.now() >= deadline) break;
+      throw error;
+    }
   }
   if (!state) throw new Error(`Document "${id}" was not found in the current OpenDoc session.`);
   if (state.status !== 'ready' || !state.artifact) throw new Error(state.error ?? 'The current document is still rendering. Wait for its preview before exporting.');
