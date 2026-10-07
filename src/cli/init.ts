@@ -12,7 +12,7 @@ const usageFor = (edition: Edition) => edition === 'headless'
   ? `Usage: npx --yes ${packageNames.headless} init <folder> [--json]\nCreates a headless workspace without starting a server. The folder must be new or empty.`
   : `Usage: npx --yes ${packageNames.normal} init [folder] [--no-start] [--no-open] [--json]\nCreates a new workspace. The folder must be new or empty.`;
 const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
-const skills = ['opendoc-create', 'opendoc-current-document', 'opendoc-apply-comments', 'opendoc-revise-document', 'opendoc-assets-media', 'opendoc-create-theme', 'opendoc-create-template', 'opendoc-review-document', 'opendoc-history', 'opendoc-organize'];
+const skills = ['opendoc-create', 'opendoc-current-document', 'opendoc-apply-comments', 'opendoc-revise-document', 'opendoc-assets-media', 'opendoc-create-theme', 'opendoc-create-template', 'opendoc-review-document', 'opendoc-history', 'opendoc-organize', 'opendoc-share'];
 const skillLabels: Record<string, string> = {
   'opendoc-create': 'Create a document or presentation',
   'opendoc-current-document': 'Resolve an active document or selection',
@@ -23,6 +23,7 @@ const skillLabels: Record<string, string> = {
   'opendoc-create-template': 'Create a reusable template',
   'opendoc-review-document': 'Review, export, and re-export PDFs and presentations',
   'opendoc-history': 'Review and restore earlier versions',
+  'opendoc-share': 'Share or install themes and templates as portable packs',
   'opendoc-organize': 'Tag, find, and organize work, projects, and documents',
 };
 const skillIndex = `\n## Agent skills\n\nRead the matching skill directly when your agent does not discover workspace skills automatically. Start the agent in this workspace; after creating it during a conversation, read this guide explicitly.\n\n${skills.map(skill => `- ${skillLabels[skill]}: [${skill}](node_modules/opendoc/.agents/skills/${skill}/SKILL.md)`).join('\n')}\n`;

@@ -46,6 +46,7 @@ For example, “create a presentation from these notes” starts `opendoc-create
 | Review PDF pages or slides and presentation exports before delivery, export a document again, or export everything | [opendoc-review-document](.agents/skills/opendoc-review-document/SKILL.md) |
 | See what changed, undo a change, restore earlier wording, or bring back a deleted comment | [opendoc-history](.agents/skills/opendoc-history/SKILL.md) |
 | Tag, find, or set the status of documents, presentations, themes, and templates, arrange theme folders, group documents into projects, change project settings, or rename, duplicate, delete, or restore documents | [opendoc-organize](.agents/skills/opendoc-organize/SKILL.md) |
+| Share themes/templates as portable ZIP files, or inspect and install a received design pack | [opendoc-share](.agents/skills/opendoc-share/SKILL.md) |
 | Start OpenDoc, or check for and install an update | **Work in the user's workspace** above; [Update an existing workspace](README.md#update-an-existing-workspace) |
 
 For application changes, read the relevant runtime and [verification guide](VALIDATION.md). [README.md](README.md) maps the folders and supported launch commands. Load only the specialized guidance needed for the task.

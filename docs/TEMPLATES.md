@@ -55,3 +55,7 @@ Custom template creation happens with the external agent. The page's **Create te
 ## Project membership
 
 Every created document or presentation instance requires a destination project. The creation prompt carries the selected template; the agent resolves the project and any meaningful design preferences through [opendoc-create](../.agents/skills/opendoc-create/SKILL.md). The CLI uses an explicit theme choice, then the project default for the template's format (a presentation template uses the presentation default), then Neutral. Moving an instance or changing a project default leaves its source and current theme intact. Template specimens remain shared resources outside the project document list. **Agent instructions** opens the selected template’s current `AGENTS.md` in a scrollable Markdown dialog.
+
+## Share with another workspace
+
+Use [OpenDoc design packs](PACKS.md) to export editable source with its required assets and preview PDFs, or install a pack received from someone else. The [opendoc-share skill](../.agents/skills/opendoc-share/SKILL.md) handles the workflow in both editions.

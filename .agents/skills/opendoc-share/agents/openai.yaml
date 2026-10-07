@@ -1,0 +1,6 @@
+interface:
+  display_name: "OpenDoc: Share designs"
+  short_description: "Share or install portable theme and template packs."
+  default_prompt: "Use $opendoc-share to share or install an OpenDoc design pack."
+policy:
+  allow_implicit_invocation: true

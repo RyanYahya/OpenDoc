@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Share editable themes and templates with `npx opendoc packs export`, inspect their contents and PDF previews without executing source, and install trusted packs into another workspace. Packs include required source and asset revisions, validate and render in staging, and never overwrite existing designs. Available in both editions through the new `opendoc-share` skill.
+
 ## 0.6.0 — 2026-10-05
 
 ### Arabic and right-to-left text
