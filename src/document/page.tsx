@@ -16,12 +16,18 @@ function crc32(bytes: Uint8Array) {
   return (crc ^ 0xffffffff) >>> 0;
 }
 
-/** A tiny lossless image uses the renderer's actual full-page background layer. */
-function solidBackground(input: string) {
+/** A page backgroundColor as channels from 0 to 1. */
+export function pageColor(input: string) {
   const color = ({ white: '#ffffff', black: '#000000', transparent: '#00000000' } as Record<string, string>)[input.toLowerCase()] ?? input;
   if (!/^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(color) && !/^rgba?\([\d.,\s]+\)$/i.test(color)) throw new Error('Page backgroundColor needs a hex or rgb/rgba color.');
   const { r, g, b, a } = parseColor(color);
   if ([r, g, b, a].some(channel => !Number.isFinite(channel) || channel < 0 || channel > 1)) throw new Error('Page backgroundColor contains an invalid color channel.');
+  return { r, g, b, a };
+}
+
+/** A tiny lossless image uses the renderer's actual full-page background layer. */
+function solidBackground(input: string) {
+  const { r, g, b, a } = pageColor(input);
   const chunk = (type: string, data: Buffer) => {
     const name = Buffer.from(type), length = Buffer.alloc(4), checksum = Buffer.alloc(4);
     length.writeUInt32BE(data.length);

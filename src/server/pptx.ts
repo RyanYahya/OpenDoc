@@ -214,10 +214,14 @@ export async function presentationBytes(capture: PresentationCapture): Promise<U
       node.children.forEach(indexSource);
     }
     indexSource(sourcePage);
-    const slide = pptx.addSlide(), config = sourcePage.kind.config;
+    const slide = pptx.addSlide(), config = sourcePage.kind.config, opacity = config.backgroundOpacity ?? 1;
+    // The PDF paints a solid slide color through the page's background image layer, at its opacity.
+    // PowerPoint gets a native background fill; image backgrounds stay pictures to keep their opacity.
+    const solid = capture.slides[index].background;
+    if (solid) slide.background = fill({ ...solid, a: solid.a * opacity });
     // Collect the slide's objects in drawing order, name them together, then draw them.
     const objects: SlideObject[] = [];
-    if (config.backgroundImage) objects.push({ block: label, part: 'background image', draw: objectName => slide.addImage({ data: config.backgroundImage!, x: 0, y: 0, w: 960 / PT, h: 540 / PT, transparency: (1 - (config.backgroundOpacity ?? 1)) * 100, objectName }) });
+    if (config.backgroundImage && !solid) objects.push({ block: label, part: 'background image', draw: objectName => slide.addImage({ data: config.backgroundImage!, x: 0, y: 0, w: 960 / PT, h: 540 / PT, transparency: (1 - opacity) * 100, objectName }) });
     function visit(node: ElementInfo, inherited: string) {
       const style = node.style as PaintStyle, block = blockOf(node, inherited);
       if (style.opacity === 0) return;

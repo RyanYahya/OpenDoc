@@ -32,7 +32,8 @@ test('slides render as separate wide pages with native editable text and stable 
     await writeFile(f.entry, deck('<Slide id="opening"><Heading id="title" style={{fontSize:44}}>A clear opening</Heading><Paragraph id="body" style={{fontSize:24}}>Editable presentation text.</Paragraph></Slide><Slide id="ending"><Paragraph id="last">A clear ending.</Paragraph></Slide>'));
     const { artifact, directory } = await renderOnce(f.root, 'proof');
     assert.equal(artifact.format, 'presentation');
-    assert.deepEqual(artifact.slides, [{ id: 'opening' }, { id: 'ending' }]);
+    const paper = { r: 1, g: 1, b: 1, a: 1 };
+    assert.deepEqual(artifact.slides, [{ id: 'opening', background: paper }, { id: 'ending', background: paper }]);
     assert.deepEqual(artifact.pages.map(({width,height}) => [width,height]), [[960,540],[960,540]]);
     assert.ok(artifact.pages[0].fragments.some(fragment => fragment.id === 'body'));
     assert.ok(!artifact.pages[1].fragments.some(fragment => fragment.id === 'body'));
