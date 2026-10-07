@@ -12,7 +12,9 @@ export interface SlideInfo {
 }
 export interface DocumentMeta { title: string; description: string; kind?: DocumentKind; theme: string; author?: string }
 export interface SourceLocation { file: string; line: number; column: number }
-export interface BlockInfo { slideId?: string; id: string; kind: string; source?: SourceLocation; text: string; maxLines?: number }
+/** How many rows of a table repeat as its header on each page, carry its records, and follow them as a source note. */
+export interface TableRows { header: number; body: number; trailing: number }
+export interface BlockInfo { slideId?: string; id: string; kind: string; source?: SourceLocation; text: string; maxLines?: number; tableRows?: TableRows }
 export interface Bounds { x: number; y: number; width: number; height: number }
 export interface Fragment { id: string; x: number; y: number; width: number; height: number }
 export interface PageInfo { width: number; height: number; fragments: Fragment[] }

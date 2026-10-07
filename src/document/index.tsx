@@ -9,7 +9,7 @@ import { documentThemeAssets, withDocumentAssets, type AppliedDocumentAssets } f
 import { assetFile, assetRevisionPath, readAssetRevision } from '../assets/files';
 import { neutral, themePage, themeType, validateTheme, withFontFallbacks, type DocTheme, type TextDirection, type ThemeTypeRole } from '../themes/index';
 import { fontFamilies, languageTag } from '../themes/types';
-import type { BlockInfo, SourceLocation, DocumentFormat, SlideInfo } from '../shared/types';
+import type { BlockInfo, SourceLocation, DocumentFormat, SlideInfo, TableRows } from '../shared/types';
 import { Page, pageColor } from './page';
 import { Decoration, TextCapture, TextSlot, type TextSlotProps } from './text-targets';
 export { TextSlot, Decoration, type TextSlotProps, type TextFieldPath, type TextRecordPath } from './text-targets';
@@ -166,6 +166,7 @@ export function prepareDocument(input: ReactNode) {
         if (!Number.isInteger(el.props.maxLines) || el.props.maxLines < 1) throw new Error(`Paragraph ${id} maxLines must be a positive integer.`);
         runtime.blocks[id].maxLines = el.props.maxLines;
       }
+      if (kind === 'table') runtime.blocks[id].tableRows = tableRows(el.props);
       if (kind === 'heading' || kind === 'section') {
         const title = plainText(kind === 'section' ? el.props.title : el.props.children);
         requireText(title, `${kind} ${id} title`);
@@ -578,8 +579,14 @@ export type TableColumn = { id?: string; label: string; width?: number; align?: 
 const columnLabelReason = "This column heading is produced by the document's code, or repeats another column's wording, so it cannot be traced to one written value. Ask your agent to change it, or comment instead.";
 const tableCellReason = "This table cell is computed by the document's code, repeats wording the table cannot tell apart, or is also used in its logic, so it cannot be traced to one written value. Ask your agent to change it, or comment instead.";
 const repeatedRowReason = "This row repeats another row's wording, so its cells cannot be traced to one written value. Ask your agent to give the table rowIds, which make every row editable, or comment instead.";
-export const DataTable = block(function DataTable({ id, columns, rows, rowIds, caption, sourceNote, emptyMessage = 'No records to display.', style }: {
-  id: string; columns: TableColumn[]; rows: (string | number | ReactElement<TextSlotProps>)[][]; rowIds?: string[]; caption?: string; sourceNote?: string; emptyMessage?: string; style?: F.Style;
+/** Any page break in a table of this many rows or fewer leaves a single row on one side. */
+const shortTableRows = 3;
+/** The rows DataTable lays out: header rows that repeat on each page, then body rows, then a trailing source note. */
+function tableRows({ caption, rows, sourceNote }: { caption?: string; rows?: unknown; sourceNote?: string }): TableRows {
+  return { header: caption ? 2 : 1, body: Array.isArray(rows) && rows.length ? rows.length : 1, trailing: sourceNote ? 1 : 0 };
+}
+export const DataTable = block(function DataTable({ id, columns, rows, rowIds, caption, sourceNote, emptyMessage = 'No records to display.', keepTogether, style }: {
+  id: string; columns: TableColumn[]; rows: (string | number | ReactElement<TextSlotProps>)[][]; rowIds?: string[]; caption?: string; sourceNote?: string; emptyMessage?: string; keepTogether?: boolean; style?: F.Style;
 }) {
   const t = runtime.theme;
   if (!Array.isArray(columns) || !columns.length) throw new Error(`Table ${id} needs at least one column.`);
@@ -612,7 +619,8 @@ export const DataTable = block(function DataTable({ id, columns, rows, rowIds, c
   const shown = rows.map(row => row.map(cell => isValidElement(cell) ? undefined : String(cell)));
   const wording = shown.map(row => JSON.stringify(row));
   const repeated = rowIds ? [] : wording.map(row => wording.indexOf(row) !== wording.lastIndexOf(row));
-  return <F.Table columns={columns.map(c => ({ width: { fraction: (c.width ?? 1) / total } }))} style={{ marginTop: 8, marginBottom: 16, ...design?.block, ...style }}>
+  // Forme moves an unbreakable table to the next page whole, and still splits one taller than a page.
+  return <F.Table columns={columns.map(c => ({ width: { fraction: (c.width ?? 1) / total } }))} style={{ marginTop: 8, marginBottom: 16, wrap: rows.length > shortTableRows, ...design?.block, ...style, ...(keepTogether === undefined ? {} : { wrap: !keepTogether }) }}>
     {caption && <F.Row header><F.Cell colSpan={columns.length} style={{ paddingBottom: 8 }}><F.Text style={{ ...noteStyle, color: t.ink, fontWeight: 600 }}>{numberedCaption(id, caption)}</F.Text></F.Cell></F.Row>}
     <F.Row header style={{ backgroundColor: t.accent, ...design?.header }}>{columns.map((col, i) => <F.Cell key={col.id ?? i} style={{ padding: 9, ...design?.cell, ...design?.header }}><F.Text style={{ fontFamily: tableFont, fontSize: 9, color: '#ffffff', fontWeight: 600, ...design?.headerText, textAlign: alignments[i] }}><TextSlot slot={`column-${col.id ?? i}`} stable={col.id !== undefined} from="columns" path={[{ id: col.id }, 'label']} readOnlyReason={columnLabelReason}>{col.label}</TextSlot></F.Text></F.Cell>)}</F.Row>
     {rows.length ? rows.map((row, i) => <F.Row key={rowIds?.[i] ?? i} style={{ backgroundColor: i % 2 === 0 ? alternate : '#ffffff' }}>{row.map((cell, j) => <F.Cell key={j} style={{ padding: 9, borderBottomWidth: 0.4, borderColor: t.line, ...design?.cell }}><F.Text style={{ fontFamily: tableFont, fontSize: 10, ...design?.text, textAlign: alignments[j] }}>{isValidElement(cell) ? cell : <TextSlot slot={`row-${rowIds?.[i] ?? i}-column-${columns[j].id ?? j}`} stable={!!rowIds} from="rows" path={[rowIds ? { id: rowIds[i], ids: 'rowIds', values: shown[i] } : { values: shown[i] }, String(j)]} readOnlyReason={repeated[i] ? repeatedRowReason : tableCellReason}>{shown[i][j]}</TextSlot>}</F.Text></F.Cell>)}</F.Row>) : <F.Row><F.Cell colSpan={columns.length} style={{ padding: 12, backgroundColor: t.paper }}><F.Text style={noteStyle}>{emptyMessage}</F.Text></F.Cell></F.Row>}

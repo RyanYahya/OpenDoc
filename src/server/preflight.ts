@@ -40,6 +40,8 @@ export function assertSlideLayout(layout: LayoutInfo, slides: SlideInfo[], block
 }
 
 const tolerance = 0.75;
+// As for paragraph widows and orphans, a split table keeps at least two rows on each page.
+const minimumTableRows = 2;
 // The engine lays out {{pageNumber}} and {{totalPages}} as these characters, at a nominal width.
 const pagePlaceholder = /[\u0002\u0003]/;
 const visualKinds = new Set(['Image', 'Svg', 'QrCode', 'Barcode', 'Canvas', 'BarChart', 'LineChart', 'PieChart', 'AreaChart', 'DotPlot']);
@@ -61,6 +63,7 @@ export function inspectLayout(layout: LayoutInfo, blocks: Record<string, BlockIn
   const outlined = new Set<string>();
   const lineCounts = new Map<string, { count: number; page: number; node: ElementInfo; parent?: ElementInfo }>();
   const calloutPages = new Map<string, Set<number>>();
+  const tableFragments = new Map<string, { page: number; rows: number; node: ElementInfo; parent?: ElementInfo }[]>();
   const add = (issue: ReviewIssue, node?: ElementInfo, parent?: ElementInfo) => {
     const key = `${issue.code}:${issue.page}:${issue.blockId ?? ''}:${issue.relatedBlockId ?? ''}`;
     if (!seen.has(key)) {
@@ -88,6 +91,11 @@ export function inspectLayout(layout: LayoutInfo, blocks: Record<string, BlockIn
       if (blockId && blocks[blockId]?.kind === 'callout') {
         const pages = calloutPages.get(blockId) ?? new Set<number>();
         pages.add(number); calloutPages.set(blockId, pages);
+      }
+      if (!fixed && node.nodeType === 'Table' && blockId && blocks[blockId]?.tableRows) {
+        const fragments = tableFragments.get(blockId) ?? [];
+        fragments.push({ page: number, rows: node.children.filter(child => child.nodeType === 'TableRow').length, node, parent });
+        tableFragments.set(blockId, fragments);
       }
       if (!fixed && node.nodeType === 'View' && !node.style.breakable && node.height > page.contentHeight + tolerance) {
         add({ code: 'unbreakable-too-tall', severity: 'warning', page: number, blockId,
@@ -166,6 +174,18 @@ export function inspectLayout(layout: LayoutInfo, blocks: Record<string, BlockIn
   }
   for (const [blockId, pages] of calloutPages) if (pages.size > 1) add({ code: 'split-callout', severity: 'warning', page: Math.min(...pages), blockId,
     message: `Callout ${blockId} spans pages ${[...pages].join(', ')}. For a short callout, use keepTogether; for long content, retain the split or divide it into smaller callouts.` });
+  for (const [blockId, fragments] of tableFragments) {
+    if (fragments.length < 2) continue;
+    const { header, body, trailing } = blocks[blockId].tableRows!;
+    // Header rows repeat on every page; the source note follows the last row.
+    const counts = fragments.map((fragment, i) => fragment.rows - header - (i === fragments.length - 1 ? trailing : 0));
+    const short = [0, counts.length - 1].find(i => counts[i] < Math.min(minimumTableRows, body));
+    if (short === undefined) continue;
+    const { page, node, parent } = fragments[short], count = counts[short];
+    const left = count === 1 ? 'one row' : short && trailing ? 'only its source note' : 'only its header';
+    add({ code: 'split-table', severity: 'warning', page, blockId,
+      message: `Table ${blockId} splits its rows ${counts.join(' + ')} across pages ${fragments.map(fragment => fragment.page).join(', ')}, leaving ${left} on page ${page}. For a short table, set keepTogether to move it whole; otherwise adjust the content before it so at least ${minimumTableRows} rows stay on each page.` }, node, parent);
+  }
   return { issues, outline };
 }
 
