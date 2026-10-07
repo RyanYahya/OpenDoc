@@ -9,6 +9,10 @@
 - Text lines stay inside their text box. `Document` and running headers and footers now default to greedy line breaking. Forme's optimal breaker accepted lines that fit only with narrower word spaces, then drew unjustified text at full width, up to about a third of the line's word spaces past the column. Documents that used the previous default re-break on their next render, and a paragraph that ran past its column gains a line. An explicit `lineBreaking: 'optimal'` still takes precedence.
 - A `line-overflow` review warning reports a text line drawn beyond its text box, with its block, source, and bounds.
 
+### Presentations
+
+- PowerPoint exports give each slide its theme paper color as a native slide background, including any `backgroundOpacity`, instead of a selectable full-slide picture. Slides with `backgroundImage` or `backgroundMedia` still export that artwork as a full-slide picture with its opacity.
+
 ## 0.6.0 — 2026-10-05
 
 ### Arabic and right-to-left text
