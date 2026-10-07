@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Share editable themes and templates with `npx opendoc packs export`, inspect their contents and PDF previews without executing source, and install trusted packs into another workspace. Packs include required source and asset revisions, validate and render in staging, and never overwrite existing designs. Available in both editions through the new `opendoc-share` skill.
+
 ### Document review and authoring
 
 - Text lines stay inside their text box. `Document` and running headers and footers now default to greedy line breaking. Forme's optimal breaker accepted lines that fit only with narrower word spaces, then drew unjustified text at full width, up to about a third of the line's word spaces past the column. Documents that used the previous default re-break on their next render, and a paragraph that ran past its column gains a line. An explicit `lineBreaking: 'optimal'` still takes precedence.

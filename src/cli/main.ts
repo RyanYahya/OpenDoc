@@ -21,6 +21,7 @@ ${edition === 'headless'
   npx opendoc media                 Manage document-owned media
   npx opendoc comments              Add, resolve, delete, and restore feedback
   npx opendoc history               Review and restore earlier versions
+  npx opendoc packs                 Share or install themes and templates
   npx opendoc export <id...>         Export PDF or editable PowerPoint
   npx opendoc review <id>            Generate page images, text, and review issues
   npx opendoc check                 Typecheck workspace authoring
@@ -86,6 +87,9 @@ export async function main(rawArgs = process.argv.slice(2)) {
       const { version } = await packageMetadata();
       console.log(json ? JSON.stringify({ version }) : version); return;
     }
+    if (!root && command === 'packs') {
+      await (await import('../packs/cli')).runPacksCli([...(json ? ['--json'] : []), ...args]); return;
+    }
     if (!root) throw new Error(`No OpenDoc workspace found. Run npx --yes ${identity.name} init <folder>, or use --workspace <folder> for an existing workspace.`);
     const flags = [...(json ? ['--json'] : []), ...args];
     const dispatch = async () => {
@@ -95,6 +99,7 @@ export async function main(rawArgs = process.argv.slice(2)) {
         case 'projects': await (await import('../server/projects-cli')).runProjectsCli(flags, root); break;
         case 'documents': await (await import('../server/documents-cli')).runDocumentsCli(flags, root); break;
         case 'templates': await (await import('../server/templates-cli')).runTemplatesCli(flags, root); break;
+        case 'packs': await (await import('../packs/cli')).runPacksCli(flags, root); break;
         case 'themes': await (await import('../server/themes-cli')).runThemesCli(flags, root); break;
         case 'tags': await (await import('../server/tags-cli')).runTagsCli(flags, root); break;
         case 'assets': await (await import('../server/assets-cli')).runAssetsCli(flags, root); break;
@@ -118,7 +123,7 @@ export async function main(rawArgs = process.argv.slice(2)) {
         default: throw new Error(`Unknown command: ${command}. Use npx opendoc --help.`);
       }
     };
-    if (identity.edition === 'headless' && !['update', 'start'].includes(command)) await withWorkspaceLock(root, dispatch);
+    if (identity.edition === 'headless' && !['update', 'start', 'packs'].includes(command)) await withWorkspaceLock(root, dispatch);
     else await dispatch();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
