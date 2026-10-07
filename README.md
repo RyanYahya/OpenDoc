@@ -98,7 +98,7 @@ Give an agent this README and a task like:
 
 > Use OpenDoc Headless to turn these notes into a polished project proposal. Install it in your environment if needed, and read the workspace's AGENTS.md. Use a suitable template and theme, flag missing facts, review every page, and return the finished PDF here. Keep the source so we can revise it later.
 
-The workspace's `AGENTS.md` routes requests to ten skills for creation, current context, feedback, revision, logos, fonts and media, themes, templates, review and export, version history, and organization. `CLAUDE.md` imports the shared instructions, and `.claude/skills` exposes the same skills as `.agents/skills`. If an agent doesn't discover skills automatically, have it read the guide and the matching skill directly. Start in the workspace, and explicitly read its guide when installing during an existing conversation.
+The workspace's `AGENTS.md` routes each request to the matching [agent skill](#agent-skills), from creation and revision to review, version history, organization, and sharing designs. `CLAUDE.md` imports the shared instructions, and `.claude/skills` exposes the same skills as `.agents/skills`. If an agent doesn't discover skills automatically, have it read the guide and the matching skill directly. Start in the workspace, and explicitly read its guide when installing during an existing conversation.
 
 For an older workspace, preserve its instructions and use the [compatibility setup](docs/HEADLESS.md#agent-setup) to add the shared Claude entry points. Reading the guides works without registering a plugin or publishing the workspace to GitHub.
 
@@ -108,7 +108,7 @@ Agents author TSX using OpenDoc's components, check the source, inspect the rend
 
 ## Agent skills
 
-Both editions include **ten skills** that guide an agent through the work, from understanding your brief to delivering reviewed files. They cover writing, revising, design, logos, fonts and images, context, feedback, quality checks, recovering earlier versions, and organizing your work. Ask in ordinary language; the [agent guide](AGENTS.md) explains which workflow to use, and each link below opens its full instructions.
+Both editions include the same **agent skills**, listed below, that guide an agent through the work, from understanding your brief to delivering reviewed files. They cover writing, revising, design, logos, fonts and images, context, feedback, quality checks, recovering earlier versions, organizing your work, and sharing reusable designs. Ask in ordinary language; the [agent guide](AGENTS.md) explains which workflow to use, and each link below opens its full instructions.
 
 | Skill | What it does |
 | --- | --- |
@@ -122,6 +122,7 @@ Both editions include **ten skills** that guide an agent through the work, from 
 | [Review documents and presentations](.agents/skills/opendoc-review-document/SKILL.md) | Checks the actual rendered pages for clipping, missing glyphs, awkward spacing, broken tables, and reference problems. Inspects extracted text, reviews theme and template specimens, and checks editable PowerPoint exports. Exports or re-exports files, including every document at once, and can leave findings as comments. Reports any unverified rendering or failed output before delivery. |
 | [Restore earlier versions](.agents/skills/opendoc-history/SKILL.md) | Answers what changed and brings back earlier wording from version history: one paragraph, one section, or a whole version, leaving the rest as it is. Confirms the version when more than one fits, reports the command that undoes each restore, and restores deleted comments. |
 | [Organize your work](.agents/skills/opendoc-organize/SKILL.md) | Sets each document's type and status, finds work by type, status, language, or tag, and cleans up tags when asked. Arranges themes into folders, moves documents between projects and changes project settings when you ask, renames, duplicates, deletes, and restores documents, and regroups work only after you approve a proposed grouping. |
+| [Share themes and templates](.agents/skills/opendoc-share/SKILL.md) | Exports themes and templates as portable design packs with their source, required assets, and PDF previews. Inspects a received pack without running its code, then installs it into the workspace without overwriting existing designs. |
 
 Creation, theme, template, and feedback workflows call for review before completion. You can also request a review on its own. Skills use the same files and commands across agents; when automatic discovery is unavailable, the agent can read the linked instructions directly.
 
