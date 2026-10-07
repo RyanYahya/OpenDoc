@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { cp, lstat, mkdir, mkdtemp, readFile, readdir, realpath, writeFile } from 'node:fs/promises';
+import { cp, lstat, mkdir, mkdtemp, readFile, readdir, realpath, rename, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -207,6 +207,37 @@ async function acceptHeadless(root, nested) {
   assert.equal(await readFile(resolve(root, '.opendoc/server.json'), 'utf8'), 'invalid GUI session that Headless must ignore');
 }
 
+async function acceptPacks(sender, recipient, headless) {
+  diagnostic('Sharing a theme and document/presentation templates between installed workspaces');
+  const layout = resolve(sender, 'templates/acceptance-layout');
+  await cp(resolve(sender, 'templates/editorial-essay'), layout, { recursive: true });
+  const starter = resolve(layout, 'starter.tsx');
+  await writeFile(starter, (await readFile(starter, 'utf8')).replaceAll('../../templates/editorial-essay', '../../templates/acceptance-layout'));
+  const packed = await cliJSON(sender, ['packs', 'export', '--theme', 'acceptance-theme', '--template', 'acceptance-layout', '--template', 'brand-guidelines', '--id', 'acceptance-design']);
+  assert.equal(packed.previews.length, 3);
+  assert.ok(packed.manifest.files.some(file => file.path === 'templates/acceptance-layout/starter.tsx'));
+  const inspected = await cliJSON(recipient, ['packs', 'inspect', packed.output, '--previews', resolve(directory, 'pack-previews')]);
+  assert.equal(inspected.sha256, packed.sha256); assert.equal(inspected.plan.conflicts.length, 0);
+  const planned = await cliJSON(recipient, ['packs', 'install', packed.output, '--dry-run']);
+  assert.equal(planned.installed, false); assert.ok(planned.plan.added.length);
+  assert.equal(await exists(resolve(recipient, 'themes/acceptance-theme')), false);
+  assert.match((await cliFailure(recipient, ['packs', 'install', packed.output])).error, /--trust/);
+  const theme = resolve(sender, 'themes/acceptance-theme');
+  await rename(theme, theme + '-held'); await rename(layout, layout + '-held');
+  // Headless commands ignore irrelevant GUI state, including malformed old records.
+  if (headless) await writeFile(resolve(recipient, '.opendoc/server.json'), 'no browser session in Headless');
+  try {
+    assert.equal((await cliJSON(recipient, ['packs', 'install', packed.output, '--trust'])).installed, true);
+    assert.equal((await cliJSON(recipient, ['packs', 'install', packed.output, '--trust'])).alreadyInstalled, true);
+    await cliJSON(recipient, ['projects', 'create', 'pack-acceptance', '--name', 'Received designs']);
+    await cliJSON(recipient, ['create', 'received-report', '--project', 'pack-acceptance', '--title', 'Created from a received pack', '--template', 'acceptance-layout', '--theme', 'acceptance-theme']);
+    const rendered = await cliJSON(recipient, ['review', 'received-report']);
+    assert.ok(rendered.pages.length);
+    await cliJSON(recipient, ['check']);
+  } finally { await rename(theme + '-held', theme); await rename(layout + '-held', layout); }
+  manifest.designPack = { output: packed.output, sha256: packed.sha256, items: packed.manifest.items, previews: inspected.previews, installedInto: recipient };
+}
+
 const reportSource = `import { Document, Pages, Heading, Paragraph, Block, MediaFrame, Logo, type DocumentMeta } from 'opendoc';
 import { defineTemplate } from 'opendoc/template';
 import { theme } from './theme';
@@ -352,6 +383,7 @@ export const theme = {...neutral, id: 'acceptance-theme', name: 'Acceptance them
   assert.equal((await cliJSON(first, ['check'], nested)).ok, true);
   assert.equal(hash(await readFile(resolve(second, 'projects.json'))), secondManifest, 'The second workspace stays independent.');
 
+  await acceptPacks(first, second, headless);
   if (headless) await acceptHeadless(first, nested);
   else {
   diagnostic('Exercising the installed interface, watcher, corrections, comments, and exports.');

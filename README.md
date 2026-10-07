@@ -20,6 +20,7 @@ Work together in the browser, or let an agent produce the finished files entirel
 - **Arabic and English.** Write in English, Arabic, or both on one page or slide. Arabic text that the document's fonts cannot draw falls back to the bundled Noto Naskh Arabic, and review flags any character no font covers, which prints as `?`.
 - **Version history.** Every saved edit and agent change is kept for 90 days. Restore one paragraph, one section, or a whole earlier version, and undo any restore.
 - **Organized work.** Group documents into projects, give each a type and status, and find work by type, status, detected language, or your own tags.
+- **Share reusable designs.** Export themes and templates as [portable design packs](docs/PACKS.md), with their source, assets, and PDF previews; install them into another OpenDoc workspace.
 - **Files you own.** Keep editable source, project records, and media alongside your exports. Use the same commands locally or in an agent's remote environment.
 
 ## OpenDoc or OpenDoc Headless?

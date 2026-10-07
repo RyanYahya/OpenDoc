@@ -159,3 +159,7 @@ The theme detail's **Assets for new documents** section chooses an optional logo
 The app’s Themes view is for browsing real specimens, exact colors and geometry, reading the guide, seeing usage, and handing requests to the external agent. The current context identifies the active selection and its file paths so the agent can resolve “this theme.” It does not embed all guides or component bodies. Read the selected guide, then only the component source needed for the task. Re-read `.opendoc/current.json` when resolving a selection. Do not expose the local session token.
 
 For the reference-to-theme workflow, use the [opendoc-create-theme skill](../.agents/skills/opendoc-create-theme/SKILL.md). For document creation, read [Authoring](AUTHORING.md) and resolve the destination [Project](PROJECTS.md).
+
+## Share with another workspace
+
+Use [OpenDoc design packs](PACKS.md) to export editable source with its required assets and preview PDFs, or install a pack received from someone else. The [opendoc-share skill](../.agents/skills/opendoc-share/SKILL.md) handles the workflow in both editions.
