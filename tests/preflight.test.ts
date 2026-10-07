@@ -10,7 +10,7 @@ import { inspectLayout } from '../src/server/preflight';
 import { inspectElements } from '../src/server/layout-inspection';
 
 function document(content: string, extra = '') {
-  return `import {Document,Pages,Heading,Paragraph,Block,View,PageBreak,Callout} from '../../src/document';
+  return `import {Document,Pages,Heading,Paragraph,Block,View,PageBreak,Callout,Strong} from '../../src/document';
 export const meta={title:'Layout proof',description:'Synthetic layout fixture',kind:'report',theme:'neutral'};
 ${extra}
 export default function Proof(){return <Document title="Layout proof"><Pages title="Layout proof">${content}</Pages></Document>}`;
@@ -115,6 +115,80 @@ test('deliberate page backgrounds and ordinary flowing prose pass geometry check
     const { artifact } = await renderOnce(f.root, 'proof');
     assert.ok(artifact.pages.length > 1);
     assert.deepEqual(artifact.issues, []);
+  } finally { await f.cleanup(); }
+});
+
+const sentence = 'A concise statement of the decision, the supporting evidence, and the next step.';
+const forme = `import * as F from '@formepdf/react';`;
+const withoutFurniture = (source: string) => source.replace('<Pages title="Layout proof">', '<Pages title="Layout proof" header={false} footer={false}>');
+/** Every text line with its block, whether it is running furniture, and how far it extends past its own text box. */
+function textLines(layout: LayoutInfo) {
+  const lines: { node: ElementInfo; blockId?: string; fixed: boolean; beyond: number }[] = [];
+  const visit = (node: ElementInfo, parent?: ElementInfo, inherited?: string, fixed = false) => {
+    const blockId = node.sourceLocation?.file.startsWith('opendoc:block:') ? node.sourceLocation.file.slice(14) : inherited;
+    fixed ||= node.nodeType === 'FixedHeader' || node.nodeType === 'FixedFooter';
+    if (node.nodeType === 'TextLine' && parent) lines.push({ node, blockId, fixed, beyond: Math.max(parent.x - node.x, node.x + node.width - (parent.x + parent.width)) });
+    node.children.forEach(child => visit(child, node, blockId, fixed));
+  };
+  layout.pages.forEach(page => page.elements.forEach(node => visit(node)));
+  return lines;
+}
+async function renderLayout(root: string) {
+  const rendered = await renderOnce(root, 'proof');
+  const layout: LayoutInfo = JSON.parse(await readFile(resolve(rendered.directory, 'layout.json'), 'utf8'));
+  return { ...rendered, layout, lines: textLines(layout) };
+}
+
+test('text slightly wider than its box wraps instead of running past it, in the body and in running furniture', async () => {
+  const f = await fixture();
+  try {
+    // Running furniture does not inherit the document's font, so it has its own natural width.
+    await writeFile(f.entry, withoutFurniture(document(`<F.Fixed position="footer"><F.Text>${sentence}</F.Text></F.Fixed><Paragraph id="measure">${sentence}</Paragraph>`, forme)));
+    const natural = await renderLayout(f.root);
+    assert.equal(natural.lines.length, 2);
+    const body = natural.lines.find(line => !line.fixed)!.node.width, furniture = natural.lines.find(line => line.fixed)!.node.width;
+    // The smaller deficits are within the shrink that Forme's optimal breaker assumes but does not draw.
+    const deficits = [2, 8, 14];
+    const paragraph = `Set out the proposed change in plain language. Explain what would be recorded, who would review an exception, and how the result would inform the next action. <Strong>Replace every placeholder before circulation.</Strong>`;
+    await writeFile(f.entry, withoutFurniture(document(
+      `<F.Fixed position="footer"><F.View style={{width:${furniture - 8}}}><F.Text>${sentence}</F.Text></F.View></F.Fixed>`
+      + deficits.map(deficit => `<View style={{width:${body - deficit}}}><Paragraph id="short-${deficit}">${sentence}</Paragraph></View>`).join('')
+      + `<View style={{width:${body - 8}}}><Paragraph id="widows" style={{minWidowLines:0,minOrphanLines:0}}>${sentence}</Paragraph><F.Text>${sentence}</F.Text></View>`
+      + [300, 330, 360, 390, 420].map(width => `<View style={{width:${width}}}><Paragraph id="flow-${width}">${paragraph}</Paragraph></View>`).join(''), forme)));
+    const wrapped = await renderLayout(f.root);
+    const beyond = wrapped.lines.filter(line => line.beyond > 0.75).map(line => `${line.blockId ?? (line.fixed ? 'furniture' : 'text')}: ${line.node.textContent} (+${line.beyond.toFixed(2)} pt)`);
+    assert.deepEqual(beyond, []);
+    for (const id of [...deficits.map(deficit => `short-${deficit}`), 'widows']) assert.equal(wrapped.lines.filter(line => line.blockId === id).length, 2, id);
+    assert.equal(wrapped.lines.filter(line => line.fixed).length, 2);
+    assert.equal(wrapped.artifact.issues?.some(issue => issue.code === 'line-overflow'), false);
+  } finally { await f.cleanup(); }
+});
+
+test('a line drawn beyond its text box is reported with its block and geometry; page number placeholders are not', async () => {
+  const f = await fixture();
+  try {
+    await writeFile(f.entry, document(`<Paragraph id="measure">${sentence}</Paragraph>`));
+    const natural = (await renderLayout(f.root)).lines.find(line => line.blockId === 'measure')!.node.width;
+    // An explicit choice of the optimal breaker still wins, and still draws this line at its full width.
+    await writeFile(f.entry, document(`<View style={{width:${natural - 8}}}><Paragraph id="optimal" style={{lineBreaking:'optimal'}}>${sentence}</Paragraph></View><Paragraph id="ordinary">${sentence}</Paragraph>`));
+    const { artifact, layout, lines } = await renderLayout(f.root);
+    const reported = artifact.issues!.filter(issue => issue.code === 'line-overflow');
+    assert.equal(reported.length, 1, 'only the optimal paragraph overruns');
+    const [issue] = reported;
+    assert.equal(issue.severity, 'warning');
+    assert.equal(issue.blockId, 'optimal');
+    assert.equal(issue.page, 1);
+    assert.equal(issue.source?.file, 'documents/proof/index.tsx');
+    assert.match(issue.message, /extends 8\.0 pt beyond its [\d.]+ pt text box on page 1/);
+    assert.ok(issue.bounds && issue.parentBounds && issue.bounds.x + issue.bounds.width > issue.parentBounds.x + issue.parentBounds.width + 7);
+    // Model an overrun on the leading edge, as centred and right-aligned lines have, and a wide page number.
+    const ordinary = lines.find(line => line.blockId === 'ordinary')!.node, number = lines.find(line => line.fixed && /[\u0002\u0003]/.test(line.node.textContent!))!.node;
+    ordinary.x -= 5;
+    number.width += 40;
+    number.x -= 40;
+    const issues = inspectLayout(layout, artifact.blocks).issues.filter(issue => issue.code === 'line-overflow');
+    assert.deepEqual(issues.map(issue => issue.blockId), ['optimal', 'ordinary']);
+    assert.match(issues[1].message, /extends 5\.0 pt beyond/);
   } finally { await f.cleanup(); }
 });
 

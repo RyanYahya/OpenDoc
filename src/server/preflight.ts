@@ -40,6 +40,8 @@ export function assertSlideLayout(layout: LayoutInfo, slides: SlideInfo[], block
 }
 
 const tolerance = 0.75;
+// The engine lays out {{pageNumber}} and {{totalPages}} as these characters, at a nominal width.
+const pagePlaceholder = /[\u0002\u0003]/;
 const visualKinds = new Set(['Image', 'Svg', 'QrCode', 'Barcode', 'Canvas', 'BarChart', 'LineChart', 'PieChart', 'AreaChart', 'DotPlot']);
 type Mark = { node: ElementInfo; parent?: ElementInfo; blockId?: string; heading?: ElementInfo; fixed: boolean };
 function overlaps(a: ElementInfo, b: ElementInfo) {
@@ -106,6 +108,14 @@ export function inspectLayout(layout: LayoutInfo, blocks: Record<string, BlockIn
         if (clip) {
           add({ code: 'clipped-content', severity: 'error', page: number, blockId, clippingBounds: boundsOf(clip),
             message: `Content is clipped by a fixed container on page ${number}. Remove the clipping or give it enough space.` }, node, parent);
+        }
+        // Optimal line breaking draws a line it expected to shrink at its natural width. Horizontal
+        // padding does not inset lines, so the text box is the parent's own box.
+        const beyond = node.nodeType === 'TextLine' && parent && !pagePlaceholder.test(node.textContent!)
+          ? Math.max(parent.x - node.x, node.x + node.width - (parent.x + parent.width)) : 0;
+        if (beyond > tolerance) {
+          add({ code: 'line-overflow', severity: 'warning', page: number, blockId,
+            message: `A line of text extends ${beyond.toFixed(1)} pt beyond its ${parent!.width.toFixed(1)} pt text box on page ${number}. Remove lineBreaking: 'optimal' from this text and its ancestors so the line wraps, or widen the container.` }, node, parent);
         }
       }
       const nextClips = node.style.overflow === 'Hidden' ? [...clips, node] : clips;

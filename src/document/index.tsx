@@ -43,6 +43,9 @@ type Globals = typeof globalThis & { __formeSourceMap?: WeakMap<object, SourceLo
 const globals = globalThis as Globals;
 const blockKinds = new Map<unknown, string>();
 function block<T>(fn: T, kind: string): T { blockKinds.set(fn, kind); return fn; }
+// Forme's optimal breaker accepts lines that fit only once their spaces shrink, then draws
+// unjustified text unshrunk, past its box. Greedy lines always fit; an explicit style still wins.
+const lineBreaking = 'greedy' as const;
 const validId = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
 function checkId(id: unknown, description: string): asserts id is string {
   if (typeof id !== 'string' || !validId.test(id)) throw new Error(`${description} needs a stable id (letters, numbers, dots, hyphens, underscores).`);
@@ -208,7 +211,9 @@ export function prepareDocument(input: ReactNode) {
       } finally { runtime.currentBlock = previousBlock; runtime.currentSlide = previousSlide; }
     }
     if (el.type === React.Fragment) return visit(el.props.children, id, source, resolving);
-    const cloned = createElement(el.type, { ...el.props, key: el.key }, visit(el.props.children, id, source, resolving));
+    // Running furniture does not inherit document styles, so it repeats the line breaking default.
+    const props = el.type === F.Fixed ? { ...el.props, style: { lineBreaking, ...el.props.style } } : el.props;
+    const cloned = createElement(el.type, { ...props, key: el.key }, visit(el.props.children, id, source, resolving));
     const location = id ? { file: `opendoc:block:${id}`, line: 1, column: 1 } : map.get(el);
     if (location) map.set(cloned, location);
     textCapture.remember(cloned, frames(el, ownSource));
@@ -380,7 +385,7 @@ export function Document({ title, author, theme = neutral, references = {}, cita
   }
   collectFonts(theme.design);
   for (const family of families) if (!registered.has(family)) throw new Error(`Theme ${theme.id}: register local font family ${family} in fonts.`);
-  return <F.Document title={title} author={author} lang={language} tagged fonts={fonts} style={{ fontFamily: withFontFallbacks(theme, theme.body), fontSize: theme.fontSize, color: theme.ink, lineHeight: theme.lineHeight, ...(textDirection ? { direction: textDirection } : {}) }}>{children}</F.Document>;
+  return <F.Document title={title} author={author} lang={language} tagged fonts={fonts} style={{ fontFamily: withFontFallbacks(theme, theme.body), fontSize: theme.fontSize, color: theme.ink, lineHeight: theme.lineHeight, lineBreaking, ...(textDirection ? { direction: textDirection } : {}) }}>{children}</F.Document>;
 }
 
 /** Semantic families for theme components, with the theme's fallbacks. Read inside the component's render function. */
