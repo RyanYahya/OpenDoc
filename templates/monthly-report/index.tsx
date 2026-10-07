@@ -68,7 +68,7 @@ export const monthlyReportTemplate = (theme: DocTheme) => defineTemplate<Monthly
           metric.note === undefined
             ? <TextSlot slot={`${recordBlock('metric', metric.id)}-note`} reason="No context is given for this measure. Ask your agent to add a note in data.json, or comment instead.">—</TextSlot>
             : <TextSlot slot={`${recordBlock('metric', metric.id)}-note`} field={['metrics', { id: metric.id }, 'note']}>{metric.note}</TextSlot>,
-        ])} caption="Performance at a glance" />}
+        ])} caption="Performance at a glance" keepTogether />}
       {!!data.highlights.length && <Block id="highlights">
         {data.highlights.map((item, index) => <Narrative key={item.id} id={recordBlock('highlight', item.id)} sectionHeading={index === 0 && <Heading id="highlights-heading"><TextSlot slot="children" reason={templateLabel}>What changed</TextSlot></Heading>} title={<TextSlot slot="title" field={['highlights', { id: item.id }, 'title']}>{item.title}</TextSlot>} body={item.body} field={['highlights', { id: item.id }, 'body']} />)}
       </Block>}
