@@ -10,7 +10,7 @@ import { inspectLayout } from '../src/server/preflight';
 import { inspectElements } from '../src/server/layout-inspection';
 
 function document(content: string, extra = '') {
-  return `import {Document,Pages,Heading,Paragraph,Block,View,PageBreak,Callout,Strong} from '../../src/document';
+  return `import {Document,Pages,Heading,Paragraph,Block,View,PageBreak,Callout,Strong,DataTable} from '../../src/document';
 export const meta={title:'Layout proof',description:'Synthetic layout fixture',kind:'report',theme:'neutral'};
 ${extra}
 export default function Proof(){return <Document title="Layout proof"><Pages title="Layout proof">${content}</Pages></Document>}`;
@@ -189,6 +189,73 @@ test('a line drawn beyond its text box is reported with its block and geometry; 
     const issues = inspectLayout(layout, artifact.blocks).issues.filter(issue => issue.code === 'line-overflow');
     assert.deepEqual(issues.map(issue => issue.blockId), ['optimal', 'ordinary']);
     assert.match(issues[1].message, /extends 5\.0 pt beyond/);
+  } finally { await f.cleanup(); }
+});
+
+function table(rows: number, props = '') {
+  const ids = Array.from({ length: rows }, (_, i) => `stage-${i + 1}`);
+  return `<DataTable id="stages" columns={[{label:'Stage',width:3},{label:'Hours'}]} rows={[${ids.map((id, i) => `["${id}",${i + 1}]`).join(',')}]} rowIds={${JSON.stringify(ids)}} ${props}/>`;
+}
+/** Each page's fragment of the table, with its header and trailing rows included. */
+function tableFragments(layout: LayoutInfo) {
+  const fragments: { page: number; node: ElementInfo; rows: ElementInfo[] }[] = [];
+  const visit = (node: ElementInfo, page: number) => node.nodeType === 'Table' && node.sourceLocation?.file === 'opendoc:block:stages'
+    ? fragments.push({ page, node, rows: node.children.filter(child => child.nodeType === 'TableRow') })
+    : node.children.forEach(child => visit(child, page));
+  layout.pages.forEach((page, i) => page.elements.forEach(node => visit(node, i + 1)));
+  return fragments;
+}
+/** Render the table below a spacer sized so that `fit` of its body rows fit on the first page, measured from a render at the top. */
+async function tableAfterSpacer(f: Awaited<ReturnType<typeof fixture>>, rows: number, fit: number, props = '', header = 1) {
+  await writeFile(f.entry, withoutFurniture(document(table(rows, props))));
+  const { layout } = await renderLayout(f.root);
+  const [{ node, rows: laid }] = tableFragments(layout), page = layout.pages[0];
+  const above = node.y - page.contentY + laid.slice(0, header).reduce((sum, row) => sum + row.height, 0);
+  const spacer = page.contentHeight - above - (fit + 0.5) * laid[header].height;
+  await writeFile(f.entry, withoutFurniture(document(`<View style={{height:${spacer}}}/>${table(rows, props)}`)));
+  const rendered = await renderLayout(f.root);
+  return { ...rendered, fragments: tableFragments(rendered.layout), split: rendered.artifact.issues!.filter(issue => issue.code === 'split-table') };
+}
+
+test('a short table moves whole to the next page instead of leaving one row behind, and a forced split is reported', async () => {
+  const f = await fixture();
+  try {
+    const caption = 'caption="Stage hours" sourceNote="Illustrative hours."';
+    const kept = await tableAfterSpacer(f, 3, 2, caption, 2);
+    assert.deepEqual(kept.fragments.map(({ page, rows }) => ({ page, rows: rows.length })), [{ page: 2, rows: 6 }]);
+    assert.deepEqual(kept.split, []);
+    assert.deepEqual(kept.artifact.blocks.stages.tableRows, { header: 2, body: 3, trailing: 1 });
+
+    const forced = await tableAfterSpacer(f, 3, 2, `keepTogether={false} ${caption}`, 2);
+    assert.deepEqual(forced.fragments.map(({ page, rows }) => ({ page, rows: rows.length })), [{ page: 1, rows: 4 }, { page: 2, rows: 4 }]);
+    assert.equal(forced.split.length, 1);
+    const [issue] = forced.split;
+    assert.equal(issue.severity, 'warning');
+    assert.equal(issue.blockId, 'stages');
+    assert.equal(issue.page, 2);
+    assert.equal(issue.source?.file, 'documents/proof/index.tsx');
+    assert.match(issue.message, /splits its rows 2 \+ 1 across pages 1, 2, leaving one row on page 2/);
+    assert.deepEqual(issue.bounds, { x: forced.fragments[1].node.x, y: forced.fragments[1].node.y, width: forced.fragments[1].node.width, height: forced.fragments[1].node.height });
+
+    const leading = await tableAfterSpacer(f, 3, 1, `keepTogether={false} ${caption}`, 2);
+    assert.match(leading.split[0]?.message ?? '', /splits its rows 1 \+ 2 .* leaving one row on page 1/);
+    const note = await tableAfterSpacer(f, 3, 3, `keepTogether={false} ${caption}`, 2);
+    assert.match(note.split[0]?.message ?? '', /splits its rows 3 \+ 0 .* leaving only its source note on page 2/);
+  } finally { await f.cleanup(); }
+});
+
+test('a longer table splits by default and is reported only when one side keeps fewer than two rows', async () => {
+  const f = await fixture();
+  try {
+    const even = await tableAfterSpacer(f, 6, 3);
+    assert.deepEqual(even.fragments.map(({ page, rows }) => ({ page, rows: rows.length })), [{ page: 1, rows: 4 }, { page: 2, rows: 4 }]);
+    assert.deepEqual(even.split, []);
+    const orphan = await tableAfterSpacer(f, 6, 5);
+    assert.equal(orphan.fragments.length, 2);
+    assert.match(orphan.split[0]?.message ?? '', /splits its rows 5 \+ 1 .* leaving one row on page 2/);
+    const kept = await tableAfterSpacer(f, 6, 5, 'keepTogether');
+    assert.deepEqual(kept.fragments.map(({ page, rows }) => ({ page, rows: rows.length })), [{ page: 2, rows: 7 }]);
+    assert.deepEqual(kept.split, []);
   } finally { await f.cleanup(); }
 });
 
