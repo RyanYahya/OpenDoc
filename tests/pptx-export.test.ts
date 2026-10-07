@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
-import { readFile, writeFile, readdir } from 'node:fs/promises';
+import { readFile, writeFile, readdir, mkdir, copyFile } from 'node:fs/promises';
 import type { ElementInfo } from '@formepdf/core';
 import type { FormeNode } from '@formepdf/react';
 import { resolve } from 'node:path';
@@ -16,6 +16,7 @@ import { exportDocuments, parseExportArgs } from '../src/server/export-batch';
 import type { SavedExport } from '../src/shared/export';
 import type { DocumentState } from '../src/shared/types';
 import { reviewTarget } from '../src/server/review';
+import { recordMedia } from '../src/server/media-cli';
 
 async function presentationFixture() {
   const f = await fixture();
@@ -106,6 +107,46 @@ test('PowerPoint uses the exact captured preview, native rich text, images, and 
     const shadow = structuredClone(capture);
     shadow.doc.children[0].style.transform = [{ type: 'translate', x: 10, y: 0 }];
     await assert.rejects(presentationBytes(shadow), /transforms/);
+  } finally { await f.cleanup(); }
+});
+
+test('solid slide colors export as native backgrounds while image and media backgrounds stay pictures', async () => {
+  const f = await presentationFixture();
+  try {
+    const media = resolve(f.root, 'documents/proof/media/artwork');
+    await mkdir(media, { recursive: true });
+    await copyFile(resolve(f.root, 'assets/brand/wordmark.png'), resolve(media, 'image.png'));
+    await writeFile(resolve(media, 'meta.json'), JSON.stringify({ title: 'Wordmark', description: 'Synthetic background test, not artwork.', file: 'image.png', kind: 'image', data: 'recipe.json' }));
+    await writeFile(resolve(media, 'recipe.json'), '{}');
+    await recordMedia(f.root, 'proof', 'artwork');
+    await writeFile(f.entry, `import {Presentation,Slide,Paragraph} from '../../src/document';
+import {neutral} from '../../themes';
+export const meta={title:'Backgrounds',description:'Synthetic background test',theme:'neutral'};
+export default function Proof(){return <Presentation title={meta.title} theme={{...neutral,paper:'#ffcc00'}}>
+<Slide id="solid"><Paragraph id="a">Solid</Paragraph></Slide>
+<Slide id="faded" backgroundOpacity={0.5}><Paragraph id="b">Faded</Paragraph></Slide>
+<Slide id="image" backgroundImage="./media/artwork/image.png" backgroundOpacity={0.4}><Paragraph id="c">Image</Paragraph></Slide>
+<Slide id="media" backgroundMedia="artwork" backgroundSize="contain"><Paragraph id="d">Media</Paragraph></Slide>
+</Presentation>}`);
+    const render = await renderOnce(f.root, 'proof');
+    assert.deepEqual(render.artifact.slides?.map(slide => slide.background), [{ r: 1, g: 0.8, b: 0, a: 1 }, { r: 1, g: 0.8, b: 0, a: 1 }, undefined, undefined]);
+    const parts = await readZip(await readPresentationBytes(render.directory, render.artifact.hash));
+    const background = (slide: number) => xml(parts, `ppt/slides/slide${slide}.xml`).match(/<p:bg>.*?<\/p:bg>/s)?.[0];
+    const pictures = (slide: number) => [...xml(parts, `ppt/slides/slide${slide}.xml`).matchAll(/<p:pic>.*?<\/p:pic>/gs)].map(match => match[0]);
+    const images = (slide: number) => [...xml(parts, `ppt/slides/_rels/slide${slide}.xml.rels`).matchAll(/Target="\.\.\/media\/[^"]+"/g)];
+    assert.equal(background(1), '<p:bg><p:bgPr><a:solidFill><a:srgbClr val="FFCC00"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>');
+    assert.match(background(2)!, /<a:solidFill><a:srgbClr val="FFCC00"><a:alpha val="50000"\/><\/a:srgbClr><\/a:solidFill>/, 'backgroundOpacity fades the native fill as it does the PDF layer');
+    for (const slide of [1, 2]) {
+      assert.deepEqual(pictures(slide), [], `slide ${slide}: no selectable background picture`);
+      assert.deepEqual(images(slide), [], `slide ${slide}: no background media part`);
+    }
+    for (const [slide, name] of [[3, 'image'], [4, 'media']] as const) {
+      assert.equal(background(slide), undefined, `slide ${slide}: the picture is not replaced by the paper color`);
+      assert.equal(pictures(slide).length, 1);
+      assert.match(pictures(slide)[0], new RegExp(`name="${name} background image"`));
+      assert.equal(images(slide).length, 1);
+    }
+    assert.match(pictures(3)[0], /<a:alphaModFix amt="40000"\/>/, 'an image background keeps its opacity');
   } finally { await f.cleanup(); }
 });
 

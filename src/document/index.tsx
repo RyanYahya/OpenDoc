@@ -10,7 +10,7 @@ import { assetFile, assetRevisionPath, readAssetRevision } from '../assets/files
 import { neutral, themePage, themeType, validateTheme, withFontFallbacks, type DocTheme, type TextDirection, type ThemeTypeRole } from '../themes/index';
 import { fontFamilies, languageTag } from '../themes/types';
 import type { BlockInfo, SourceLocation, DocumentFormat, SlideInfo, TableRows } from '../shared/types';
-import { Page } from './page';
+import { Page, pageColor } from './page';
 import { Decoration, TextCapture, TextSlot, type TextSlotProps } from './text-targets';
 export { TextSlot, Decoration, type TextSlotProps, type TextFieldPath, type TextRecordPath } from './text-targets';
 
@@ -312,7 +312,9 @@ export type SlideProps = Pick<import('./page').PageProps, 'backgroundMedia' | 'b
 export const Slide = block(function Slide({ id, children, padding = 40, style, ...background }: SlideProps) {
   if (runtime.format !== 'presentation') throw new Error('Slide must be inside Presentation.');
   if (!Number.isFinite(padding) || padding < 0 || padding >= SLIDE_SIZE.height / 2) throw new Error(`Slide ${id}: padding must be between 0 and 270 points.`);
-  runtime.slides.push({ id });
+  // Page paints backgroundColor only when no image or media fills the slide.
+  const solid = background.backgroundImage === undefined && background.backgroundMedia === undefined;
+  runtime.slides.push(solid ? { id, background: pageColor(runtime.theme.paper) } : { id });
   const page = Page({ ...background, size: SLIDE_SIZE, margin: 0, style: { backgroundColor: runtime.theme.paper },
     children: <F.View wrap={false} style={{ ...style, width: SLIDE_SIZE.width, height: SLIDE_SIZE.height, padding, flexShrink: 0, overflow: 'hidden' }}>{children}</F.View> });
   runtime.slidePages.add(page);

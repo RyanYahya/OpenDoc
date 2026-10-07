@@ -11,6 +11,10 @@
 - Short tables stay on one page. A `DataTable` of three rows or fewer now keeps together by default and moves to the next page whole when it cannot fit, instead of splitting and leaving one row under a repeated caption and header. `DataTable` accepts `keepTogether` to move a longer table whole or to let a short one split. Documents with a short table near a page bottom repaginate on their next render.
 - A `split-table` review warning reports a table split that leaves fewer than two rows, or only its source note, on a page, with its block, source, and bounds. Each table's block metadata records its header, body, and trailing row counts as `tableRows`.
 
+### Presentations
+
+- PowerPoint exports give each slide its theme paper color as a native slide background, including any `backgroundOpacity`, instead of a selectable full-slide picture. Slides with `backgroundImage` or `backgroundMedia` still export that artwork as a full-slide picture with its opacity.
+
 ## 0.6.0 — 2026-10-05
 
 ### Arabic and right-to-left text

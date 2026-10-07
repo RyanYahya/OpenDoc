@@ -5,7 +5,11 @@ import type { Language } from './language';
 /** Optional descriptive label chosen by the author, not a document taxonomy. */
 export type DocumentKind = string;
 export type DocumentFormat = 'document' | 'presentation';
-export interface SlideInfo { id: string }
+export interface SlideInfo {
+  id: string;
+  /** The solid color painted behind the slide, channels 0–1; absent when an image fills it. */
+  background?: { r: number; g: number; b: number; a: number };
+}
 export interface DocumentMeta { title: string; description: string; kind?: DocumentKind; theme: string; author?: string }
 export interface SourceLocation { file: string; line: number; column: number }
 /** How many rows of a table repeat as its header on each page, carry its records, and follow them as a source note. */
