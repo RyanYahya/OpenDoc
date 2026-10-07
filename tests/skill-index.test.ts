@@ -46,6 +46,14 @@ test('root routing, skill workflow, and disclosed-reference links resolve after 
   }
 });
 
+test('the agent guide and README link every shipped skill', async () => {
+  const names = await readdir(skillsRoot);
+  for (const file of ['AGENTS.md', 'README.md']) {
+    const content = await readFile(resolve(root, file), 'utf8');
+    for (const name of names) assert.ok(content.includes(`(.agents/skills/${name}/SKILL.md)`), `${file} must link ${name}`);
+  }
+});
+
 test('index descriptions preserve quoted text and fail clearly on missing metadata', () => {
   const path = '/.agents/skills/opendoc-example/agents/openai.yaml';
   assert.equal(skillIndex({ [path]: 'interface:\n  short_description: "Use \\"quoted\\" text."\n' })[0].description, 'Use "quoted" text.');
