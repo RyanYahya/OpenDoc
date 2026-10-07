@@ -1,6 +1,6 @@
 # Headless initialization
 
-OpenDoc Headless initializes a complete workspace without a browser or service, with the full starter library and the ten agent skills as stubs that forward to the installed package.
+OpenDoc Headless initializes a complete workspace without a browser or service, with the full starter library and every shipped agent skill as a stub that forward to the installed package.
 
 ## Sub-features
 
@@ -21,7 +21,7 @@ Preconditions:
 - An empty scratch folder; Node 24 and npm on `PATH`.
 
 - **Init.** `npx --yes @ryanyahya/opendoc-headless init <folder> --json` prints `{ workspace, version, edition: "headless" }`.
-- **Skills.** `ls <folder>/.agents/skills` lists ten `opendoc-*` folders; each `SKILL.md` links `../../../node_modules/opendoc/.agents/skills/<name>/SKILL.md`, and `AGENTS.md` links all ten.
+- **Skills.** `ls <folder>/.agents/skills` lists the same `opendoc-*` folders as the package's `.agents/skills`; each `SKILL.md` links `../../../node_modules/opendoc/.agents/skills/<name>/SKILL.md`, and `AGENTS.md` links every one.
 - **Refusal.** Running init again on the same folder fails and leaves it unchanged.
 - **Produce.** `npx opendoc check --json`, `npx opendoc review welcome --json`, and `npx opendoc export welcome --json` succeed; `npx opendoc start` is not a Headless command.
 - **Proof.** Save the init JSON, the skill listing, and the export result.
