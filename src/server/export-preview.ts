@@ -48,10 +48,11 @@ export async function exportPreview(root: string, id: string, session: Session, 
     await new Promise(accept => setTimeout(accept, Math.min(120, Math.max(1, deadline - Date.now()))));
     const remaining = deadline - Date.now();
     if (remaining <= 0) break;
-    try { state = (await readStates(session.connection, Math.min(options.requestTimeoutMs, remaining))).find(item => item.id === id); }
+    // A poll shorter than the request budget exists only to stop at the readiness deadline.
+    const pollTimeout = Math.min(options.requestTimeoutMs, remaining);
+    try { state = (await readStates(session.connection, pollTimeout)).find(item => item.id === id); }
     catch (error) {
-      // A poll cut short by the readiness deadline leaves the last known rendering state authoritative.
-      if ((error as Error).name === 'TimeoutError' && Date.now() >= deadline) break;
+      if (pollTimeout < options.requestTimeoutMs && (error as { name?: string }).name === 'TimeoutError') break;
       throw error;
     }
   }
