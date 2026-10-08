@@ -15,6 +15,10 @@
 
 - PowerPoint exports give each slide its theme paper color as a native slide background, including any `backgroundOpacity`, instead of a selectable full-slide picture. Slides with `backgroundImage` or `backgroundMedia` still export that artwork as a full-slide picture with its opacity.
 
+### Export
+
+- Exporting through a running OpenDoc session reports that a document is still rendering when its preview is not ready by the deadline. Previously the last status check could time out at the deadline and report only "The operation was aborted due to timeout".
+
 ## 0.6.0 — 2026-10-05
 
 ### Arabic and right-to-left text
