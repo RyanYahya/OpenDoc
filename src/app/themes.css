@@ -56,6 +56,14 @@
 .theme-color-label strong { font-size: var(--caption-size); font-weight: 500; color: var(--ink); }
 .theme-color-label code { font-family: ui-monospace, monospace; font-size: var(--tag-size); color: var(--muted); }
 .theme-palette p { margin-top: 4px; font-size: var(--caption-size); line-height: 1.5; }
+.theme-palette-band, .theme-palette-separated { margin-top: 20px; }
+.theme-palette-band { padding: 12px 14px 14px; border-radius: 3px; }
+.theme-palette-band h3 { margin: 0 0 12px; color: var(--palette-on-dark-muted); font-size: var(--caption-size); line-height: var(--caption-leading); font-weight: 500; }
+.theme-options .theme-palette-band ul { color: var(--palette-on-dark); }
+.theme-palette-band .theme-color-label strong { color: var(--palette-on-dark); }
+.theme-palette-band .theme-color-label code,
+.theme-palette-band .theme-palette p { color: var(--palette-on-dark-muted); }
+.theme-palette-band .theme-color-swatch { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--palette-on-dark) 45%, transparent); }
 .theme-used-by { padding-top: 22px; border-top: 1px solid var(--line); }
 .theme-used-by a { display: flex; align-items: center; gap: 9px; min-height: 40px; font-size: 13px; line-height: 1.5; }
 .theme-used-by a > span { flex: 1; min-width: 0; }

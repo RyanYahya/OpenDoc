@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { ThemePreview, ThemeSummary } from '../shared/themes';
 import { textLang } from '../shared/language';
 import { emptyThemeFolders, folderCounts, inFolder, themeFolder as folderOf, type ThemeFoldersManifest } from '../shared/theme-folders';
@@ -107,17 +107,39 @@ function ThemePromptDialog({ open, onOpenChange, theme }: { open: boolean; onOpe
   </Dialog.Portal></Dialog.Root>;
 }
 
+type PaletteColor = NonNullable<ThemeSummary['palette']>[number];
+const inverseColor = (color: PaletteColor) => /^inverse\b/i.test(color.name);
+const paletteNamed = (colors: PaletteColor[], name: string) => colors.find(color => color.name.toLowerCase() === name.toLowerCase());
+function PaletteColors({ colors }: { colors: PaletteColor[] }) {
+  return <ul className="theme-palette">{colors.map(color => <li key={`${color.name}-${color.value}`}>
+    <span className="theme-color-swatch" style={{ backgroundColor: color.value }} aria-hidden="true" />
+    <div><div className="theme-color-label"><strong>{color.name}</strong><code>{color.value}</code></div><p>{color.role}</p></div>
+  </li>)}</ul>;
+}
+
 function ThemePalette({ theme, compact = false }: { theme: ThemeSummary; compact?: boolean }) {
   if (!theme.palette?.length) return null;
   if (compact) return <div className="theme-palette-strip" role="img" aria-label={`Palette: ${theme.palette.map(color => `${color.name} ${color.value}`).join(', ')}`}>
     {theme.palette.map(color => <span key={`${color.name}-${color.value}`} style={{ backgroundColor: color.value }} />)}
   </div>;
-  return <section className="theme-palette-section"><h2>Palette</h2><ul className="theme-palette">
-    {theme.palette.map(color => <li key={`${color.name}-${color.value}`}>
-      <span className="theme-color-swatch" style={{ backgroundColor: color.value }} aria-hidden="true" />
-      <div><div className="theme-color-label"><strong>{color.name}</strong><code>{color.value}</code></div><p>{color.role}</p></div>
-    </li>)}
-  </ul></section>;
+  const inverse = theme.palette.filter(inverseColor);
+  const base = theme.palette.filter(color => !inverseColor(color));
+  const surface = paletteNamed(theme.palette, 'Dark') ?? paletteNamed(theme.palette, 'Ink');
+  const onDark = paletteNamed(inverse, 'Inverse text') ?? paletteNamed(inverse, 'Inverse');
+  const onDarkMuted = paletteNamed(inverse, 'Inverse notes') ?? paletteNamed(inverse, 'Inverse muted') ?? onDark;
+  const band = surface && onDark ? {
+    backgroundColor: surface.value,
+    '--palette-on-dark': onDark.value,
+    '--palette-on-dark-muted': onDarkMuted?.value ?? onDark.value,
+  } as CSSProperties : undefined;
+  return <section className="theme-palette-section"><h2>Palette</h2>
+    {base.length > 0 && <PaletteColors colors={base} />}
+    {inverse.length > 0 && band && <div className="theme-palette-band" style={band}>
+      <h3>On dark</h3>
+      <PaletteColors colors={inverse} />
+    </div>}
+    {inverse.length > 0 && !band && <div className="theme-palette-separated"><PaletteColors colors={inverse} /></div>}
+  </section>;
 }
 
 type GalleryOrganization = { manifest: ThemeFoldersManifest; tags: Record<string, string[]>; folders: boolean; tagging: boolean; showFolder: boolean; tag: string; disabled: boolean; onAction: (action: ThemeFolderAction) => void };
