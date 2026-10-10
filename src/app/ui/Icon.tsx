@@ -56,11 +56,6 @@ export function Icon({ name, size = 18 }: { name: string; size?: number }) {
         <path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5" />
       </>
     ),
-    select: (
-      <>
-        <path d="M5 3v16l4-5 4 7 3-2-4-6 6-1z" />
-      </>
-    ),
     left: <path d="m14 5-7 7 7 7" />,
     right: <path d="m10 5 7 7-7 7" />,
     close: <path d="m6 6 12 12M6 18 18 6" />,

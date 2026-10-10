@@ -1,7 +1,4 @@
 /* Workspace tags: the type label and status badge on cards, and the Details editor. Filters live in filter-bar.css. */
-:root { --status-review: var(--accent); --status-final: #1c7c37; }
-:root[data-appearance="dark"] { --status-final: #7ccf91; }
-
 .item-tags { display: block; min-width: 0; color: var(--muted); font-size: 12px; line-height: 1.5; font-weight: 400; overflow-wrap: anywhere; }
 
 /* Wording carries the status; the dot only reinforces it. */

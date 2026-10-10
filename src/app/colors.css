@@ -34,6 +34,8 @@
   --inverse-surface: #292929;
   --inverse-ink: #ffffff;
   --status-ink: #666666;
+  --status-review: var(--accent);
+  --status-final: #1c7c37;
   --notice-surface: #eeeeee;
   --notice-ink: #424242;
   --destructive: #b42318;
@@ -109,6 +111,7 @@
   --inverse-surface: #e2e2e2;
   --inverse-ink: #242424;
   --status-ink: #aaaaaa;
+  --status-final: #7ccf91;
   --notice-surface: #252525;
   --notice-ink: #dddddd;
   --destructive: #ff9285;

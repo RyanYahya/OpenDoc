@@ -882,8 +882,6 @@ a {
   font-weight: 400;
   resize: vertical;
 }
-.agent-prompt-dialog .agent-prompt-context { margin-top: 12px; }
-.agent-prompt-dialog .copy-prompt { margin-top: 20px; }
 .help-dialog .field-hint,
 .help-dialog .field-error {
   margin: 0;
