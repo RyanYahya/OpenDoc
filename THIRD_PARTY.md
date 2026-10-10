@@ -48,8 +48,6 @@ The browser interface draws Arabic letters with WOFF2 subsets of the same four f
 
 Geist is distributed under SIL OFL 1.1. Its copyright and license are retained in `assets/ui-fonts/geist/OFL.txt` and `assets/fonts/geist/OFL.txt`. The interface uses variable WOFF2 files from `@fontsource-variable/geist` 5.3.0, with package provenance and exact hashes in `assets/ui-fonts/geist/source.json`. The shared document asset contains static regular, medium, and bold faces, with hashes and a PDF specimen recorded in its immutable revision. Upstream: https://github.com/vercel/geist-font
 
-The retained Inter UI TTF files carry their own OFL notice, original URLs, and hashes in `assets/fonts/InterUI-LICENSE.txt` and `assets/fonts/InterUI-source.json`.
-
 ## OpenDoc examples and branding
 
 The welcome document and presentation contain OpenDoc demo artwork and synthetic chart data. Their media metadata identifies the AI-generated paper illustration and the chart's data and recipe. They contain no customer records. OpenDoc-authored source and example assets follow the repository's MIT license; bundled font software retains its separate OFL license. The OpenDoc wordmark is project artwork.
