@@ -33,6 +33,9 @@ export const theme: DocTheme = {
     { name: 'Ink', value: colors.ink, role: 'Primary text and inverse surface' },
     { name: 'Muted', value: colors.muted, role: 'Secondary text' },
     { name: 'Rule', value: colors.rule, role: 'Quiet structural boundaries' },
+    { name: 'Inverse text', value: colors.inverse, role: 'Text on the ink surface' },
+    { name: 'Inverse notes', value: colors.inverseMuted, role: 'Secondary text on dark' },
+    { name: 'Inverse rule', value: colors.inverseRule, role: 'Boundaries on dark' },
   ],
   geometry: ['A4 portrait; 48 pt margins; six columns with 12 pt gutters.', 'Unequal rail: 2 : 1 : 3 : 1.5 : 2 : 1; 12 pt high.', 'Square 8 pt signals and 132 pt outlined or solid badges.', 'Four-column reading field with a two-column supporting field.', '4 pt baseline; square corners; no gradients or shadows.'],
   design: {
