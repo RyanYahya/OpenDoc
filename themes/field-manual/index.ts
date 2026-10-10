@@ -31,6 +31,7 @@ export const theme: DocTheme = {
     { name: 'Dark', value: colors.dark, role: 'Directive and revision surface' },
     { name: 'Inverse', value: colors.inverse, role: 'Main text on dark' },
     { name: 'Inverse muted', value: colors.inverseMuted, role: 'Notes on dark' },
+    { name: 'Inverse rule', value: colors.inverseRule, role: 'Structure on dark' },
   ],
   geometry: ['A4 portrait; 44 pt margins; 4 pt baseline.', '6 pt vertical orange spine; 18 pt content inset.', '328 pt reading field plus structured annotation strip.', 'Source → Reason → Act modules; straight connectors; 4 pt top rules.', 'Square corners, 0.75 pt structural rules, mono codes and revision furniture.'],
   design: {

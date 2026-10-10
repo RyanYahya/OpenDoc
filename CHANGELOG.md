@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- The Themes gallery lists Civic Spectrum’s inverse text, inverse notes, and inverse rule, and Field Manual’s inverse rule. Those colors were already defined for dark surfaces in each theme.
+
 - Share editable themes and templates with `npx opendoc packs export`, inspect their contents and PDF previews without executing source, and install trusted packs into another workspace. Packs include required source and asset revisions, validate and render in staging, and never overwrite existing designs. Available in both editions through the new `opendoc-share` skill.
 
 ### Document review and authoring
