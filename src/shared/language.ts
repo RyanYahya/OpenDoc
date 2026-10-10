@@ -10,9 +10,6 @@ export const languages = [
 ] as const;
 export type Language = typeof languages[number]['id'];
 
-export function isLanguage(value: unknown): value is Language {
-  return languages.some(language => language.id === value);
-}
 export function languageLabel(language: Language) {
   return languages.find(item => item.id === language)!.label;
 }

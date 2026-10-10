@@ -127,7 +127,7 @@
 .history-diff { display: grid; gap: 6px; margin: 8px 0 0; }
 .history-diff div { display: grid; grid-template-columns: 2.6em minmax(0, 1fr); gap: 8px; }
 .history-diff dt { color: var(--muted); font-size: var(--caption-size); line-height: var(--body-leading); }
-.history-diff dd, .history-excerpt, .history-block-current p { margin: 0; font-size: var(--body-size); line-height: var(--body-leading); overflow-wrap: anywhere; white-space: pre-wrap; }
+.history-diff dd, .history-block-current p { margin: 0; font-size: var(--body-size); line-height: var(--body-leading); overflow-wrap: anywhere; white-space: pre-wrap; }
 /* Unmarked comparisons (rewrites) dim the earlier wording; marked ones keep it readable. */
 .history-diff:not(.marked) div:first-child:not(:only-child) dd { color: var(--muted); }
 .history-diff del, .history-diff ins { border-radius: 2px; padding-inline: 1px; text-decoration-thickness: 1.5px; text-decoration-skip-ink: none; }

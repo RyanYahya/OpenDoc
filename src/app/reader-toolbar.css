@@ -59,9 +59,7 @@
   pointer-events: none;
 }
 @media (forced-colors: active) { .reader-comments-count { forced-color-adjust: none; background: Highlight; color: HighlightText; box-shadow: none; } }
-.reader-toolbar .reader-actions .undo-edit { max-width: none; padding: 6px; }
 .reader-compact-controls { display: none; }
-.reader-mobile-action { display: none; }
 .reader-reading-popup .reader-page-controls { padding: 4px 4px 8px; }
 .reader-reading-popup .reader-navigation-option { width: 100%; justify-content: flex-start; border: 0; }
 .reader-reading-popup .reader-navigation-option:hover { background: var(--control-hover); }
@@ -89,10 +87,7 @@
   .reader-identity { gap: 2px; }
   .reader-toolbar .reader-back { min-width: 32px; min-height: 40px; }
   .reader-toolbar .reader-actions { gap: 2px; }
-  /* Phones keep the document title readable beside Comments. */
-  .reader-toolbar .reader-actions .undo-edit { display: none; }
   .reader-toolbar .reader-actions .export-button { min-width: var(--control-hit-size); min-height: 40px; padding: 8px; }
   .reader-toolbar .reader-actions .export-button > span { display: none; }
   .reader-toolbar .reader-actions .icon-button, .reader-toolbar .reader-reading-trigger { min-height: 40px; }
-  .reader-mobile-action { display: flex; }
 }
