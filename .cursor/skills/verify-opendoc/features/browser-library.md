@@ -21,7 +21,7 @@ The Normal edition's primary shell is the local browser workspace: the client HT
   - Themes → `#themes`
 - Projects: `#project/getting-started` (`aria-label="Getting started"`).
 - Open a card: `#document/welcome` or `#document/welcome-presentation`.
-- Footer status reads **Local workspace** when the socket is connected.
+- Footer status (`role="status"`) reads the package version when the socket is connected, and **Reconnecting…** when it is not.
 
 ## Driving it with HTTP and hash routes
 

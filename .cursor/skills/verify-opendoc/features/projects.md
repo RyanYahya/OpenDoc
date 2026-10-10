@@ -12,7 +12,7 @@ Every document belongs to a project. A project's default themes choose the theme
 
 ## How to get to it (user POV)
 
-- In the browser: the **+** beside Projects, **Project settings** (name, **Default theme for documents (PDF)**, **Default theme for presentations**), and **Move to project…** on a card.
+- In the browser: the **+** beside Projects, **Project settings** (name, **Default theme for documents**, **Default theme for presentations**), and **Move to project…** on a card.
 - Installed workspace, either edition: `npx opendoc projects list|create|update|assign|delete`.
 
 ## Driving it with the Headless CLI
