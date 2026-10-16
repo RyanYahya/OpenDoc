@@ -2,9 +2,15 @@
 
 ## Unreleased
 
-- The Themes gallery lists Civic Spectrum’s inverse text, inverse notes, and inverse rule, and Field Manual’s inverse rule, on that theme’s ink or dark surface. A 20px gap separates them from the base colors. Those colors were already defined for dark surfaces in each theme. Any other palette that names inverse colors and an Ink or Dark surface, including OpenDoc Neutral, uses the same band.
+## 0.6.1 — 2026-10-16
+
+### Share designs
 
 - Share editable themes and templates with `npx opendoc packs export`, inspect their contents and PDF previews without executing source, and install trusted packs into another workspace. Packs include required source and asset revisions, validate and render in staging, and never overwrite existing designs. Available in both editions through the new `opendoc-share` skill.
+
+### Themes
+
+- The Themes gallery lists Civic Spectrum’s inverse text, inverse notes, and inverse rule, and Field Manual’s inverse rule, on that theme’s ink or dark surface. A 20px gap separates them from the base colors. Those colors were already defined for dark surfaces in each theme. Any other palette that names inverse colors and an Ink or Dark surface, including OpenDoc Neutral, uses the same band.
 
 ### Document review and authoring
 
@@ -20,6 +26,18 @@
 ### Export
 
 - Exporting through a running OpenDoc session reports that a document is still rendering when its preview is not ready by the deadline. Previously the last status check could time out at the deadline and report only "The operation was aborted due to timeout".
+
+### Install or update
+
+Both npm editions use version `0.6.1`: `@ryanyahya/opendoc` and `@ryanyahya/opendoc-headless`.
+
+For a workspace created from 0.6.0, stop its browser service first, then run:
+
+```sh
+npx opendoc update
+```
+
+The default updater stays within the 0.6 line, so no explicit version is needed. Restart the normal edition with `npx opendoc start` afterward. Updates preserve authored content and local catalogs. Documents with a short table near a page bottom, or a paragraph that ran past its column, repaginate on their next render.
 
 ## 0.6.0 — 2026-10-05
 
