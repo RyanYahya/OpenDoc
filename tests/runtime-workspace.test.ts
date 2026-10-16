@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { realpathSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { documentDependencies, isRenderRuntimePath, renderRuntimeInputs } from '../src/server/dependencies';
-import { renderOnce } from '../src/server/render';
+import { documentEntry, renderOnce } from '../src/server/render';
 import { readTheme, ThemeCatalog } from '../src/server/themes';
 import { prepareFonts } from '../src/assets/imports';
 import { applicationRoot, runtimeSource } from '../src/runtime/paths';
@@ -52,6 +53,23 @@ test('installed runtime renders and drafts a workspace without source or depende
     assert.equal(await readFile(f.entry, 'utf8'), original, 'Draft bundling leaves the source untouched.');
     assert.ok(draft.artifact.textTargets!.every(target => target.runs.every(run => !run.source || run.source.file.startsWith('documents/proof/'))));
   } finally { await f.cleanup(); }
+});
+
+test('dependencies keep the workspace spelling and real runtime paths when the root is reached through a symlink', async () => {
+  const f = await fixture();
+  // A link deeper than its target: esbuild's `..` segments count from the real root, never from the link.
+  const links = await mkdtemp(resolve(tmpdir(), 'opendoc-link-'));
+  try {
+    const root = resolve(links, 'through/a/workspace');
+    await mkdir(resolve(root, '..'), { recursive: true });
+    await symlink(f.root, root, 'dir');
+    const dependencies = await documentDependencies(root, await documentEntry(root, 'proof'));
+    assert.equal(dependencies.readsFiles, false);
+    assert.ok(dependencies.files.has(resolve(root, 'documents/proof/index.tsx')), 'Workspace files keep the spelling watchers report.');
+    assert.ok(dependencies.files.has(runtimeSource('document/index.tsx')), 'Files outside the workspace keep their real paths.');
+    for (const spelling of [root, realpathSync(root)])
+      for (const file of ['package.json', 'assets/fonts/OpenDocSans-Regular.ttf']) assert.equal(isRenderRuntimePath(root, resolve(spelling, file)), true);
+  } finally { await rm(links, { recursive: true, force: true }); await f.cleanup(); }
 });
 
 test('workspace theme definitions resolve packaged APIs and packages while local imports stay fresh', async () => {
