@@ -1,5 +1,5 @@
 import { build } from 'esbuild';
-import { dirname, relative, resolve, sep } from 'node:path';
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { existsSync, realpathSync } from 'node:fs';
 import { bindingDependencies, readDocumentAssetsAt, readThemeAssetDefaults, resolveThemeAssets } from '../assets/files';
 import { authoringResolutionPlugin } from './source-overrides';
@@ -13,6 +13,15 @@ export const renderRuntimeInputs = [
   runtimeSource('rendering/resolve-sources.ts'),
   runtimeSource('runtime/paths.ts'), resolve(applicationRoot, 'package.json'), resolve(applicationRoot, 'tsconfig.workspace.json'),
 ];
+
+/** Move a path between two spellings of one folder, such as macOS /var and /private/var. */
+function respell(path: string, from: string, to: string) {
+  const rel = relative(from, path);
+  return rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel) ? path : resolve(to, rel);
+}
+function realRoot(root: string) {
+  try { return realpathSync(root); } catch { return root; }
+}
 
 /** Only the new family directories are managed; existing loose fonts remain conservative inputs. */
 export function isManagedAssetPath(root: string, path: string) {
@@ -58,10 +67,13 @@ export async function documentDependencies(root: string, entry: string): Promise
     platform: 'node', format: 'esm', jsx: 'automatic', logLevel: 'silent', plugins: [authoringResolutionPlugin()],
     outdir: resolve(root, '.opendoc/dependencies'),
   });
-  const inputs = Object.entries(result.metafile!.inputs);
+  // esbuild reports inputs relative to the real working directory. Workspace files keep root's
+  // spelling for watchers; files outside it, such as the installed runtime, keep their real paths.
+  const actualRoot = realpathSync(root);
+  const inputs = Object.entries(result.metafile!.inputs).map(([file, input]) => [resolve(actualRoot, file), input] as const);
   const managedRoots = ['media', 'assets'].map(folder => runtimeSource(folder)).filter(existsSync).map(folder => realpathSync(folder) + sep);
   const documentRuntime = realpathSync(runtimeSource('document/index.tsx'));
-  const files = new Set(inputs.map(([file]) => resolve(root, file)));
+  const files = new Set(inputs.map(([file]) => respell(file, actualRoot, root)));
   for (const file of ['package.json', 'package-lock.json', 'pnpm-lock.yaml', 'tsconfig.json']) files.add(resolve(root, file));
   for (const file of renderRuntimeInputs) files.add(file);
   for (const file of await managedInputs(root, entry)) files.add(file);
@@ -69,7 +81,7 @@ export async function documentDependencies(root: string, entry: string): Promise
     files,
     // Managed reads have exact dependency records. Arbitrary authored filesystem reads stay conservative.
     readsFiles: inputs.some(([file, input]) => {
-      const actual = realpathSync(resolve(root, file));
+      const actual = realpathSync(file);
       return actual !== documentRuntime && !managedRoots.some(folder => actual.startsWith(folder))
         && input.imports.some(item => /^(node:)?fs(?:\/promises)?$/.test(item.path));
     }),
@@ -82,10 +94,13 @@ export function includesDependency(dependencies: DocumentDependencies, path: str
 
 /** Worker inputs that are not necessarily imported by authored components. */
 export function isRenderRuntimePath(root: string, path: string) {
-  const absolute = resolve(root, path);
+  // Accept either spelling: workspace rules read root's spelling, while Node resolves the runtime to real paths.
+  const actualRoot = realRoot(root);
+  const absolute = respell(resolve(root, path), actualRoot, root);
+  const actual = respell(absolute, root, actualRoot);
   const rel = relative(root, absolute).split(sep).join('/');
-  return (rel.startsWith('assets/') && !isManagedAssetPath(root, path))
+  return (rel.startsWith('assets/') && !isManagedAssetPath(root, absolute))
     || /^(package\.json|package-lock\.json|pnpm-lock\.yaml|tsconfig\.json)$/.test(rel)
-    || renderRuntimeInputs.includes(absolute)
-    || absolute === resolve(applicationRoot, 'pnpm-lock.yaml');
+    || renderRuntimeInputs.includes(actual)
+    || actual === resolve(applicationRoot, 'pnpm-lock.yaml');
 }
