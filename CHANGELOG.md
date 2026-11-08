@@ -4,7 +4,7 @@
 
 ### Themes
 
-- The Themes gallery calls every secondary inverse color "Inverse muted". Light swatches such as Stock and Paper use that theme's ink at 15% for their edge, so they stay visible on the page.
+- The Themes gallery calls every secondary inverse color "Inverse muted". Light swatches such as Stock and Paper use that theme's ink at 15% for their edge. In dark mode, swatches within about 10% lightness of the page, including Ink, use the theme's light inverse color at 15%, and the On dark band has a 10% edge.
 
 ## 0.6.1 — 2026-10-16
 
