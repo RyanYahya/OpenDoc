@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Themes
+
+- The Themes gallery calls every secondary inverse color "Inverse muted". Light swatches such as Stock and Paper use that theme's ink at 15% for their edge, so they stay visible on the page.
+
 ## 0.6.1 — 2026-10-16
 
 ### Share designs

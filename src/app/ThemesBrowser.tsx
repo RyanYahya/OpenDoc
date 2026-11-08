@@ -21,6 +21,7 @@ import {
 import { tagText, type TagState, type TagTarget } from './Tags';
 import { FilterBar, useHashQuery, useSortPreference } from './FilterBar';
 import { compareNewest, compareText, filtering, hashWith, itemFacets, splitHash, matchesFilters, matchesSearch, noFilters, sortItems, type ItemFilterValue, type SortOption } from './libraryFilters';
+import { galleryPaletteName, lightPaletteChip } from './themePalette';
 import './themes.css';
 
 
@@ -112,14 +113,14 @@ const inverseColor = (color: PaletteColor) => /^inverse\b/i.test(color.name);
 const paletteNamed = (colors: PaletteColor[], name: string) => colors.find(color => color.name.toLowerCase() === name.toLowerCase());
 function PaletteColors({ colors }: { colors: PaletteColor[] }) {
   return <ul className="theme-palette">{colors.map(color => <li key={`${color.name}-${color.value}`}>
-    <span className="theme-color-swatch" style={{ backgroundColor: color.value }} aria-hidden="true" />
-    <div><div className="theme-color-label"><strong>{color.name}</strong><code>{color.value}</code></div><p>{color.role}</p></div>
+    <span className={`theme-color-swatch${lightPaletteChip(color.value) ? ' theme-color-swatch-light' : ''}`} style={{ backgroundColor: color.value }} aria-hidden="true" />
+    <div><div className="theme-color-label"><strong>{galleryPaletteName(color.name)}</strong><code>{color.value}</code></div><p>{color.role}</p></div>
   </li>)}</ul>;
 }
 
 function ThemePalette({ theme, compact = false }: { theme: ThemeSummary; compact?: boolean }) {
   if (!theme.palette?.length) return null;
-  if (compact) return <div className="theme-palette-strip" role="img" aria-label={`Palette: ${theme.palette.map(color => `${color.name} ${color.value}`).join(', ')}`}>
+  if (compact) return <div className="theme-palette-strip" role="img" aria-label={`Palette: ${theme.palette.map(color => `${galleryPaletteName(color.name)} ${color.value}`).join(', ')}`}>
     {theme.palette.map(color => <span key={`${color.name}-${color.value}`} style={{ backgroundColor: color.value }} />)}
   </div>;
   const inverse = theme.palette.filter(inverseColor);
@@ -127,12 +128,13 @@ function ThemePalette({ theme, compact = false }: { theme: ThemeSummary; compact
   const surface = paletteNamed(theme.palette, 'Dark') ?? paletteNamed(theme.palette, 'Ink');
   const onDark = paletteNamed(inverse, 'Inverse text') ?? paletteNamed(inverse, 'Inverse');
   const onDarkMuted = paletteNamed(inverse, 'Inverse notes') ?? paletteNamed(inverse, 'Inverse muted') ?? onDark;
+  const edge = paletteNamed(theme.palette, 'Ink')?.value;
   const band = surface && onDark ? {
     backgroundColor: surface.value,
     '--palette-on-dark': onDark.value,
     '--palette-on-dark-muted': onDarkMuted?.value ?? onDark.value,
   } as CSSProperties : undefined;
-  return <section className="theme-palette-section"><h2>Palette</h2>
+  return <section className="theme-palette-section" style={edge ? { '--palette-edge': edge } as CSSProperties : undefined}><h2>Palette</h2>
     {base.length > 0 && <PaletteColors colors={base} />}
     {inverse.length > 0 && band && <div className="theme-palette-band" style={band}>
       <h3>On dark</h3>
