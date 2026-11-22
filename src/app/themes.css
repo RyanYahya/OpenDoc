@@ -51,6 +51,10 @@
 .theme-palette li { display: flex; gap: 11px; align-items: flex-start; }
 .theme-options .theme-palette li + li { margin-top: 0; }
 .theme-color-swatch { display: block; width: 34px; height: 34px; flex: 0 0 34px; border-radius: 3px; box-shadow: inset 0 0 0 1px #00000022; }
+/* Stock, paper, and other near-white fills. 15% of that theme's ink stays in the 12–15% foreground range. */
+.theme-color-swatch-light { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--palette-edge, var(--ink)) 15%, transparent); }
+/* Dark page only: Ink and other fills within about 10% lightness of #181818. 15% of the theme's light inverse color. */
+:root[data-appearance="dark"] .theme-palette-section > .theme-palette .theme-color-swatch-near { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--palette-light-edge, var(--ink)) 15%, transparent); }
 .theme-palette li > div { min-width: 0; flex: 1; }
 .theme-color-label { display: flex; align-items: baseline; flex-wrap: wrap; gap: 3px 10px; line-height: 1.3; }
 .theme-color-label strong { font-size: var(--caption-size); font-weight: 500; color: var(--ink); }
@@ -58,6 +62,7 @@
 .theme-palette p { margin-top: 4px; font-size: var(--caption-size); line-height: 1.5; }
 .theme-palette-band, .theme-palette-separated { margin-top: 20px; }
 .theme-palette-band { padding: 12px 14px 14px; border-radius: 3px; }
+:root[data-appearance="dark"] .theme-palette-band { box-shadow: 0 0 0 1px color-mix(in srgb, var(--palette-on-dark) 10%, transparent); }
 .theme-palette-band h3 { margin: 0 0 12px; color: var(--palette-on-dark-muted); font-size: var(--caption-size); line-height: var(--caption-leading); font-weight: 500; }
 .theme-options .theme-palette-band ul { color: var(--palette-on-dark); }
 .theme-palette-band .theme-color-label strong { color: var(--palette-on-dark); }
